@@ -1,0 +1,19 @@
+# About
+module: VSFoundation
+author: Virtual Stores
+author_url: https://www.virtualstores.se
+readme: README.md
+copyright: '© All rights reserved 2021 Segelman Virtual Stores AB'
+
+# URLs
+github_url: https://github.com/virtualstores/ios-foundation
+root_url: https://www.virtualstores.se
+github_file_prefix: https://github.com/virtualstores/ios-foundation/blob/master
+
+# Generation
+clean: true
+output: Docs
+clean: true
+min_acl: public
+hide_documentation_coverage: false
+skip_undocumented: true
