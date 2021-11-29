@@ -80,6 +80,10 @@ import VSTT2
 // Add some example here
 ```
 
+## Distribution
+
+[Read Apple's official documentation] (https://developer.apple.com/documentation/swift_packages/distributing_binary_frameworks_as_swift_packages)
+
 ## Contributing to the library
 
 1. Clone the repository
