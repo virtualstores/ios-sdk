@@ -84,6 +84,8 @@ import VSTT2
 
 [Read Apple's official documentation] (https://developer.apple.com/documentation/swift_packages/distributing_binary_frameworks_as_swift_packages)
 
+[Read About code obfuscation] (https://github.com/rockbruno/swiftshield)
+
 ## Contributing to the library
 
 1. Clone the repository
