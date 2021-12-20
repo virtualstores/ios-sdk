@@ -1,0 +1,48 @@
+//
+// ParameterEncoding
+// VSTT2
+//
+// Created by Hripsime on 2021-12-17
+// Copyright Virtual Stores - 2021
+
+import Foundation
+
+enum RequestType: String {
+    case GET
+    case POST
+    case PUT
+    case PATCH
+    case DELETE
+}
+
+enum ParameterEncoding {
+    case json
+
+    // MARK: URL encoding
+    func encode(request: URLRequest, parameters: [String: Any]?) throws -> URLRequest {
+        guard let parameters = parameters else { return request }
+
+        var request = request
+        var encodingError: NSError? = nil
+
+        switch self {
+        case .json:
+            do {
+                let options = JSONSerialization.WritingOptions()
+                let data = try JSONSerialization.data(withJSONObject: parameters, options: options)
+
+                if request.value(forHTTPHeaderField: "Content-Type") == nil {
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                }
+
+                request.httpBody = data
+            } catch {
+                encodingError = error as NSError
+            }
+        }
+
+        guard encodingError == nil else { throw encodingError! }
+        return request
+    }
+}
+
