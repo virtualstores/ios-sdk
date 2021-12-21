@@ -17,11 +17,11 @@ public final class Store: Codable {
     public let active: Bool
     private let startCodes: [PositionedCode]
     private let stopCodes: [PositionedCode]
-    public let rtls: RTLS
+    public let rtlsOptions: RtlsOptions
     public let minVersion: String?
 
     public init(id: Int64, name: String, address: Address, latitude: Double, longitude: Double,
-                active: Bool, startCodes: [PositionedCode], stopCodes: [PositionedCode], rtls: RTLS, minVersion: String?) {
+                active: Bool, startCodes: [PositionedCode], stopCodes: [PositionedCode], rtlsOptions: RtlsOptions, minVersion: String?) {
         self.id = id
         self.name = name
         self.address = address
@@ -30,7 +30,7 @@ public final class Store: Codable {
         self.active = active
         self.startCodes = startCodes
         self.stopCodes = stopCodes
-        self.rtls = rtls
+        self.rtlsOptions = rtlsOptions
         self.minVersion = minVersion
     }
 
@@ -43,7 +43,7 @@ public final class Store: Codable {
         case active
         case startCodes = "startScanLocations"
         case stopCodes = "stopScanLocations"
-        case rtls = "rtlsOptions"
+        case rtlsOptions
         case minVersion
     }
 
@@ -58,7 +58,7 @@ public final class Store: Codable {
         active = try container.decode(Bool.self, forKey: .active)
         startCodes = try container.decode([PositionedCode].self, forKey: .startCodes)
         stopCodes = try container.decode([PositionedCode].self, forKey: .stopCodes)
-        rtls = try container.decode(RTLS.self, forKey: .rtls)
+        rtlsOptions = try container.decode(RtlsOptions.self, forKey: .rtlsOptions)
         minVersion = try container.decodeIfPresent(String.self, forKey: .minVersion)
     }
 }

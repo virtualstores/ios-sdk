@@ -1,5 +1,5 @@
 //
-// RTLS
+// RtlsOptions
 // VSTT2
 //
 // Created by Hripsime on 2021-12-20
@@ -8,12 +8,12 @@
 import Foundation
 import CoreGraphics
 
-public struct RTLS: Codable {
+public struct RtlsOptions: Codable {
     public let id: Int64
-    private let width: Double
-    private let height: Double
-    private let widthInMeters: Double
-    private let heightInMeters: Double
+    public let width: Double
+    public let height: Double
+    public let widthInMeters: Double
+    public let heightInMeters: Double
     public let floorLevel: Int
     public let north: Double?
     public let name: String?

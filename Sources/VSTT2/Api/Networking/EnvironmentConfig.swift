@@ -8,7 +8,11 @@
 import Foundation
 
 /// Here we can have all setups depended what we need to use for each environment
-enum EnvironmentConfig {
+enum EnvironmentConfig: String {
+    init?(raw: String) {
+        self.init(rawValue: raw)
+    }
+    
     case production
     case development
 

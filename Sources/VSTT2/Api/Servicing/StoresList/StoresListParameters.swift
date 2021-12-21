@@ -6,9 +6,12 @@
 // Copyright Virtual Stores - 2021
 
 import Foundation
+import VSFoundation
 
 public struct StoresListParameters {
     private let clientId: String
+
+    @Inject var config: EnvironmentConfig
 
     public init(clientId: String) {
         self.clientId = clientId
@@ -16,7 +19,7 @@ public struct StoresListParameters {
 }
 
 extension StoresListParameters: Routing {
-    var path: String {
-        return "/clients/\(clientId)/stores"
-    }
+    var environmentConfig: EnvironmentConfig { config }
+
+    var path: String { "/clients/\(clientId)/stores" }
 }

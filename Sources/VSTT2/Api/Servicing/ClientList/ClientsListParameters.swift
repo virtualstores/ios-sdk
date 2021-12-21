@@ -6,13 +6,16 @@
 // Copyright Virtual Stores - 2021
 
 import Foundation
+import VSFoundation
 
 public struct ClientsListParameters {
+    @Inject var config: EnvironmentConfig
+
     public init() {}
 }
 
 extension ClientsListParameters: Routing {
-    var path: String {
-        return "/clients"
-    }
+    var environmentConfig: EnvironmentConfig { config }
+    
+    var path: String { "/clients" }
 }

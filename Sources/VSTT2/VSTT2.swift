@@ -12,11 +12,4 @@ import Combine
 public protocol VSTT2 {
     /// Starts VSTT2 managers. Will produce results to publisher.
     func start()
-
-    /// Stops VSTT2 managers.
-    func stop()
-}
-
-public enum VSTT2Error: Error {
-    case noData
 }
