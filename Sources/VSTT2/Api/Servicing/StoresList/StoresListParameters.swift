@@ -1,9 +1,9 @@
 //
-//  File.swift
-//  
+// StoresListParameters
+// VSTT2
 //
-//  Created by Hripsime on 2021-12-20.
-//
+// Created by Hripsime on 2021-12-20
+// Copyright Virtual Stores - 2021
 
 import Foundation
 
@@ -17,6 +17,6 @@ public struct StoresListParameters {
 
 extension StoresListParameters: Routing {
     var path: String {
-        return "/api/v1/clients/\(clientId)/stores"
+        return "/clients/\(clientId)/stores"
     }
 }

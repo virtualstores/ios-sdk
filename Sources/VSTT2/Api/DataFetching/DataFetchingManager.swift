@@ -10,7 +10,7 @@ import Combine
 
 class DataFetchingManager {
     /// DataHandler to fetch the data  from real api or mock data
-    /// Depanded what we have injected
+    /// Based on what we have injected
     private let dataHeandler: DataHandler
 
     init(with dataHeandler: DataHandler) {

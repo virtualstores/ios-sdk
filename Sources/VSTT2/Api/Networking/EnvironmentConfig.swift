@@ -17,7 +17,7 @@ enum EnvironmentConfig {
         case .production:
             return "https://PROD.virtualstores.se"
         case .development:
-            return "https://gunnis-hp-central.ih.vs-office.se"
+            return "https://gunnis-hp-central.ih.vs-office.se/api/v1"
         }
     }
 }
