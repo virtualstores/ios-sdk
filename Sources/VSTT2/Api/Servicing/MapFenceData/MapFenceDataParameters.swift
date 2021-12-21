@@ -10,7 +10,7 @@ import VSFoundation
 
 public struct MapFenceDataParameters {
     private let url: String
-    
+
     @Inject var config: EnvironmentConfig
 
     public init(url: String) {
@@ -21,9 +21,8 @@ public struct MapFenceDataParameters {
 extension MapFenceDataParameters: Routing {
     var environmentConfig: EnvironmentConfig { config }
 
+    /// should be used url, currently the server is returning also .png files that's why for now it's hardcoded
     var baseURL: String {
-        /// should be used url, currently the server is returning also .png files that's why for now it's hardcoded
         "https://virtualstores-navdata.s3.eu-north-1.amazonaws.com/beijer/lidingo/mapfence.json" }
-    var headers: [String : String]? { nil }
+    var headers: [String: String]? { nil }
 }
-

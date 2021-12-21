@@ -16,6 +16,6 @@ public struct ClientsListParameters {
 
 extension ClientsListParameters: Routing {
     var environmentConfig: EnvironmentConfig { config }
-    
+
     var path: String { "/clients" }
 }

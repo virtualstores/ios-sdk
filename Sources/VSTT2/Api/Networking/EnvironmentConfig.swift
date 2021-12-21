@@ -12,7 +12,7 @@ enum EnvironmentConfig: String {
     init?(raw: String) {
         self.init(rawValue: raw)
     }
-    
+
     case production
     case development
 

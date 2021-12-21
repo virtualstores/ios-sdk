@@ -61,11 +61,11 @@ final public class VSTT2Manager: VSTT2 {
                 }
             }, receiveValue: { [weak self] (data) in
                 guard let url = data.stores.first?.rtlsOptions.mapFenceUrl else { return }
-                
+
                 self?.getMapFenceData(with: url)
             }).store(in: &cancellable)
     }
-    
+
     private func getMapFenceData(with url: String) {
         let parameters = MapFenceDataParameters(url: url)
         mapFenceDataService
