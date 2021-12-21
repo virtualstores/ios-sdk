@@ -8,7 +8,13 @@
 import Foundation
 import Combine
 
-final class NetworkManager {
+/// MockMangaer will use this protocol as well
+/// And we will inject MockMangaer or NetworkManager depended how we want to test
+protocol DataHandler {
+    func fetch<T: Decodable, R: Routing>(_ routing: R) -> AnyPublisher<T, Error>
+}
+
+final class NetworkManager: DataHandler {
 
     init() {}
 
@@ -26,4 +32,3 @@ final class NetworkManager {
             .eraseToAnyPublisher()
     }
 }
-

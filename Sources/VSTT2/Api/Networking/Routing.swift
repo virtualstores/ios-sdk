@@ -10,48 +10,40 @@ import Foundation
 protocol Routing {
 
     /// Base url
-    var baseURLString: String { get }
-    ///Request type
+    var baseURL: String { get }
+    /// Request type
     var method: RequestType { get }
-    ///Path for request
-    var routPath: String { get }
-    ///Needed parameters for request
+    /// Path for request
+    var path: String { get }
+    /// Needed parameters for request
     var parameters: [String: Any]? { get }
-    ///Url encoding type
+    /// Url encoding type
     var encoding: ParameterEncoding { get }
-    ///Headers which can have the request
+    /// Headers which can have the request
     var headers: [String: String]? { get }
-    ///Final UrlRequest
+    /// Final UrlRequest
     var urlRequest: URLRequest? { get }
+    /// Environment config data
+    var environmentConfig: EnvironmentConfig { get }
 }
 
 extension Routing {
-    var baseURLString: String {
-        return "https://baseurl"
-    }
+    var environmentConfig: EnvironmentConfig { .development }
 
-    var method: RequestType {
-        return .POST
-    }
+    var baseURL: String { environmentConfig.baseURL() }
 
-    var routPath: String {
-        return ""
-    }
+    var method: RequestType { .GET }
 
-    var parameters: [String: Any]? {
-        return nil
-    }
+    var path: String { "" }
 
-    var encoding: ParameterEncoding {
-        return ParameterEncoding.json
-    }
+    var parameters: [String: Any]? { nil }
 
-    var headers: [String: String]? {
-        return nil
-    }
+    var encoding: ParameterEncoding { ParameterEncoding.json }
+
+    var headers: [String: String]? { ["apiKey" : "kanelbulle"] }
 
     var urlRequest: URLRequest? {
-        let baseURLStirng = baseURLString
+        let baseURLStirng = baseURL
 
         guard var url = URL(string: baseURLStirng) else {
             #if DEV
@@ -61,8 +53,8 @@ extension Routing {
             return nil
         }
 
-        if !routPath.isEmpty {
-            url.appendPathComponent(routPath)
+        if !path.isEmpty {
+            url.appendPathComponent(path)
         }
 
         var urlRequest = URLRequest(url: url)
@@ -87,4 +79,3 @@ extension Routing {
         return urlRequest
     }
 }
-

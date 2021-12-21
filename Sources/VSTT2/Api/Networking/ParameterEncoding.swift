@@ -23,7 +23,7 @@ enum ParameterEncoding {
         guard let parameters = parameters else { return request }
 
         var request = request
-        var encodingError: NSError? = nil
+        var encodingError: NSError?
 
         switch self {
         case .json:
@@ -45,4 +45,3 @@ enum ParameterEncoding {
         return request
     }
 }
-
