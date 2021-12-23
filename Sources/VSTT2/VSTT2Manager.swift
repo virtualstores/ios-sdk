@@ -11,6 +11,8 @@ import VSFoundation
 import VSPositionKit
 
 final public class VSTT2Manager: VSTT2 {
+    public var stepCountPublisher: CurrentValueSubject<Int, Never> = .init(0)
+    
     // MARK: Private members
     private let clientsListService: ClientsListService
     private let storesListService: StoresListService
@@ -20,6 +22,7 @@ final public class VSTT2Manager: VSTT2 {
 
     private let context: Context
     private var cancellable = Set<AnyCancellable>()
+    private var publisherCancellable: AnyCancellable?
 
     public init() {
         context = Context(VSTT2Config())
@@ -28,14 +31,42 @@ final public class VSTT2Manager: VSTT2 {
         clientsListService = ClientsListService(with: NetworkManager())
         storesListService = StoresListService(with: NetworkManager())
         mapFenceDataService = MapFenceDataService(with: NetworkManager())
+        
+        bindPublishers()
     }
 
     /// Just testing some API calles to be sure that the flow is working
     /// After will add logic where we need have each API call
-    public func start() {
+    public func start() throws {
+        try positionManager.start()
+        
         getClients()
     }
+    
+    public func stop() {
+        positionManager.stop()
+    }
+    
+    public func setBackgroundAccess(isActive: Bool) {
+        positionManager.setBackgroundAccess(isActive: isActive)
+    }
 
+    private func bindPublishers() {
+        publisherCancellable = positionManager.stepCountPublisher
+            .sink { [weak self] count in
+                self?.stepCountPublisher.send(completion: count)
+            } receiveValue: { data in
+                self.stepCountPublisher.send(data)
+            }
+    }
+
+    deinit {
+        publisherCancellable?.cancel()
+    }
+}
+
+//MARK: API calles
+private extension VSTT2Manager {
     private func getClients() {
         let parameters = ClientsListParameters()
         clientsListService

@@ -11,5 +11,14 @@ import Combine
 /// Manager for VSTT2 data. Will give all data which need iOS app
 public protocol VSTT2 {
     /// Starts VSTT2 managers. Will produce results to publisher.
-    func start()
+    func start() throws
+    
+    /// Stops VSTT2 managers..
+    func stop()
+    
+    /// Temporary setter for activating and deactivating background access in positionKit
+    func setBackgroundAccess(isActive: Bool)
+    
+    /// Temporary publisher for step counts test
+    var stepCountPublisher: CurrentValueSubject<Int, Never> { get }
 }
