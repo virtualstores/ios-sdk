@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "VSTT2",
     platforms: [
-        .iOS(.v13),
+        .iOS(.v15),
         .macOS(.v11),
         .watchOS(.v6)
     ],
@@ -17,8 +17,8 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "https://github.com/virtualstores/ios-foundation.git", from: "0.0.2-14-SNAPSHOT"),
-        .package(url: "https://github.com/virtualstores/ios-sensor-interpreter.git", from: "0.0.1"),
+        .package(url: "https://github.com/virtualstores/ios-foundation.git", from: "0.0.2-16-SNAPSHOT"),
+        .package(url: "https://github.com/virtualstores/ios-sensor-interpreter.git", from: "0.0.3-1-SNAPSHOT"),
         .package(url: "https://github.com/virtualstores/ios-sensor-fusion.git", branch: "feature/suggested-implementation"),
         .package(url: "https://github.com/virtualstores/ios-engine-wrapper.git", from: "0.0.1"),
         

@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import VSFoundation
+import VSPositionKit
 
 final public class VSTT2Manager: VSTT2 {
     // MARK: Private members
@@ -15,11 +16,15 @@ final public class VSTT2Manager: VSTT2 {
     private let storesListService: StoresListService
     private let mapFenceDataService: MapFenceDataService
 
+    private var positionManager = PositionManager()
+
     private let context: Context
     private var cancellable = Set<AnyCancellable>()
 
     public init() {
         context = Context(VSTT2Config())
+        
+        positionManager = PositionManager()
         clientsListService = ClientsListService(with: NetworkManager())
         storesListService = StoresListService(with: NetworkManager())
         mapFenceDataService = MapFenceDataService(with: NetworkManager())
@@ -77,8 +82,8 @@ final public class VSTT2Manager: VSTT2 {
                 case .failure(let error):
                     print(error)
                 }
-            }, receiveValue: { (data) in
-                print(data)
+            }, receiveValue: { [weak self] (data) in
+                self?.positionManager.setupMapFence(with: data)
             }).store(in: &cancellable)
     }
 }
