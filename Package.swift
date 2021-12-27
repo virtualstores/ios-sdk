@@ -17,20 +17,15 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "https://github.com/virtualstores/ios-foundation.git", from: "0.0.2-16-SNAPSHOT"),
-        .package(url: "https://github.com/virtualstores/ios-sensor-interpreter.git", from: "0.0.3-1-SNAPSHOT"),
-        .package(url: "https://github.com/virtualstores/ios-sensor-fusion.git", branch: "feature/suggested-implementation"),
-        .package(url: "https://github.com/virtualstores/ios-engine-wrapper.git", from: "0.0.1"),
-        
+        .package(url: "https://github.com/virtualstores/ios-foundation.git", from: "0.0.2-19-SNAPSHOT"),
+        .package(url: "https://github.com/virtualstores/ios-position-kit.git", branch: "main"),
     ],
     targets: [
         .target(
             name: "VSTT2",
             dependencies: [
                 .product(name: "VSFoundation", package: "ios-foundation"),
-                .product(name: "VSSensorInterpreter", package: "ios-sensor-interpreter"),
-                .product(name: "VSEngineWrapper", package: "ios-engine-wrapper"),
-                .product(name: "VSSensorFusion", package: "ios-sensor-fusion"),
+                .product(name: "VSPositionKit", package: "ios-position-kit"),
             ]),
         .testTarget(
             name: "VSTT2Tests",
