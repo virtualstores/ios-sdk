@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "VSTT2",
     platforms: [
-        .iOS(.v15),
+        .iOS(.v13),
         .macOS(.v11),
         .watchOS(.v6)
     ],
@@ -18,7 +18,8 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         .package(url: "https://github.com/virtualstores/ios-foundation.git", from: "0.0.2-19-SNAPSHOT"),
-        .package(url: "https://github.com/virtualstores/ios-position-kit.git", branch: "main"),
+        .package(url: "https://github.com/virtualstores/ios-position-kit.git", branch: "addDependencies"),
+
     ],
     targets: [
         .target(
