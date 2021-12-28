@@ -12,7 +12,7 @@ import VSPositionKit
 
 final public class VSTT2Manager: VSTT2 {
     public var stepCountPublisher: CurrentValueSubject<Int, Never> = .init(0)
-    
+
     // MARK: Private members
     private let clientsListService: ClientsListService
     private let storesListService: StoresListService
@@ -25,27 +25,27 @@ final public class VSTT2Manager: VSTT2 {
 
     public init() {
         context = Context(VSTT2Config())
-        
+
         clientsListService = ClientsListService(with: NetworkManager())
         storesListService = StoresListService(with: NetworkManager())
         mapFenceDataService = MapFenceDataService(with: NetworkManager())
-        
+
         bindPublishers()
     }
 
     /// Just testing some API calles to be sure that the flow is working
     /// After will add logic where we need have each API call
     public func start() throws {
-        //maybe we need call positionManager?.start() after positionManager will be initialized
+        // maybe we need call positionManager?.start() after positionManager will be initialized
         try positionManager?.start()
-        
+
         getClients()
     }
-    
+
     public func stop() {
         positionManager?.stop()
     }
-    
+
     public func setBackgroundAccess(isActive: Bool) {
         positionManager?.setBackgroundAccess(isActive: isActive)
     }
@@ -64,7 +64,7 @@ final public class VSTT2Manager: VSTT2 {
     }
 }
 
-//MARK: API calles
+// MARK: API calles
 private extension VSTT2Manager {
     private func getClients() {
         let parameters = ClientsListParameters()

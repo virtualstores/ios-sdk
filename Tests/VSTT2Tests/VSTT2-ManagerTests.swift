@@ -1,6 +1,6 @@
 import XCTest
-@testable import VSEngineWrapper
+@testable import VSTT2
 
-final class VSTT2-ManagerTests: XCTestCase {
+final class VSTT2ManagerTests: XCTestCase {
 
 }

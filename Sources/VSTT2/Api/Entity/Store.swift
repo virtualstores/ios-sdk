@@ -15,8 +15,8 @@ public final class Store: Codable {
     public let latitude: Double
     public let longitude: Double
     public let active: Bool
-    private let startCodes: [PositionedCode]
-    private let stopCodes: [PositionedCode]
+    public let startCodes: [PositionedCode]
+    public let stopCodes: [PositionedCode]
     public let rtlsOptions: RtlsOptions
     public let minVersion: String?
 

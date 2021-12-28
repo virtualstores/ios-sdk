@@ -9,11 +9,11 @@ import Foundation
 import CoreGraphics
 
 public struct PositionedCode: Codable, Equatable {
-    let code: String
-    let xPosition: CGFloat
-    let yPosition: CGFloat
-    let direction: Double
-    let type: CodeType
+    public let code: String
+    public let xPosition: CGFloat
+    public let yPosition: CGFloat
+    public let direction: Double
+    public let type: CodeType
 
     public enum CodeType: Int, Codable {
         case start = 0
