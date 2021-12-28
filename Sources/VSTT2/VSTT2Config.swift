@@ -23,16 +23,16 @@ struct VSTT2Config: Config {
             ClientsListParameters()
         }
     }
-    
+
     private func configureServices(_ injector: Injector) {
         injector.map(ClientsListService.self) {
             ClientsListService(with: NetworkManager())
         }
-        
+
         injector.map(StoresListService.self) {
             StoresListService(with: NetworkManager())
         }
-        
+
         injector.map(MapFenceDataService.self) {
             MapFenceDataService(with: NetworkManager())
         }

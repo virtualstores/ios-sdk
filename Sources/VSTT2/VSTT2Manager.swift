@@ -18,11 +18,11 @@ final public class VSTT2Manager: VSTT2 {
     private var cancellable = Set<AnyCancellable>()
     private var publisherCancellable: AnyCancellable?
     private var positionManager: PositionManager?
-    
+
     @Inject var clientsListService: ClientsListService
     @Inject var storesListService: StoresListService
     @Inject var mapFenceDataService: MapFenceDataService
-    
+
     public init() {
         bindPublishers()
     }
@@ -30,7 +30,7 @@ final public class VSTT2Manager: VSTT2 {
     /// Just testing some API calles to be sure that the flow is working
     /// After will add logic where we need have each API call
     public func start() throws {
-        // maybe we need call positionManager?.start() after positionManager will be initialized
+        positionManager = PositionManager()
         try positionManager?.start()
 
         getClients()
@@ -38,6 +38,7 @@ final public class VSTT2Manager: VSTT2 {
 
     public func stop() {
         positionManager?.stop()
+        publisherCancellable?.cancel()
     }
 
     public func setBackgroundAccess(isActive: Bool) {
@@ -48,13 +49,13 @@ final public class VSTT2Manager: VSTT2 {
         publisherCancellable = positionManager?.stepCountPublisher
             .sink { [weak self] count in
                 self?.stepCountPublisher.send(completion: count)
-            } receiveValue: { data in
-                self.stepCountPublisher.send(data)
+            } receiveValue: { [weak self]  data in
+                self?.stepCountPublisher.send(data)
             }
     }
 
     deinit {
-        publisherCancellable?.cancel()
+        stop()
     }
 }
 
@@ -73,6 +74,7 @@ private extension VSTT2Manager {
                 }
             }, receiveValue: { [weak self] (data) in
                 guard let clientId = data.clients.first?.clientId else { return }
+
                 self?.getStores(with: clientId)
             }).store(in: &cancellable)
     }
@@ -89,7 +91,8 @@ private extension VSTT2Manager {
                     print(error)
                 }
             }, receiveValue: { [weak self] (data) in
-                guard let url = data.stores.first?.rtlsOptions.mapFenceUrl else { return }
+                // For now just using 4th element as we know it's the one we can test
+                guard let url = data.stores[4].rtlsOptions.mapFenceUrl else { return }
 
                 self?.getMapFenceData(with: url)
             }).store(in: &cancellable)
@@ -107,7 +110,15 @@ private extension VSTT2Manager {
                     print(error)
                 }
             }, receiveValue: { [weak self] (data) in
-                self?.positionManager = PositionManager(with: data)
+                guard let self = self else { return }
+
+                do {
+                    try self.positionManager?.setupMapFence(with: data)
+                    self.positionManager?.startNavigation(with: 180, xPosition: 4.570476, yPosition: 2.094637)
+
+                } catch {
+                    // Add error handling logic when MapFence setup failed
+                }
             }).store(in: &cancellable)
     }
 }
