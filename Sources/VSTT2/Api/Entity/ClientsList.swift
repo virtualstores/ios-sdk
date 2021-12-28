@@ -7,7 +7,7 @@
 
 import Foundation
 
-public final class ClientsList: Codable {
+public struct ClientsList: Codable {
     public let clients: [Client]
 
     public init(clients: [Client]) {

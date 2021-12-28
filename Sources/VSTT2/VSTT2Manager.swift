@@ -14,22 +14,16 @@ final public class VSTT2Manager: VSTT2 {
     public var stepCountPublisher: CurrentValueSubject<Int, Never> = .init(0)
 
     // MARK: Private members
-    private let clientsListService: ClientsListService
-    private let storesListService: StoresListService
-    private let mapFenceDataService: MapFenceDataService
-    private var positionManager: PositionManager?
-
-    private let context: Context
+    private let context = Context(VSTT2Config())
     private var cancellable = Set<AnyCancellable>()
     private var publisherCancellable: AnyCancellable?
-
+    private var positionManager: PositionManager?
+    
+    @Inject var clientsListService: ClientsListService
+    @Inject var storesListService: StoresListService
+    @Inject var mapFenceDataService: MapFenceDataService
+    
     public init() {
-        context = Context(VSTT2Config())
-
-        clientsListService = ClientsListService(with: NetworkManager())
-        storesListService = StoresListService(with: NetworkManager())
-        mapFenceDataService = MapFenceDataService(with: NetworkManager())
-
         bindPublishers()
     }
 

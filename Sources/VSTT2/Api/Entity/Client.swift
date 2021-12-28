@@ -7,7 +7,7 @@
 
 import Foundation
 
-public final class Client: Codable {
+public struct Client: Codable {
     public let clientId: String
     public let name: String?
 

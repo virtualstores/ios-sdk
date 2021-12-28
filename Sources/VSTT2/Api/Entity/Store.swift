@@ -8,7 +8,7 @@
 import Foundation
 import CoreGraphics
 
-public final class Store: Codable {
+public struct Store: Codable {
     public let id: Int64
     public let name: String
     public let address: Address
@@ -19,20 +19,6 @@ public final class Store: Codable {
     public let stopCodes: [PositionedCode]
     public let rtlsOptions: RtlsOptions
     public let minVersion: String?
-
-    public init(id: Int64, name: String, address: Address, latitude: Double, longitude: Double,
-                active: Bool, startCodes: [PositionedCode], stopCodes: [PositionedCode], rtlsOptions: RtlsOptions, minVersion: String?) {
-        self.id = id
-        self.name = name
-        self.address = address
-        self.latitude = latitude
-        self.longitude = longitude
-        self.active = active
-        self.startCodes = startCodes
-        self.stopCodes = stopCodes
-        self.rtlsOptions = rtlsOptions
-        self.minVersion = minVersion
-    }
 
     private enum CodingKeys: String, CodingKey {
         case id
