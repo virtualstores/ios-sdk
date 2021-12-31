@@ -12,20 +12,20 @@ import VSPositionKit
 
 final public class VSTT2Manager: VSTT2 {
     public var stepCountPublisher: CurrentValueSubject<Int, Never> = .init(0)
+    public var positionBundlePublisher: CurrentValueSubject<PositionBundle?, PositionKitError> = .init(nil)
 
     // MARK: Private members
     private let context = Context(VSTT2Config())
     private var cancellable = Set<AnyCancellable>()
     private var publisherCancellable: AnyCancellable?
+    private var positionBundleCancellable: AnyCancellable?
     private var positionManager: PositionManager?
 
     @Inject var clientsListService: ClientsListService
     @Inject var storesListService: StoresListService
     @Inject var mapFenceDataService: MapFenceDataService
 
-    public init() {
-        bindPublishers()
-    }
+    public init() {}
 
     /// Just testing some API calles to be sure that the flow is working
     /// After will add logic where we need have each API call
@@ -34,6 +34,7 @@ final public class VSTT2Manager: VSTT2 {
         try positionManager?.start()
 
         getClients()
+        bindPublishers()
     }
 
     public func stop() {
@@ -47,10 +48,18 @@ final public class VSTT2Manager: VSTT2 {
 
     private func bindPublishers() {
         publisherCancellable = positionManager?.stepCountPublisher
-            .sink { [weak self] count in
-                self?.stepCountPublisher.send(completion: count)
+            .sink { [weak self] error in
+                self?.stepCountPublisher.send(completion: error)
             } receiveValue: { [weak self]  data in
                 self?.stepCountPublisher.send(data)
+            }
+        
+        positionBundleCancellable = positionManager?.positionPublisher
+            .sink { [weak self] error in
+                self?.positionBundlePublisher.send(completion: error)
+            } receiveValue: { [weak self]  positionBundle in
+                self?.positionBundlePublisher.send(positionBundle)
+                print(positionBundle)
             }
     }
 
