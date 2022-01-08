@@ -59,7 +59,7 @@ final public class VSTT2Manager: VSTT2 {
                 self?.positionBundlePublisher.send(completion: error)
             } receiveValue: { [weak self]  positionBundle in
                 self?.positionBundlePublisher.send(positionBundle)
-                print(positionBundle)
+//                print(positionBundle)
             }
     }
 
