@@ -6,6 +6,7 @@
 // Copyright Virtual Stores - 2021
 
 import Foundation
+import VSFoundation
 
 protocol Routing {
 
@@ -43,11 +44,13 @@ extension Routing {
     var headers: [String: String]? { ["apiKey" : "kanelbulle"] }
 
     var urlRequest: URLRequest? {
+        @Inject var logger: Logger
+       
         let baseURLStirng = baseURL
 
         guard var url = URL(string: baseURLStirng) else {
             #if DEV
-            print("cannot create URL")
+            logger.log(message: "cannot create URL")
             #endif
 
             return nil
@@ -71,7 +74,7 @@ extension Routing {
                 urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
             } catch {
                 #if DEV
-                print("parameters encoding issue")
+                logger.log(message: "parameters encoding issue")
                 #endif
             }
         }

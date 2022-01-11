@@ -11,6 +11,7 @@ import VSPositionKit
 
 struct VSTT2Config: Config {
     func configure(_ injector: Injector) {
+        configureHelpers(injector)
         configureApiEnvironment(injector)
         configureServices(injector)
         configureManagers(injector)
@@ -43,6 +44,12 @@ struct VSTT2Config: Config {
     private func configureManagers(_ injector: Injector) {
         injector.map(PositionManager.self) {
             PositionManager()
+        }
+    }
+    
+    private func configureHelpers(_ injector: Injector) {
+        injector.map(Logger.self) {
+            Logger(verbosity: .debug)
         }
     }
 }
