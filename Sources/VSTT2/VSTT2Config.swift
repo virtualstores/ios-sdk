@@ -1,9 +1,9 @@
 //
-//  File.swift
-//  
+// VSTT2Config
+// VSTT2
 //
-//  Created by Hripsime on 2021-12-21.
-//
+// Created by Hripsime on 2021-12-21.
+// Copyright Virtual Stores - 2021
 
 import Foundation
 import VSFoundation

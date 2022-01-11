@@ -14,7 +14,11 @@ public struct PositionedCode: Codable, Equatable {
     public let yPosition: CGFloat
     public let direction: Double
     public let type: CodeType
-
+    
+    public var point: CGPoint {
+        return CGPoint(x: self.xPosition, y: self.yPosition)
+    }
+    
     public enum CodeType: Int, Codable {
         case start = 0
         case stop = 1
