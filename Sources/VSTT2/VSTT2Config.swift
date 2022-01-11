@@ -7,11 +7,13 @@
 
 import Foundation
 import VSFoundation
+import VSPositionKit
 
 struct VSTT2Config: Config {
     func configure(_ injector: Injector) {
         configureApiEnvironment(injector)
         configureServices(injector)
+        configureManagers(injector)
     }
 
     private func configureApiEnvironment(_ injector: Injector) {
@@ -35,6 +37,12 @@ struct VSTT2Config: Config {
 
         injector.map(MapFenceDataService.self) {
             MapFenceDataService(with: NetworkManager())
+        }
+    }
+
+    private func configureManagers(_ injector: Injector) {
+        injector.map(PositionManager.self) {
+            PositionManager()
         }
     }
 }
