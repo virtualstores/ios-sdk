@@ -12,7 +12,9 @@ import VSFoundation
 import CoreGraphics
 
 public protocol TT2Positioning {
+    /// Temporary publisher for step counts test
     var stepCountPublisher: CurrentValueSubject<Int, Never> { get }
+    /// Publisher for position Bundle
     var positionBundlePublisher: CurrentValueSubject<PositionBundle?, PositionKitError> { get }
     
     /// Synchronize the position manager with a currently known position.

@@ -13,7 +13,7 @@ import CoreGraphics
 
 final public class TT2PositionManager: TT2Positioning {
     @Inject var mapFenceDataService: MapFenceDataService
-    
+
     private var cancellable = Set<AnyCancellable>()
     private var publisherCancellable: AnyCancellable?
     private var positionBundleCancellable: AnyCancellable?
@@ -77,8 +77,7 @@ public extension TT2PositionManager {
         do {
             try startUpdatingLocation(location)
         } catch {
-            //Send publisher for error
-            print(error)
+            Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function), message: "StartUpdatingLocation error")
         }
     }
     
