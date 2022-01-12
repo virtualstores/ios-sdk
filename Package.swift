@@ -18,7 +18,7 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         .package(url: "https://github.com/virtualstores/ios-foundation.git", branch: "develop"),
-        .package(url: "https://github.com/virtualstores/ios-position-kit.git", branch: "add-rotation-sensor"),
+        .package(url: "https://github.com/virtualstores/ios-position-kit.git", branch: "testing-vps-gc-collect"),
 
     ],
     targets: [
