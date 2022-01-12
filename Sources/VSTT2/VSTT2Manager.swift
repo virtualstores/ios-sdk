@@ -17,7 +17,7 @@ final public class VSTT2Manager: VSTT2 {
     private var cancellable = Set<AnyCancellable>()
     private var isMapFunctionalityAvailable: Bool
     private var activeStore: Store?
-    
+
     @Inject var positionManager: PositionManager
     @Inject var storesListService: StoresListService
     @Inject var tt2PositionManager: TT2PositionManager
@@ -31,7 +31,7 @@ final public class VSTT2Manager: VSTT2 {
     public func setBackgroundAccess(isActive: Bool) {
         positionManager.setBackgroundAccess(isActive: isActive)
     }
-    
+
     public func initiateStore(store: Store, floorLevel: Int) {
         self.activeStore = store
         tt2PositionManager.configureStoreData(for: store, floorLevel: floorLevel)

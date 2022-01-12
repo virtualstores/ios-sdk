@@ -46,7 +46,7 @@ struct VSTT2Config: Config {
             PositionManager()
         }
     }
-    
+
     private func configureHelpers(_ injector: Injector) {
         injector.map(Logger.self) {
             Logger(verbosity: .debug)

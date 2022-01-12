@@ -15,7 +15,7 @@ public struct Shelf: Codable {
     public let shelfGroupPosition: Int
     public let shelfTiers: [ShelfTier]
     public let shape: [CGPoint]
-    
+
     public init(id: Int64, name: String, itemPosition: ItemPosition, shelfGroupPosition: Int, shelfTiers: [ShelfTier], shape: [CGPoint]) {
         self.id = id
         self.name = name
@@ -25,4 +25,3 @@ public struct Shelf: Codable {
         self.shape = shape
     }
 }
-

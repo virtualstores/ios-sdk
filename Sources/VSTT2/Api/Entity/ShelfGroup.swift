@@ -12,7 +12,7 @@ public struct ShelfGroup: Codable {
     public let name: String
     public let itemPosition: ItemPosition
     public let shelves: [Shelf]
-    
+
     public init(id: Int64, name: String, itemPosition: ItemPosition, shelves: [Shelf]) {
         self.id = id
         self.name = name

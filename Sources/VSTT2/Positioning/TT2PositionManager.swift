@@ -18,14 +18,14 @@ final public class TT2PositionManager: TT2Positioning {
     private var publisherCancellable: AnyCancellable?
     private var positionBundleCancellable: AnyCancellable?
     private var positionKitManager: PositionManager
-    
+
     public var stepCountPublisher: CurrentValueSubject<Int, Never> = .init(0)
     public var positionBundlePublisher: CurrentValueSubject<PositionBundle?, PositionKitError> = .init(nil)
-    
+
     public init(positionManager: PositionManager) {
         self.positionKitManager = positionManager
     }
-    
+
     private func bindPublishers() {
         publisherCancellable = positionKitManager.stepCountPublisher
             .sink { [weak self] error in
@@ -33,7 +33,7 @@ final public class TT2PositionManager: TT2Positioning {
             } receiveValue: { [weak self]  data in
                 self?.stepCountPublisher.send(data)
             }
-        
+
         positionBundleCancellable = positionKitManager.positionPublisher
             .sink { [weak self] error in
                 self?.positionBundlePublisher.send(completion: error)
@@ -46,10 +46,12 @@ final public class TT2PositionManager: TT2Positioning {
 public extension TT2PositionManager {
     func startUpdatingLocation(_ location: TT2Location) throws {
         try positionKitManager.start()
-        positionKitManager.startNavigation(with: location.course.degrees, xPosition: location.position.x, yPosition: location.position.y)
+        positionKitManager.startNavigation(with: location.course.degrees,
+                                           xPosition: location.position.xPosition,
+                                           yPosition: location.position.yPosition)
         bindPublishers()
     }
-    
+
     func startUpdatingLocation(with code: PositionedCode, offset: Double? = nil, syncDirection: Bool = false) {
         if let offset = offset {
             let dir = code.direction + offset
@@ -61,29 +63,31 @@ public extension TT2PositionManager {
             //  self.validateSession(forStore: activeStore.store.id)
         }
     }
-    
+
     func stopUpdatingLocation(saveRecording: Bool = false, uploadRecording: Bool = false) {
         positionKitManager.stop()
-        
+
         //        if uploadRecording {
         //            self.sendData(firstName: nil, lastName: nil, route: nil, gender: nil, age: nil, comments: nil)
         //        } else {
         //            self.debugTools?.showMap()
         //        }
     }
-    
+
     func synchronize(code: PositionedCode, syncDirection: Bool = false) {
-        let location = TT2Location(position: TT2Position(point: code.point, offset: CGPoint(x: 0.0, y: 0.0)), course: TT2Course(fromDegrees: code.direction), syncDirection: syncDirection)
+        let location = TT2Location(position: TT2Position(point: code.point, offset: CGPoint(x: 0.0, y: 0.0)),
+                                   course: TT2Course(fromDegrees: code.direction), syncDirection: syncDirection)
         do {
             try startUpdatingLocation(location)
         } catch {
-            Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function), message: "StartUpdatingLocation error")
+            Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+                                                message: "StartUpdatingLocation error")
         }
     }
-    
+
     func configureStoreData(for store: Store, floorLevel: Int?) {
         guard let url = store.rtlsOptions.first?.mapFenceUrl else { return }
-        
+
         self.getMapFenceData(with: url)
     }
 }
@@ -110,4 +114,3 @@ extension TT2PositionManager {
             }).store(in: &cancellable)
     }
 }
-

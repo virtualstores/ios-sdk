@@ -45,7 +45,7 @@ extension Routing {
 
     var urlRequest: URLRequest? {
         @Inject var logger: Logger
-       
+
         let baseURLStirng = baseURL
 
         guard var url = URL(string: baseURLStirng) else {
