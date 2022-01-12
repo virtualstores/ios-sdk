@@ -17,7 +17,7 @@ public struct Store: Codable {
     public let active: Bool
     public let startCodes: [PositionedCode]
     public let stopCodes: [PositionedCode]
-    public let rtlsOptions: RtlsOptions
+    public let rtlsOptions: [RtlsOptions]
     public let minVersion: String?
 
     private enum CodingKeys: String, CodingKey {
@@ -44,7 +44,7 @@ public struct Store: Codable {
         active = try container.decode(Bool.self, forKey: .active)
         startCodes = try container.decode([PositionedCode].self, forKey: .startCodes)
         stopCodes = try container.decode([PositionedCode].self, forKey: .stopCodes)
-        rtlsOptions = try container.decode(RtlsOptions.self, forKey: .rtlsOptions)
+        rtlsOptions = try container.decode([RtlsOptions].self, forKey: .rtlsOptions)
         minVersion = try container.decodeIfPresent(String.self, forKey: .minVersion)
     }
 }

@@ -81,8 +81,8 @@ public extension TT2PositionManager {
         }
     }
     
-    func configureStoreData(for store: Store, floorLevelId: String? = nil) {
-        guard let url = store.rtlsOptions.mapFenceUrl else { return }
+    func configureStoreData(for store: Store, floorLevel: Int?) {
+        guard let url = store.rtlsOptions.first?.mapFenceUrl else { return }
         
         self.getMapFenceData(with: url)
     }

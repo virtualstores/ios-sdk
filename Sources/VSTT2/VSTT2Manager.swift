@@ -32,9 +32,9 @@ final public class VSTT2Manager: VSTT2 {
         positionManager.setBackgroundAccess(isActive: isActive)
     }
     
-    public func initiateStore(store: Store) {
+    public func initiateStore(store: Store, floorLevel: Int) {
         self.activeStore = store
-        tt2PositionManager.configureStoreData(for: store)
+        tt2PositionManager.configureStoreData(for: store, floorLevel: floorLevel)
     }
 }
 
