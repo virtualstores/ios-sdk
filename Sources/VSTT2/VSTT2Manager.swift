@@ -48,7 +48,7 @@ private extension VSTT2Manager {
                 switch completion {
                 case .finished:
                     break
-                case .failure:
+                case .failure(_):
                     self?.availableStores.send(completion: .failure(VSTT2Error.noAvailableStores))
                 }
             }, receiveValue: { [weak self] (data) in

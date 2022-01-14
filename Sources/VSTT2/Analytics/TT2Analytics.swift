@@ -17,7 +17,7 @@ public protocol TT2Analytics {
 
     /// Stop  Collecting Heat Map
     func stopCollectingHeatMapData()
-    
+
     /// Stop  Analytics
     func stopVisit()
 }

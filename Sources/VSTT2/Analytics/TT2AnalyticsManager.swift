@@ -19,7 +19,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private var timeFormatter: DateFormatter = DateFormatter()
     private var cancellable = Set<AnyCancellable>()
 
-    var recordedPositions: Dictionary<String, [RecordedPosition]> = [:]
+    var recordedPositions: [String: [RecordedPosition]] = [:]
     var isRecording: Bool = false
 
     init(store: Store) {
@@ -57,7 +57,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         guard self.visitId != nil else {
             throw TT2AnalyticsError.visitNotStarted
         }
-        
+
         self.isRecording = true
     }
 
@@ -78,27 +78,27 @@ private extension TT2AnalyticsManager {
         if self.recordedPositions[id] == nil {
             self.recordedPositions[id] = []
         }
-        
-        let recordedPosition = RecordedPosition(x: Double(point.x), y: Double(point.y), timeStamp: self.timeFormatter.string(from: Date()))
+
+        let recordedPosition = RecordedPosition(xPosition: Double(point.x), yPosition: Double(point.y), timeStamp: self.timeFormatter.string(from: Date()))
         self.recordedPositions[id]?.append(recordedPosition)
-        
+
         if self.checkIfPartialUpload() {
             self.uploadData(recordedPositions: self.recordedPositions)
             self.recordedPositions.removeAll()
         }
     }
-    
+
     private func checkIfPartialUpload() -> Bool {
         var numberOfRecordedPositions: Int = 0
-        self.recordedPositions.forEach { (key, value) in
+        self.recordedPositions.forEach { (_, value) in
             numberOfRecordedPositions += value.count
         }
-        
+
         return true
       //  return numberOfRecordedPositions > self.uploadThreshold
     }
-    
-    private func uploadData(recordedPositions: Dictionary<String, [RecordedPosition]>) {
+
+    private func uploadData(recordedPositions: [String: [RecordedPosition]]) {
         guard let visitId = visitId else { return }
      //   uploadWorker.upload(visitId: id, recordedPositions: WorkerPositionData(data: recordedPositions), statServerConnection: store.statConnection)
         let parameters = UploadPositionsParameters(visitId: visitId, requestId: "1", positionGrps: recordedPositions)
@@ -111,7 +111,7 @@ private extension TT2AnalyticsManager {
                 case .failure(let error):
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)
                 }
-            }, receiveValue: { (data) in
+            }, receiveValue: { (_) in
                 // Publish data
             }).store(in: &cancellable)
     }

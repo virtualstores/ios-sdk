@@ -13,9 +13,9 @@ public struct UploadPositionsParameters {
 
     private let visitId: Int64
     private let requestId: String
-    private let positionGrps: Dictionary<String, [RecordedPosition]>
+    private let positionGrps: [String: [RecordedPosition]]
 
-    init(visitId: Int64, requestId: String, positionGrps: Dictionary<String, [RecordedPosition]>) {
+    init(visitId: Int64, requestId: String, positionGrps: [String: [RecordedPosition]]) {
         self.visitId = visitId
         self.requestId = requestId
         self.positionGrps = positionGrps
@@ -39,4 +39,4 @@ extension UploadPositionsParameters: Routing {
     }
 
     var headers: [String: String]? { ["apiKey" : "8fc1be06-582e-41ce-b309-61e8fa8e3784" ] }
-    }
+}

@@ -8,7 +8,7 @@
 import Foundation
 
 struct RecordedPosition: Codable {
-    let x: Double
-    let y: Double
+    let xPosition: Double
+    let yPosition: Double
     let timeStamp: String
 }
