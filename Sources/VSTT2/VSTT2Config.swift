@@ -28,6 +28,10 @@ struct VSTT2Config: Config {
     }
 
     private func configureServices(_ injector: Injector) {
+        injector.map(UploadPositionsService.self) {
+            UploadPositionsService(with: NetworkManager())
+        }
+        
         injector.map(CreateVisitsService.self) {
             CreateVisitsService(with: NetworkManager())
         }

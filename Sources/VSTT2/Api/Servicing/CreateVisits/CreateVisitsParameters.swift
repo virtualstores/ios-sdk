@@ -36,6 +36,14 @@ public struct CreateVisitsParameters {
 extension CreateVisitsParameters: Routing {
     var environmentConfig: EnvironmentConfig { config }
 
+    // Analytics base URL seems different, check if it will be the same after
+    // Temprorary fix path sign issue and use v2/visits?requestId=\(requestId) as path
+    var baseURL: String { "https://gunnis-hp-stat.ih.vs-office.se/api/v2/visits?requestId=\(requestId)" }
+
+    var method: RequestType { .POST }
+
+   // var path: String { "/v2/visits?requestId=\(requestId)" }
+
     var parameters: [String: Any]? {
         let parameters = ["storeId": storeId,
                           "start": start,
@@ -46,18 +54,11 @@ extension CreateVisitsParameters: Routing {
                               "appVersion": deviceInformation.appVersion,
                               "deviceModel": deviceInformation.deviceModel
                           ],
-                          "tags": [tags],
-                          "metadata": [metaData]] as [String: Any]
+                          "tags": tags,
+                          "metadata": metaData] as [String: Any]
 
         return parameters
     }
-
-    // Analytics base URL seems different, check if it will be the same after
-    var baseURL: String { "https://gunnis-hp-stat.ih.vs-office.se/api" }
-
-    var method: RequestType { .POST }
-
-    var path: String { "/v2/visits?requestId\(requestId)" }
-
-    var headers: [String: String]? { ["apiKey" : apiKey ] }
+    
+    var headers: [String: String]? { ["APIKey" : "8fc1be06-582e-41ce-b309-61e8fa8e3784" ] }
 }
