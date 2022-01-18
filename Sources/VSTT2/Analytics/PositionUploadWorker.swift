@@ -80,9 +80,9 @@ final class PositionUploadWorker {
     func updatePointsAfterUploading() {
         guard let db = db else { return }
 
-        let alice = points.filter(status == PointStatus.inProgress.rawValue)
+        let filteredPoints = points.filter(status == PointStatus.inProgress.rawValue)
         do {
-            try db.run(alice.update(status <- PointStatus.complete.rawValue))
+            try db.run(filteredPoints.update(status <- PointStatus.complete.rawValue))
         } catch {
             Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
                                                 message: "Update Points After Uploading SQLite error")
@@ -92,9 +92,9 @@ final class PositionUploadWorker {
     func updatePointsAfterUploadingFail() {
         guard let db = db else { return }
 
-        let alice = points.filter(status == PointStatus.inProgress.rawValue)
+        let filteredPoints = points.filter(status == PointStatus.inProgress.rawValue)
         do {
-            try db.run(alice.update(status <- PointStatus.fail.rawValue))
+            try db.run(filteredPoints.update(status <- PointStatus.fail.rawValue))
         } catch {
             Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
                                                 message: "Update Points After Uploading fail SQLite error")
@@ -104,9 +104,9 @@ final class PositionUploadWorker {
     func removePoints() {
         guard let db = db else { return }
 
-        let alice = points.filter(status == PointStatus.complete.rawValue)
+        let filteredPoints = points.filter(status == PointStatus.complete.rawValue)
         do {
-            try db.run(alice.delete())
+            try db.run(filteredPoints.delete())
         } catch {
             Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
                                                 message: "RemovePoints from SQLite error")
