@@ -15,16 +15,16 @@ struct PostTriggerEventRequest {
     let appTrigger: AppTrigger
     let tags: Tags
     let metaData: MetaData
-    
+
     struct AppTrigger {
         let event: String
     }
-    
+
     struct Tags {
         let userId: String
         let elapsedTimeInMinutes: String
     }
-    
+
     struct MetaData {
         let title: String
         let description: String
@@ -37,7 +37,7 @@ struct PostScanEventsRequest {
     let point: CGPoint
     let timeStamp: String
     let type: ScanType
-    
+
     enum ScanType: String {
         case shelf = "SHELF"
         case unknown = "UNKOWN"

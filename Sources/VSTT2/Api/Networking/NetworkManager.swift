@@ -35,19 +35,19 @@ final class NetworkManager: DataHandler {
 
     func fetchEmptyBody<R: Routing>(_ routing: R) -> AnyPublisher<Void, Error> {
         let urlSession = URLSession(configuration: .default)
-        
+
         guard let url = routing.urlRequest else {
             fatalError("Could not create url")
         }
-        
+
         return urlSession.dataTaskPublisher(for: url)
-            .tryMap() { element -> Void in
+            .tryMap { element -> Void in
                 guard let httpResponse = element.response as? HTTPURLResponse,
                       httpResponse.statusCode == 200 else {
                           throw URLError(.badServerResponse)
                       }
                 return Void()
-                
+
             }.mapError { $0 as Error }
             .eraseToAnyPublisher()
     }

@@ -6,6 +6,7 @@
 // Copyright Virtual Stores - 2021
 
 import Foundation
+import VSFoundation
 
 enum RequestType: String {
     case GET
@@ -57,7 +58,7 @@ extension Encodable {
         } catch {
             Logger.init(verbosity: .silent).log(message: error.localizedDescription)
         }
-        
+
         return [:]
     }
 }

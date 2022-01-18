@@ -7,12 +7,10 @@
 
 import Foundation
 import Combine
+import SQLite
 
 final class UploadTriggersService: DataFetchingManager {
     func call(with parameters: UploadTriggersParameters) -> AnyPublisher<CreateVisitResponse, Error> {
-        let db = try Connection("path/to/db.sqlite3")
-
         return self.execute(parameters, errorType: Error.self)
     }
 }
-

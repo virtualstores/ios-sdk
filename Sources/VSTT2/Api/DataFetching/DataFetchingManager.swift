@@ -20,7 +20,7 @@ class DataFetchingManager {
      func execute<T: Decodable, R: Routing, E: Error>(_ route: R, errorType: E.Type) -> AnyPublisher<T, Error> {
         return dataHeandler.fetch(route)
     }
-    
+
     func executeEmptyBody<R: Routing, E: Error>(_ route: R, errorType: E.Type) -> AnyPublisher<Void, Error> {
        return dataHeandler.fetchEmptyBody(route)
    }

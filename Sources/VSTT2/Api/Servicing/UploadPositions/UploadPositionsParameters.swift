@@ -13,7 +13,7 @@ public struct UploadPositionsParameters {
 
     private let visitId: Int64
     private let requestId: String
-    let positionGrps: Dictionary<String, [RecordedPosition]>
+    let positionGrps: [String: [RecordedPosition]]
 
     init(visitId: Int64, requestId: String, positionGrps: [String: [RecordedPosition]]) {
         self.visitId = visitId

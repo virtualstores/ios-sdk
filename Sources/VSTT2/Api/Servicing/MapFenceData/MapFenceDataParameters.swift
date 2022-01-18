@@ -25,6 +25,6 @@ extension MapFenceDataParameters: Routing {
     var baseURL: String {
         "https://virtualstores-navdata.s3.eu-north-1.amazonaws.com/beijer/lidingo/mapfence.json" }
     var headers: [String: String]? { nil }
-    
+
     var method: RequestType { .GET }
 }
