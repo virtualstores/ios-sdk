@@ -1,9 +1,9 @@
 //
-//  UploadPositionsParameters
-//  
+// UploadPositionsParameters
+// VSTT2
 //
-//  Created by Hripsime on 2022-01-13.
-//
+// Created by Hripsime on 2022-01-13.
+// Copyright Virtual Stores - 2021
 
 import Foundation
 import VSFoundation
@@ -13,7 +13,7 @@ public struct UploadPositionsParameters {
 
     private let visitId: Int64
     private let requestId: String
-    private let positionGrps: [String: [RecordedPosition]]
+    let positionGrps: Dictionary<String, [RecordedPosition]>
 
     init(visitId: Int64, requestId: String, positionGrps: [String: [RecordedPosition]]) {
         self.visitId = visitId
@@ -26,14 +26,12 @@ extension UploadPositionsParameters: Routing {
     var environmentConfig: EnvironmentConfig { config }
 
     // Analytics base URL seems different, check if it will be the same after
-    var baseURL: String { "https://gunnis-hp-stat.ih.vs-office.se/api" }
+    var baseURL: String { "https://gunnis-hp-stat.ih.vs-office.se/api/v2/positions?visitId=\(visitId)&requestId=\(requestId)" }
 
-    var method: RequestType { .POST }
-
-    var path: String { "/v2/positions?visitId=\(visitId)&requestId=\(requestId)" }
+ //   var path: String { "/v2/positions?visitId=\(visitId)&requestId=\(requestId)" }
 
     var parameters: [String: Any]? {
-        let parameters = ["positionGrps": positionGrps] as [String: Any]
+        let parameters = ["positionGrps": positionGrps.asDictionary()] as [String: Any]
 
         return parameters
     }

@@ -40,12 +40,10 @@ extension CreateVisitsParameters: Routing {
     // Temprorary fix path sign issue and use v2/visits?requestId=\(requestId) as path
     var baseURL: String { "https://gunnis-hp-stat.ih.vs-office.se/api/v2/visits?requestId=\(requestId)" }
 
-    var method: RequestType { .POST }
-
    // var path: String { "/v2/visits?requestId=\(requestId)" }
 
     var parameters: [String: Any]? {
-        let parameters = ["storeId": storeId,
+        let parameters = ["storeId": 1,
                           "start": start,
                           "stop": stop,
                           "deviceInformation": [

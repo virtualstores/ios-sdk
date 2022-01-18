@@ -18,4 +18,6 @@ extension ClientsListParameters: Routing {
     var environmentConfig: EnvironmentConfig { config }
 
     var path: String { "/clients" }
+    
+    var method: RequestType { .GET }
 }

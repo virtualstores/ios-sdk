@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 final class UploadPositionsService: DataFetchingManager {
-    func call(with parameters: UploadPositionsParameters) -> AnyPublisher<CreateVisitResponse, Error> {
-        return self.execute(parameters, errorType: Error.self)
+    func call(with parameters: UploadPositionsParameters) -> AnyPublisher<Void, Error> {
+        return self.executeEmptyBody(parameters, errorType: Error.self)
     }
 }

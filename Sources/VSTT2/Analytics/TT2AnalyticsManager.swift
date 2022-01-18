@@ -13,26 +13,35 @@ import CoreGraphics
 final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var createVisitsService: CreateVisitsService
     @Inject var uploadPositionsService: UploadPositionsService
+    @Inject var uploadTriggersService: UploadTriggersService
 
-    private let store: Store
+    private var store: Store?
+    private var uploadThreshold = 0
     private var visitId: Int64?
+    private var requestId: String?
     private var timeFormatter: DateFormatter = DateFormatter()
     private var cancellable = Set<AnyCancellable>()
 
     var recordedPositions: [String: [RecordedPosition]] = [:]
     var isRecording: Bool = false
 
-    init(store: Store) {
+    public init() {}
+    
+    public func setup(with store: Store, uploadThreshold: Int = 100) {
         self.store = store
-
+        self.uploadThreshold = uploadThreshold
+        self.requestId = UUID().uuidString.uppercased()
+        
         self.timeFormatter.timeZone = TimeZone(secondsFromGMT: 0)
         self.timeFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
     }
 
     public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:]) {
+        guard let store = store, let requestId = requestId else { return }
+        
         let date = self.timeFormatter.string(from: Date())
         let parameters = CreateVisitsParameters(apiKey: store.serverConnection.apiKey,
-                                                requestId: UUID().uuidString.uppercased(),
+                                                requestId: requestId,
                                                 storeId: store.id,
                                                 start: date,
                                                 stop: date,
@@ -50,17 +59,23 @@ final public class TT2AnalyticsManager: TT2Analytics {
                 }
             }, receiveValue: { [weak self] (data) in
                 self?.visitId = data.visitId
+                do {
+                    try self?.startCollectingHeatMapData()
+                } catch {
+                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
+                }
             }).store(in: &cancellable)
     }
 
+    
     public func startCollectingHeatMapData() throws {
-        guard self.visitId != nil else {
+        guard visitId != nil else {
             throw TT2AnalyticsError.visitNotStarted
         }
-
+        
         self.isRecording = true
     }
-
+    
     public func stopCollectingHeatMapData() {
         self.isRecording = false
     }
@@ -69,6 +84,13 @@ final public class TT2AnalyticsManager: TT2Analytics {
         self.uploadData(recordedPositions: self.recordedPositions)
         self.visitId = nil
         self.recordedPositions.removeAll()
+    }
+    
+    public func onNewPositionBundle(point: CGPoint) {
+        if isRecording {
+            //navigationSpace.id
+          recordPosition(rtlsOptionId: 1, point: point)
+        }
     }
 }
 
@@ -94,14 +116,13 @@ private extension TT2AnalyticsManager {
             numberOfRecordedPositions += value.count
         }
 
-        return true
-      //  return numberOfRecordedPositions > self.uploadThreshold
+        return numberOfRecordedPositions > self.uploadThreshold
     }
 
     private func uploadData(recordedPositions: [String: [RecordedPosition]]) {
-        guard let visitId = visitId else { return }
+        guard let visitId = visitId, let requestId = requestId  else { return }
      //   uploadWorker.upload(visitId: id, recordedPositions: WorkerPositionData(data: recordedPositions), statServerConnection: store.statConnection)
-        let parameters = UploadPositionsParameters(visitId: visitId, requestId: "1", positionGrps: recordedPositions)
+        let parameters = UploadPositionsParameters(visitId: visitId, requestId: requestId, positionGrps: recordedPositions)
         uploadPositionsService
             .call(with: parameters)
             .sink(receiveCompletion: { (completion) in
@@ -112,7 +133,26 @@ private extension TT2AnalyticsManager {
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)
                 }
             }, receiveValue: { (_) in
-                // Publish data
+                Logger.init(verbosity: .debug).log(message: "Recorded Positions Uploaded")
+            }).store(in: &cancellable)
+    }
+    
+    private func uploadTriggerEvents(request: PostTriggerEventRequest) {
+        guard let visitId = visitId, let requestId = requestId else { return }
+    
+        let parameters = UploadTriggersParameters(visitId: visitId, requestId: requestId, request: request)
+
+        uploadTriggersService
+            .call(with: parameters)
+            .sink(receiveCompletion: { (completion) in
+                switch completion {
+                case .finished:
+                    break
+                case .failure(let error):
+                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
+                }
+            }, receiveValue: { (data) in
+                print(data)
             }).store(in: &cancellable)
     }
 }

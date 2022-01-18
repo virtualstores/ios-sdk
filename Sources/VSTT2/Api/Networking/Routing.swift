@@ -33,7 +33,7 @@ extension Routing {
 
     var baseURL: String { environmentConfig.baseURL() }
 
-    var method: RequestType { .GET }
+    var method: RequestType { .POST }
 
     var path: String { "" }
 
