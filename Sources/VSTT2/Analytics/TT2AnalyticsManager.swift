@@ -105,7 +105,7 @@ private extension TT2AnalyticsManager {
         let id = String(rtlsOptionId)
 
         recordedPositionsCount += 1
-        positionUploadWorker.insert(id: id, x: Double(point.x), y: Double(point.y), time: self.timeFormatter.string(from: Date()), uploadStatus: .pending)
+        positionUploadWorker.insert(id: id, xPosition: Double(point.x), yPosition: Double(point.y), time: self.timeFormatter.string(from: Date()), uploadStatus: .pending)
 
         if self.checkIfPartialUpload() {
             do {
@@ -135,12 +135,12 @@ private extension TT2AnalyticsManager {
                 case .finished:
                     self?.positionUploadWorker.removePoints()
                 case .failure(let error):
-                    self?.positionUploadWorker.updatePointsAfterUploadingFail()
+                    self?.positionUploadWorker.updatePointsAfter(uploadingFailed: true)
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)
                 }
             }, receiveValue: { [weak self] (_) in
                 Logger.init(verbosity: .debug).log(message: "Recorded Positions Uploaded")
-                self?.positionUploadWorker.updatePointsAfterUploading()
+                self?.positionUploadWorker.updatePointsAfter(uploadingFailed: false)
             }).store(in: &cancellable)
     }
 

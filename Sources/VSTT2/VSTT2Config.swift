@@ -54,6 +54,10 @@ struct VSTT2Config: Config {
     }
 
     private func configureManagers(_ injector: Injector) {
+        injector.map(Persistence.self) {
+            Persistence()
+        }
+        
         injector.map(PositionManager.self) {
             PositionManager()
         }

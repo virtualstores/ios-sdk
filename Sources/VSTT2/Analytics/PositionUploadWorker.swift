@@ -9,107 +9,80 @@ import Foundation
 import SQLite
 import UIKit
 import VSFoundation
-
-enum PointStatus: String {
-    case pending
-    case inProgress
-    case complete
-    case fail
-}
+import VSFoundation
 
 final class PositionUploadWorker {
-    // DB Info
-    var db: Connection?
-
-    let points = Table("recordingInfo")
-    let key = Expression<String>("key")
-    let xPosition = Expression<Double>("xPosition")
-    let yPosition = Expression<Double>("yPosition")
-    let timeStamp = Expression<String>("timeStamp")
-    let status = Expression<String>("status")
-
-    public init() {
-        dbSetup()
-    }
-
-    func dbSetup() {
-        let databaseFileName = "db.sqlite3"
-        let databaseFilePath = "\(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])/\(databaseFileName)"
-        db = try! Connection(databaseFilePath)
-
-        guard let db = db else { return }
-
-        try! db.run(points.create(ifNotExists: true) { t in
-            t.column(key)
-            t.column(xPosition)
-            t.column(yPosition)
-            t.column(timeStamp)
-            t.column(status)
-        })
-    }
-
-    func insert(id: String, x: Double, y: Double, time: String, uploadStatus: PointStatus) {
-        guard let db = db else { return }
-
+    @Inject var persistence: Persistence
+    
+    func insert(id: String, xPosition: Double, yPosition: Double, time: String, uploadStatus: PointStatus) {
+        var object = PositionObject()
+        object.key = id
+        object.xPosition = xPosition
+        object.yPosition = yPosition
+        object.timeStamp = time
+        object.status = uploadStatus.rawValue
+        
         do {
-            let rowid = try db.run(points.insert(key <- id, xPosition <- x, yPosition <- y, timeStamp <- time, status <- uploadStatus.rawValue))
-            Logger.init(verbosity: .debug).log(message: "Row inserted successfully id: \(rowid)")
+            try persistence.save(&object)
         } catch {
-            Logger.init(verbosity: .debug).log(message: "insertion failed: \(error)")
+            Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+                                                message: "Save Point Object SQLite error")
         }
     }
-
+    
     func getPoints() throws -> [String: [RecordedPosition]]? {
-        guard let db = db else { return nil }
-        
         var pointsList: [String: [RecordedPosition]] = [:]
-        let filteredPoints = points.filter(status == PointStatus.pending.rawValue || status == PointStatus.fail.rawValue)
-        try db.run(filteredPoints.update(status <- PointStatus.inProgress.rawValue))
-        for point in try db.prepare(points) {
-            let recordedPosition = RecordedPosition(xPosition: point[xPosition], yPosition: point[yPosition], timeStamp: point[timeStamp])
-            let id = point[key]
-            if pointsList[id] == nil {
-                pointsList[id] = []
+            let positions = persistence.get(arrayOf: PositionObject.self)
+            let filteredPositions = positions.filter{ $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
+            
+        self.updateObjectStatus(objects: filteredPositions, status: PointStatus.inProgress)
+
+        for object in filteredPositions {
+            if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key {
+                let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timeStamp: timeStamp)
+                if pointsList[key] == nil {
+                    pointsList[key] = []
+                }
+                pointsList[key]?.append(recordedPosition)
             }
-            pointsList[id]?.append(recordedPosition)
         }
 
         return pointsList
     }
-
-    func updatePointsAfterUploading() {
-        guard let db = db else { return }
-
-        let filteredPoints = points.filter(status == PointStatus.inProgress.rawValue)
-        do {
-            try db.run(filteredPoints.update(status <- PointStatus.complete.rawValue))
-        } catch {
-            Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
-                                                message: "Update Points After Uploading SQLite error")
-        }
+    
+    func updatePointsAfter(uploadingFailed: Bool) {
+        let positions = persistence.get(arrayOf: PositionObject.self)
+        let filteredPositions = positions.filter{ $0.status == PointStatus.inProgress.rawValue }
+        
+        self.updateObjectStatus(objects: filteredPositions, status: uploadingFailed ? PointStatus.fail : PointStatus.complete)
     }
-
-    func updatePointsAfterUploadingFail() {
-        guard let db = db else { return }
-
-        let filteredPoints = points.filter(status == PointStatus.inProgress.rawValue)
-        do {
-            try db.run(filteredPoints.update(status <- PointStatus.fail.rawValue))
-        } catch {
-            Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
-                                                message: "Update Points After Uploading fail SQLite error")
-        }
-    }
-
+    
     func removePoints() {
-        guard let db = db else { return }
-
-        let filteredPoints = points.filter(status == PointStatus.complete.rawValue)
-        do {
-            try db.run(filteredPoints.delete())
-        } catch {
-            Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
-                                                message: "RemovePoints from SQLite error")
+        let positions = persistence.get(arrayOf: PositionObject.self)
+        let filteredPositions = positions.filter{ $0.status == PointStatus.complete.rawValue }
+        
+        for object in filteredPositions {
+            do {
+                try persistence.delete(object)
+            } catch {
+                Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+                                                    message: "Remove Points After Uploading SQLite error")
+            }
+        }
+    }
+    
+    private func updateObjectStatus(objects: [PositionObject], status: PointStatus) {
+        for object in objects {
+            var editableObject: PositionObject
+            editableObject = object
+            editableObject.status = status.rawValue
+            
+            do {
+                try persistence.save(&editableObject)
+            } catch {
+                Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+                                                    message: "Update Points SQLite error")
+            }
         }
     }
 }
