@@ -11,7 +11,7 @@ class CoreTests: XCTestCase {
 }
 
 final class TestObject: IPersistenceModel {
-    var retainOriginalIndex: Bool = false
+    var retainOriginalIndex = false
     var index: String?
     
     convenience init(index: String) {

@@ -9,7 +9,6 @@ import Foundation
 import SQLite
 import UIKit
 import VSFoundation
-import VSFoundation
 
 final class PositionUploadWorker {
     @Inject var persistence: Persistence

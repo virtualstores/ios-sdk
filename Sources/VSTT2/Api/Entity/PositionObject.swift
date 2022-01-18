@@ -13,7 +13,7 @@ enum PointStatus: String {
 }
 
 final class PositionObject: IPersistenceModel {
-    var retainOriginalIndex: Bool = false
+    var retainOriginalIndex = false
     var index: String?
     
     convenience init(index: String) {
