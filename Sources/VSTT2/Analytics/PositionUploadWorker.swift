@@ -63,8 +63,8 @@ final class PositionUploadWorker {
         guard let db = db else { return nil }
         
         var pointsList: [String: [RecordedPosition]] = [:]
-        let alice = points.filter(status == PointStatus.pending.rawValue || status == PointStatus.fail.rawValue)
-        try db.run(alice.update(status <- PointStatus.inProgress.rawValue))
+        let filteredPoints = points.filter(status == PointStatus.pending.rawValue || status == PointStatus.fail.rawValue)
+        try db.run(filteredPoints.update(status <- PointStatus.inProgress.rawValue))
         for point in try db.prepare(points) {
             let recordedPosition = RecordedPosition(xPosition: point[xPosition], yPosition: point[yPosition], timeStamp: point[timeStamp])
             let id = point[key]
