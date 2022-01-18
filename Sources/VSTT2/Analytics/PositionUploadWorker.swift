@@ -49,8 +49,10 @@ final class PositionUploadWorker {
     }
 
     func insert(id: String, x: Double, y: Double, time: String, uploadStatus: PointStatus) {
+        guard let db = db else { return }
+
         do {
-            let rowid = try db!.run(points.insert(key <- id, xPosition <- x, yPosition <- y, timeStamp <- time, status <- uploadStatus.rawValue))
+            let rowid = try db.run(points.insert(key <- id, xPosition <- x, yPosition <- y, timeStamp <- time, status <- uploadStatus.rawValue))
             Logger.init(verbosity: .debug).log(message: "Row inserted successfully id: \(rowid)")
         } catch {
             Logger.init(verbosity: .debug).log(message: "insertion failed: \(error)")
@@ -59,8 +61,8 @@ final class PositionUploadWorker {
 
     func getPoints() throws -> [String: [RecordedPosition]]? {
         guard let db = db else { return nil }
+        
         var pointsList: [String: [RecordedPosition]] = [:]
-
         let alice = points.filter(status == PointStatus.panding.rawValue || status == PointStatus.fail.rawValue)
 
         try db.run(alice.update(status <- PointStatus.inProgress.rawValue))
