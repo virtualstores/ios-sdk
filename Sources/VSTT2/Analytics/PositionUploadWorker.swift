@@ -11,7 +11,7 @@ import UIKit
 import VSFoundation
 
 enum PointStatus: String {
-    case panding
+    case pending
     case inProgress
     case complete
     case fail
@@ -63,8 +63,7 @@ final class PositionUploadWorker {
         guard let db = db else { return nil }
         
         var pointsList: [String: [RecordedPosition]] = [:]
-        let alice = points.filter(status == PointStatus.panding.rawValue || status == PointStatus.fail.rawValue)
-
+        let alice = points.filter(status == PointStatus.pending.rawValue || status == PointStatus.fail.rawValue)
         try db.run(alice.update(status <- PointStatus.inProgress.rawValue))
         for point in try db.prepare(points) {
             let recordedPosition = RecordedPosition(xPosition: point[xPosition], yPosition: point[yPosition], timeStamp: point[timeStamp])

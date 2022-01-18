@@ -105,7 +105,7 @@ private extension TT2AnalyticsManager {
         let id = String(rtlsOptionId)
 
         recordedPositionsCount += 1
-        positionUploadWorker.insert(id: id, x: Double(point.x), y: Double(point.y), time: self.timeFormatter.string(from: Date()), uploadStatus: .panding)
+        positionUploadWorker.insert(id: id, x: Double(point.x), y: Double(point.y), time: self.timeFormatter.string(from: Date()), uploadStatus: .pending)
 
         if self.checkIfPartialUpload() {
             do {
