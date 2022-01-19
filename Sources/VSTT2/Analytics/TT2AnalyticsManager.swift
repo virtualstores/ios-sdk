@@ -14,8 +14,9 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var createVisitsService: CreateVisitsService
     @Inject var uploadPositionsService: UploadPositionsService
     @Inject var uploadTriggersService: UploadTriggersService
+    @Inject var uploadScanEventsService: UploadScanEventsService
     @Inject var positionUploadWorker: PositionUploadWorker
-
+    
     private var store: Store?
     private var uploadThreshold = 0
     private var visitId: Int64?
@@ -128,6 +129,7 @@ private extension TT2AnalyticsManager {
         guard let visitId = visitId, let requestId = requestId  else { return }
 
         let parameters = UploadPositionsParameters(visitId: visitId, requestId: requestId, positionGrps: recordedPositions)
+
         uploadPositionsService
             .call(with: parameters)
             .sink(receiveCompletion: { [weak self] (completion) in
@@ -163,12 +165,12 @@ private extension TT2AnalyticsManager {
             }).store(in: &cancellable)
     }
 
-    private func uploadScanEvents(request: PostTriggerEventRequest) {
+    private func uploadScanEvents() {
         guard let visitId = visitId, let requestId = requestId else { return }
+        //receave all this data from app
+        let parameters = UploadScanEventsParameters(visitId: visitId, requestId: requestId, barcode: "", shelfId: 1, point: CGPoint(), timeStamp: "", type: .shelf)
 
-        let parameters = UploadTriggersParameters(visitId: visitId, requestId: requestId, request: request)
-
-        uploadTriggersService
+        uploadScanEventsService
             .call(with: parameters)
             .sink(receiveCompletion: { (completion) in
                 switch completion {
