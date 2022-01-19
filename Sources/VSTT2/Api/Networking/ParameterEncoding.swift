@@ -6,6 +6,7 @@
 // Copyright Virtual Stores - 2021
 
 import Foundation
+import VSFoundation
 
 enum RequestType: String {
     case GET
@@ -43,5 +44,21 @@ enum ParameterEncoding {
 
         guard encodingError == nil else { throw encodingError! }
         return request
+    }
+}
+
+extension Encodable {
+    func asDictionary() -> [String: Any] {
+        do {
+            let data = try JSONEncoder().encode(self)
+            guard let dictionary = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any] else {
+                throw NSError()
+            }
+            return dictionary
+        } catch {
+            Logger.init(verbosity: .silent).log(message: error.localizedDescription)
+        }
+
+        return [:]
     }
 }

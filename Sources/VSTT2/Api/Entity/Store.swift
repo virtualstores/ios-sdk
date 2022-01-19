@@ -17,8 +17,9 @@ public struct Store: Codable {
     public let active: Bool
     public let startCodes: [PositionedCode]
     public let stopCodes: [PositionedCode]
-    public let rtlsOptions: RtlsOptions
+    public let rtlsOptions: [RtlsOptions]
     public let minVersion: String?
+    public let serverConnection: ServerConnection
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -29,8 +30,9 @@ public struct Store: Codable {
         case active
         case startCodes = "startScanLocations"
         case stopCodes = "stopScanLocations"
-        case rtlsOptions
+        case rtlsOptions = "rtlsOptionsList"
         case minVersion
+        case serverConnection
     }
 
     public init(from decoder: Decoder) throws {
@@ -44,7 +46,8 @@ public struct Store: Codable {
         active = try container.decode(Bool.self, forKey: .active)
         startCodes = try container.decode([PositionedCode].self, forKey: .startCodes)
         stopCodes = try container.decode([PositionedCode].self, forKey: .stopCodes)
-        rtlsOptions = try container.decode(RtlsOptions.self, forKey: .rtlsOptions)
+        rtlsOptions = try container.decode([RtlsOptions].self, forKey: .rtlsOptions)
         minVersion = try container.decodeIfPresent(String.self, forKey: .minVersion)
+        serverConnection = try container.decode(ServerConnection.self, forKey: .serverConnection)
     }
 }

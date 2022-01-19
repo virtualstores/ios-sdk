@@ -14,10 +14,14 @@ class DataFetchingManager {
     private let dataHeandler: DataHandler
 
     init(with dataHeandler: DataHandler) {
-            self.dataHeandler = dataHeandler
+        self.dataHeandler = dataHeandler
     }
 
      func execute<T: Decodable, R: Routing, E: Error>(_ route: R, errorType: E.Type) -> AnyPublisher<T, Error> {
         return dataHeandler.fetch(route)
     }
+
+    func executeEmptyBody<R: Routing, E: Error>(_ route: R, errorType: E.Type) -> AnyPublisher<Void, Error> {
+       return dataHeandler.fetchEmptyBody(route)
+   }
 }

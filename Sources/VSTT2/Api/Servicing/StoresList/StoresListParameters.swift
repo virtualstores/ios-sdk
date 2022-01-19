@@ -22,4 +22,6 @@ extension StoresListParameters: Routing {
     var environmentConfig: EnvironmentConfig { config }
 
     var path: String { "/clients/\(clientId)/stores" }
+
+    var method: RequestType { .GET }
 }

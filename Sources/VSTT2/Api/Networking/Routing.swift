@@ -33,7 +33,7 @@ extension Routing {
 
     var baseURL: String { environmentConfig.baseURL() }
 
-    var method: RequestType { .GET }
+    var method: RequestType { .POST }
 
     var path: String { "" }
 
@@ -45,7 +45,7 @@ extension Routing {
 
     var urlRequest: URLRequest? {
         @Inject var logger: Logger
-       
+
         let baseURLStirng = baseURL
 
         guard var url = URL(string: baseURLStirng) else {

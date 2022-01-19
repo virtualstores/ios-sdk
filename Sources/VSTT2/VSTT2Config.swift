@@ -28,6 +28,22 @@ struct VSTT2Config: Config {
     }
 
     private func configureServices(_ injector: Injector) {
+        injector.map(UploadScanEventsService.self) {
+            UploadScanEventsService(with: NetworkManager())
+        }
+        
+        injector.map(UploadPositionsService.self) {
+            UploadPositionsService(with: NetworkManager())
+        }
+
+        injector.map(UploadTriggersService.self) {
+            UploadTriggersService(with: NetworkManager())
+        }
+
+        injector.map(CreateVisitsService.self) {
+            CreateVisitsService(with: NetworkManager())
+        }
+
         injector.map(ClientsListService.self) {
             ClientsListService(with: NetworkManager())
         }
@@ -42,11 +58,19 @@ struct VSTT2Config: Config {
     }
 
     private func configureManagers(_ injector: Injector) {
+        injector.map(Persistence.self) {
+            Persistence()
+        }
+        
         injector.map(PositionManager.self) {
             PositionManager()
         }
+
+        injector.map(PositionUploadWorker.self) {
+            PositionUploadWorker()
+        }
     }
-    
+
     private func configureHelpers(_ injector: Injector) {
         injector.map(Logger.self) {
             Logger(verbosity: .debug)
