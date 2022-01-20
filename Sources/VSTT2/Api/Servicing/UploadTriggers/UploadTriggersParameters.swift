@@ -26,11 +26,13 @@ public struct UploadTriggersParameters {
 extension UploadTriggersParameters: Routing {
     var environmentConfig: EnvironmentConfig { config }
 
-    // Analytics base URL seems different, check if it will be the same after
-    // Fix issue and use path for /v2/positions?visitId=\(visitId)&requestId=\(requestId)
-    var baseURL: String { "https://gunnis-hp-stat.ih.vs-office.se/api/v2/positions?visitId=\(visitId)&requestId=\(requestId)" }
+    var queryItems: [String: String]? {
+        let parameters = ["visitId": String(visitId), "requestId": requestId] as [String: String]
 
-  //  var path: String { "/v2/positions?visitId=\(visitId)&requestId=\(requestId)" }
+        return parameters
+    }
+    
+    var path: String { "/positions" }
 
     var parameters: [String: Any]? {
         let parameters = ["name": request.name,

@@ -23,13 +23,16 @@ public struct UploadPositionsParameters {
 }
 
 extension UploadPositionsParameters: Routing {
-    var environmentConfig: EnvironmentConfig { config }
+    var environmentConfig: EnvironmentConfig { .analytics }
 
-    // Analytics base URL seems different, check if it will be the same after
-    var baseURL: String { "https://gunnis-hp-stat.ih.vs-office.se/api/v2/positions?visitId=\(visitId)&requestId=\(requestId)" }
+    var path: String { "/positions" }
 
- //   var path: String { "/v2/positions?visitId=\(visitId)&requestId=\(requestId)" }
+    var queryItems: [String: String]? {
+        let parameters = ["visitId": String(visitId), "requestId": requestId] as [String: String]
 
+        return parameters
+    }
+    
     var parameters: [String: Any]? {
         let parameters = ["positionGrps": positionGrps.asDictionary()] as [String: Any]
 

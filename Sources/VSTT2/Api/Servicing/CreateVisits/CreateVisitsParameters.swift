@@ -34,13 +34,15 @@ public struct CreateVisitsParameters {
 }
 
 extension CreateVisitsParameters: Routing {
-    var environmentConfig: EnvironmentConfig { config }
+    var environmentConfig: EnvironmentConfig { .analytics }
 
-    // Analytics base URL seems different, check if it will be the same after
-    // Temprorary fix path sign issue and use v2/visits?requestId=\(requestId) as path
-    var baseURL: String { "https://gunnis-hp-stat.ih.vs-office.se/api/v2/visits?requestId=\(requestId)" }
+    var queryItems: [String: String]? {
+        let parameters = ["requestId": requestId] as [String: String]
 
-   // var path: String { "/v2/visits?requestId=\(requestId)" }
+        return parameters
+    }
+    
+    var path: String { "/visits" }
 
     var parameters: [String: Any]? {
         let parameters = ["storeId": 1,

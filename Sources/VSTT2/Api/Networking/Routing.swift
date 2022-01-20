@@ -18,6 +18,9 @@ protocol Routing {
     var path: String { get }
     /// Needed parameters for request
     var parameters: [String: Any]? { get }
+    
+    var queryItems: [String: String]? { get }
+
     /// Url encoding type
     var encoding: ParameterEncoding { get }
     /// Headers which can have the request
@@ -38,6 +41,8 @@ extension Routing {
     var path: String { "" }
 
     var parameters: [String: Any]? { nil }
+    
+    var queryItems: [String: String]? { nil }
 
     var encoding: ParameterEncoding { ParameterEncoding.json }
 
@@ -59,8 +64,19 @@ extension Routing {
         if !path.isEmpty {
             url.appendPathComponent(path)
         }
+        
+        guard var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            #if DEV
+            logger.log(message: "cannot create URLComponents")
+            #endif
+            return nil
+        }
+        
+        if let queryItems = self.queryItems {
+            urlComponents.queryItems = queryItems.map({ URLQueryItem(name: $0.key, value: $0.value) })
+        }
 
-        var urlRequest = URLRequest(url: url)
+        var urlRequest = URLRequest(url: urlComponents.url!)
         urlRequest.httpMethod = method.rawValue
 
         if let headers = self.headers {

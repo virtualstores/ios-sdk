@@ -15,6 +15,7 @@ enum EnvironmentConfig: String {
 
     case production
     case development
+    case analytics
 
     func baseURL() -> String {
         switch self {
@@ -22,6 +23,8 @@ enum EnvironmentConfig: String {
             return "https://PROD.virtualstores.se"
         case .development:
             return "https://gunnis-hp-central.ih.vs-office.se/api/v1"
+        case .analytics:
+            return "https://gunnis-hp-stat.ih.vs-office.se/api/v2"
         }
     }
 }
