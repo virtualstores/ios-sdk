@@ -88,36 +88,36 @@ extension String {
               },
               "rtlsOptionsList": [
                 {
-                  "id": 0,
+                  "id": 6,
                   "isDefault": true,
-                  "width": 0,
-                  "height": 0,
+                  "width": 100,
+                  "height": 70,
                   "widthInMeters": 20.2,
                   "heightInMeters": 30.3,
                   "pixelsPerMeter": 0,
-                  "startOffsetX": 0,
-                  "startOffsetY": 0,
+                  "startOffsetX": 6,
+                  "startOffsetY": 7,
                   "waitTime": 0,
-                  "floorLevel": 0,
+                  "floorLevel": 21,
                   "north": 0,
                   "panId": "string",
-                  "name": "string",
-                  "mapBoxUrl": "string",
-                  "mapBoxStyleUrl": "string",
-                  "mapBoxImageUrl": "string",
-                  "mapBoxToken": "string",
-                  "mapFenceUrl": "string",
-                  "mapZonesUrl": "string",
-                  "navGraphUrl": "string",
-                  "mapOffsetsUrl": "string",
-                  "mapDataVersionUrl": "string",
-                  "categoryZonesUrl": "string",
+                  "name": "store name",
+                  "mapBoxUrl": "http://mapBoxUrl.se",
+                  "mapBoxStyleUrl": "http://mapBoxStyleUrl.se",
+                  "mapBoxImageUrl": "http://mapBoxImageUrl.se",
+                  "mapBoxToken": "mapBoxToken",
+                  "mapFenceUrl": "http://mapFenceUrl.se",
+                  "mapZonesUrl": "http://mapZonesUrl.se",
+                  "navGraphUrl": "http://navGraphUrl.se",
+                  "mapOffsetsUrl": "http://mapOffsetsUrl.se",
+                  "mapDataVersionUrl": "http://mapDataVersionUrl.se",
+                  "categoryZonesUrl": "http://categoryZonesUrl.se",
                   "scanLocations": [
                     {
                       "id": 0,
                       "code": "string",
-                      "x": 0,
-                      "y": 0,
+                      "x": 6,
+                      "y": 7,
                       "direction": 0,
                       "isRouteLocation": true,
                       "type": 0
@@ -186,23 +186,23 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(store.stores.first?.startCodes.first?.xPosition, 12)
         XCTAssertEqual(store.stores.first?.startCodes.first?.yPosition, 21)
         XCTAssertEqual(store.stores.first?.startCodes.first?.direction, 0)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.id, 6)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.width, 100)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.height, 70)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.widthInMeters, 20.2)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.heightInMeters, 30.3)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.floorLevel, 21)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.north, 0)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.name, "store name")
-        XCTAssertEqual(store.stores.first?.rtlsOptions.startOffsetX, 6)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.startOffsetY, 7)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.mapBoxUrl, "http://mapBoxUrl.se")
-        XCTAssertEqual(store.stores.first?.rtlsOptions.mapBoxToken, "mapBoxToken")
-        XCTAssertEqual(store.stores.first?.rtlsOptions.mapFenceUrl, "http://mapFenceUrl.se")
-        XCTAssertEqual(store.stores.first?.rtlsOptions.mapZonesUrl, "http://mapZonesUrl.se")
-        XCTAssertEqual(store.stores.first?.rtlsOptions.navGraphUrl, "http://navGraphUrl.se")
-        XCTAssertEqual(store.stores.first?.rtlsOptions.mapOffsetsUrl, "http://mapOffsetsUrl.se")
-        XCTAssertEqual(store.stores.first?.rtlsOptions.mapDataVersionUrl, "http://mapDataVersionUrl.se")
-        XCTAssertEqual(store.stores.first?.rtlsOptions.mapBoxImageUrl, "http://mapBoxImageUrl.se")
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.id, 6)
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.width, 100)
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.height, 70)
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.widthInMeters, 20.2)
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.heightInMeters, 30.3)
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.floorLevel, 21)
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.north, 0)
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.name, "store name")
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.startOffsetX, 6)
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.startOffsetY, 7)
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.mapBoxUrl, "http://mapBoxUrl.se")
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.mapBoxToken, "mapBoxToken")
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.mapFenceUrl, "http://mapFenceUrl.se")
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.mapZonesUrl, "http://mapZonesUrl.se")
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.navGraphUrl, "http://navGraphUrl.se")
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.mapOffsetsUrl, "http://mapOffsetsUrl.se")
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.mapDataVersionUrl, "http://mapDataVersionUrl.se")
+        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.mapBoxImageUrl, "http://mapBoxImageUrl.se")
     }
 }
