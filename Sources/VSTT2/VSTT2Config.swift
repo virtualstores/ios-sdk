@@ -55,6 +55,10 @@ struct VSTT2Config: Config {
         injector.map(MapFenceDataService.self) {
             MapFenceDataService(with: NetworkManager())
         }
+        
+        injector.map(SwapLocationsService.self) {
+            SwapLocationsService(with: NetworkManager())
+        }
     }
 
     private func configureManagers(_ injector: Injector) {
