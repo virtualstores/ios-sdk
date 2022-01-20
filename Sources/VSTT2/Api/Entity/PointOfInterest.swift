@@ -9,12 +9,12 @@ import Foundation
 
 public struct PointOfInterest: Hashable, Equatable, Codable {
     public static let message = "message"
-    
+
     public struct Quantity: Codable {
         public var amount: Double
         public let unit: UnitOfMeasure
     }
-    
+
     public let id: String
     public let alternateIds: [String]
     public var name: String
@@ -26,8 +26,8 @@ public struct PointOfInterest: Hashable, Equatable, Codable {
     public var imageUrl: URL?
     public var type: String
     public var pathfindable: Bool = true
-    public internal(set) var timestamp: Date? = nil
-    
+    public internal(set) var timestamp: Date?
+
     init(id: String, alternateIds: [String], name: String, subtitle: String, description: String,
          quantity: Quantity? = nil, position: ItemPosition? = nil, addedByUser: Bool,
          imageUrl: URL?, type: String, pathfindable: Bool = true, timestamp: Date? = nil) {
@@ -44,11 +44,11 @@ public struct PointOfInterest: Hashable, Equatable, Codable {
         self.pathfindable = pathfindable
         self.timestamp = timestamp
     }
-    
+
     public static func == (lhs: PointOfInterest, rhs: PointOfInterest) -> Bool {
         return lhs.id == rhs.id
     }
-    
+
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }

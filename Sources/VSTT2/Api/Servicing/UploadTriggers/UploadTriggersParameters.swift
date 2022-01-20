@@ -31,7 +31,7 @@ extension UploadTriggersParameters: Routing {
 
         return parameters
     }
-    
+
     var path: String { "/positions" }
 
     var parameters: [String: Any]? {

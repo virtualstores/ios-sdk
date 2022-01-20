@@ -11,7 +11,7 @@ import Combine
 
 public class TT2AreaEventManager: TT2AreaEvent {
     @Inject var messagesService: MessagesService
-    
+
     public var areaEventPublisher: CurrentValueSubject<AreaEvent?, TT2AreaEventError> = .init(nil)
 
     private var activeStore: Store?
@@ -20,15 +20,15 @@ public class TT2AreaEventManager: TT2AreaEvent {
     private let reloadMessageInterval: TimeInterval = 3600.0
 
     private var cancellable = Set<AnyCancellable>()
-    
+
     public func addEvent(with id: String, event: AreaTrigger) {
-        
+
     }
-    
+
     public func removeEvent(with id: String) {
-        
+
     }
-    
+
     private func loadMessagesIfNeeded() {
         if let latestMessageLoad = latestMessageLoad {
             if latestMessageLoad.timeIntervalSinceNow < -reloadMessageInterval {
@@ -38,7 +38,7 @@ public class TT2AreaEventManager: TT2AreaEvent {
             loadMessages()
         }
     }
-    
+
     private func loadMessages() {
         guard let storeId = activeStore?.id else { return }
 

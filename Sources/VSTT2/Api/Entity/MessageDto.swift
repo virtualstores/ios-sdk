@@ -12,7 +12,7 @@ internal struct MessageCardDto: Codable {
     internal enum CardType: Int, Codable {
         case small = 0
         case big = 1
-        
+
         func toCartType() -> Message.CardType {
             switch self {
             case .big: return .big
@@ -20,7 +20,7 @@ internal struct MessageCardDto: Codable {
             }
         }
     }
-    
+
     let title: String
     let description: String?
     let imageUrl: String?
@@ -34,7 +34,7 @@ internal struct ExposureDefinitionDto: Codable {
         case products = 2
         case category = 3
         case welcome = 4
-        
+
         func toExposureType() -> Message.ExposureType {
             switch self {
             case .wholeMap: return .wholeMap
@@ -45,7 +45,7 @@ internal struct ExposureDefinitionDto: Codable {
             }
         }
     }
-    
+
     let type: ExposureDefinitionType
     let productRadiusInMeters: Double?
     let zones: [ExposureZoneDto]?
@@ -77,7 +77,7 @@ internal struct MessageDto: Codable {
     let to: String
     let card: MessageCardDto
     let exposureDefinition: ExposureDefinitionDto
-    
+
     func toMessage() -> Message? {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [
@@ -85,13 +85,13 @@ internal struct MessageDto: Codable {
             .withFullDate,
             .withColonSeparatorInTime
         ]
-        
+
         // TODO: Variable modifiedToDate is temporary. Which makes it possible to include the last date of the incoming period from the server
         guard let fromDate = dateFormatter.date(from: from), let toDate = dateFormatter.date(from: to),
               let modifiedToDate = Calendar.current.date(byAdding: .day, value: 1, to: toDate) else {
             return nil
         }
-        
+
         return Message(
             id: self.id,
             name: self.name,

@@ -41,7 +41,7 @@ extension CreateVisitsParameters: Routing {
 
         return parameters
     }
-    
+
     var path: String { "/visits" }
 
     var parameters: [String: Any]? {

@@ -31,7 +31,7 @@ struct VSTT2Config: Config {
         injector.map(UploadScanEventsService.self) {
             UploadScanEventsService(with: NetworkManager())
         }
-        
+
         injector.map(UploadPositionsService.self) {
             UploadPositionsService(with: NetworkManager())
         }
@@ -55,7 +55,7 @@ struct VSTT2Config: Config {
         injector.map(MapFenceDataService.self) {
             MapFenceDataService(with: NetworkManager())
         }
-        
+
         injector.map(SwapLocationsService.self) {
             SwapLocationsService(with: NetworkManager())
         }
@@ -65,7 +65,7 @@ struct VSTT2Config: Config {
         injector.map(Persistence.self) {
             Persistence()
         }
-        
+
         injector.map(PositionManager.self) {
             PositionManager()
         }

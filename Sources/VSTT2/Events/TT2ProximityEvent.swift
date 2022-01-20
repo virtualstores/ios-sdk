@@ -13,9 +13,9 @@ import Combine
 /// Proximity Event finterface. Will give all data which need iOS app for AreaEvent
 public protocol TT2ProximityEvent {
     var proximityEventPublisher: CurrentValueSubject<PointOfInterest?, TTT2ProximityEventError> { get }
-    
+
     func addEvent(with id: String, event: ProximityTrigger)
-    
+
     func removeEvent(with id: String)
 }
 

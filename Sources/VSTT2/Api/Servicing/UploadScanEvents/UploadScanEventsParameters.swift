@@ -19,7 +19,7 @@ public struct UploadScanEventsParameters {
     private let point: CGPoint
     private let timeStamp: String
     private let type: ScanType
-    
+
     enum ScanType: String {
         case shelf = "SHELF"
         case unknown = "UNKOWN"
@@ -47,7 +47,7 @@ extension UploadScanEventsParameters: Routing {
 
         return parameters
     }
-    
+
     var parameters: [String: Any]? {
         let parameters = ["barocde": barcode,
                           "shelfIf": shelfId,
@@ -61,4 +61,3 @@ extension UploadScanEventsParameters: Routing {
 
     var headers: [String: String]? { ["apiKey" : "8fc1be06-582e-41ce-b309-61e8fa8e3784" ] }
 }
-

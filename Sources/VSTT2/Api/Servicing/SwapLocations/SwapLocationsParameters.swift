@@ -20,7 +20,7 @@ public struct SwapLocationsParameters {
 
 extension SwapLocationsParameters: Routing {
     var environmentConfig: EnvironmentConfig { config }
-    
+
     var path: String { "/swaplocations" }
 
     var method: RequestType { .GET }

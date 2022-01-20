@@ -31,7 +31,7 @@ public enum UnitOfMeasure: String, Codable {
     case cubicInch = "CUBIC_INC"
     case cubicFoot = "CUBIC_FOOT"
     case cubicYard = "CUBIC_YARD"
-    
+
     public var localizedShortDescription: String {
         switch self {
         case .each:
@@ -82,7 +82,7 @@ public enum UnitOfMeasure: String, Codable {
             return "yd3"
         }
     }
-    
+
     public init(fromLocalizedString str: String) {
         switch str {
         case "st":
@@ -143,7 +143,7 @@ public struct CartItemQuantity: Codable {
     public let quantity: Double?
     public let unitOfMeasure: UnitOfMeasure?
     public let updateAllowed: Bool?
-    
+
     public init(deliveredNow: Double?, quantity: Double?, unitOfMeasure: UnitOfMeasure?, updateAllowed: Bool?) {
         self.deliveredNow = deliveredNow
         self.quantity = quantity
@@ -151,4 +151,3 @@ public struct CartItemQuantity: Codable {
         self.updateAllowed = updateAllowed
     }
 }
-
