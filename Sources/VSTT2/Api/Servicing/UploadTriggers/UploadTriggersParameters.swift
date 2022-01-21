@@ -12,11 +12,13 @@ import CoreGraphics
 public struct UploadTriggersParameters {
     @Inject var config: EnvironmentConfig
 
+    private let apiKey: String
     private let visitId: Int64
     private let requestId: String
     private let request: PostTriggerEventRequest
 
-    init(visitId: Int64, requestId: String, request: PostTriggerEventRequest) {
+    init(apiKey: String, visitId: Int64, requestId: String, request: PostTriggerEventRequest) {
+        self.apiKey = apiKey
         self.visitId = visitId
         self.requestId = requestId
         self.request = request
@@ -26,11 +28,13 @@ public struct UploadTriggersParameters {
 extension UploadTriggersParameters: Routing {
     var environmentConfig: EnvironmentConfig { config }
 
-    // Analytics base URL seems different, check if it will be the same after
-    // Fix issue and use path for /v2/positions?visitId=\(visitId)&requestId=\(requestId)
-    var baseURL: String { "https://gunnis-hp-stat.ih.vs-office.se/api/v2/positions?visitId=\(visitId)&requestId=\(requestId)" }
+    var queryItems: [String: String]? {
+        let parameters = ["visitId": String(visitId), "requestId": requestId] as [String: String]
 
-  //  var path: String { "/v2/positions?visitId=\(visitId)&requestId=\(requestId)" }
+        return parameters
+    }
+
+    var path: String { "/positions" }
 
     var parameters: [String: Any]? {
         let parameters = ["name": request.name,
@@ -56,5 +60,5 @@ extension UploadTriggersParameters: Routing {
         return parameters
     }
 
-    var headers: [String: String]? { ["apiKey" : "8fc1be06-582e-41ce-b309-61e8fa8e3784" ] }
+    var headers: [String: String]? { ["apiKey" : apiKey ] }
 }

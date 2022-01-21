@@ -20,6 +20,7 @@ public struct Store: Codable {
     public let rtlsOptions: [RtlsOptions]
     public let minVersion: String?
     public let serverConnection: ServerConnection
+    public let statServerConnection: ServerConnection
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -33,6 +34,7 @@ public struct Store: Codable {
         case rtlsOptions = "rtlsOptionsList"
         case minVersion
         case serverConnection
+        case statServerConnection
     }
 
     public init(from decoder: Decoder) throws {
@@ -49,5 +51,6 @@ public struct Store: Codable {
         rtlsOptions = try container.decode([RtlsOptions].self, forKey: .rtlsOptions)
         minVersion = try container.decodeIfPresent(String.self, forKey: .minVersion)
         serverConnection = try container.decode(ServerConnection.self, forKey: .serverConnection)
+        statServerConnection = try container.decode(ServerConnection.self, forKey: .statServerConnection)
     }
 }

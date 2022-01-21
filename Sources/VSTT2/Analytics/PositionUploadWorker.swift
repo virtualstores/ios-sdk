@@ -12,7 +12,7 @@ import VSFoundation
 
 final class PositionUploadWorker {
     @Inject var persistence: Persistence
-    
+
     func insert(id: String, xPosition: Double, yPosition: Double, time: String, uploadStatus: PointStatus) {
         var object = PositionObject()
         object.key = id
@@ -20,7 +20,7 @@ final class PositionUploadWorker {
         object.yPosition = yPosition
         object.timeStamp = time
         object.status = uploadStatus.rawValue
-        
+
         do {
             try persistence.save(&object)
         } catch {
@@ -28,12 +28,12 @@ final class PositionUploadWorker {
                                                 message: "Save Point Object SQLite error")
         }
     }
-    
+
     func getPoints() throws -> [String: [RecordedPosition]]? {
         var pointsList: [String: [RecordedPosition]] = [:]
             let positions = persistence.get(arrayOf: PositionObject.self)
-            let filteredPositions = positions.filter{ $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
-            
+            let filteredPositions = positions.filter { $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
+
         self.updateObjectStatus(objects: filteredPositions, status: PointStatus.inProgress)
 
         for object in filteredPositions {
@@ -48,18 +48,18 @@ final class PositionUploadWorker {
 
         return pointsList
     }
-    
+
     func updatePointsAfter(uploadingFailed: Bool) {
         let positions = persistence.get(arrayOf: PositionObject.self)
-        let filteredPositions = positions.filter{ $0.status == PointStatus.inProgress.rawValue }
-        
+        let filteredPositions = positions.filter { $0.status == PointStatus.inProgress.rawValue }
+
         self.updateObjectStatus(objects: filteredPositions, status: uploadingFailed ? PointStatus.fail : PointStatus.complete)
     }
-    
+
     func removePoints() {
         let positions = persistence.get(arrayOf: PositionObject.self)
-        let filteredPositions = positions.filter{ $0.status == PointStatus.complete.rawValue }
-        
+        let filteredPositions = positions.filter { $0.status == PointStatus.complete.rawValue }
+
         for object in filteredPositions {
             do {
                 try persistence.delete(object)
@@ -69,13 +69,13 @@ final class PositionUploadWorker {
             }
         }
     }
-    
+
     private func updateObjectStatus(objects: [PositionObject], status: PointStatus) {
         for object in objects {
             var editableObject: PositionObject
             editableObject = object
             editableObject.status = status.rawValue
-            
+
             do {
                 try persistence.save(&editableObject)
             } catch {

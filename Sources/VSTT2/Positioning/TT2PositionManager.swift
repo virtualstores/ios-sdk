@@ -57,10 +57,8 @@ public extension TT2PositionManager {
             let dir = code.direction + offset
             let code = PositionedCode(code: code.code, xPosition: code.xPosition, yPosition: code.yPosition, direction: dir, type: code.type)
             synchronize(code: code, syncDirection: syncDirection)
-            // self.validateSession(forStore: activeStore.store.id)
         } else {
             synchronize(code: code, syncDirection: syncDirection)
-            //  self.validateSession(forStore: activeStore.store.id)
         }
     }
 
@@ -107,7 +105,6 @@ extension TT2PositionManager {
             }, receiveValue: { [weak self] (data) in
                 do {
                     try self?.positionKitManager.setupMapFence(with: data)
-                    self?.positionKitManager.startNavigation(with: 180, xPosition: 4.570476, yPosition: 2.094637)
                 } catch {
                     // Add error handling logic when MapFence setup failed
                 }

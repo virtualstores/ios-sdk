@@ -1,6 +1,6 @@
 import Foundation
 
-//swiftlint:disable implicit_getter
+// swiftlint:disable implicit_getter
 
 final class StrategyContext {
     private var contexts = [AnyHashable: Any]()

@@ -15,12 +15,12 @@ enum PointStatus: String {
 final class PositionObject: IPersistenceModel {
     var retainOriginalIndex = false
     var index: String?
-    
+
     convenience init(index: String) {
         self.init()
         self.index = index
     }
-    
+
     var key: String?
     var xPosition: Double?
     var yPosition: Double?

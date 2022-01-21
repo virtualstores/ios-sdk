@@ -7,6 +7,6 @@
 
 import Foundation
 
-struct CreateVisitResponse: Codable {
-    let visitId: Int64
+public struct CreateVisitResponse: Codable {
+    public let visitId: Int64
 }

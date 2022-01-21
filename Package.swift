@@ -17,7 +17,7 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "https://github.com/virtualstores/ios-foundation.git", from: "0.0.6"),
+        .package(url: "https://github.com/virtualstores/ios-foundation.git", from: "0.0.7"),
         .package(url: "https://github.com/virtualstores/ios-position-kit.git", branch: "fixing-threading-and-tests"),
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", .exact("0.13.1")),
 
