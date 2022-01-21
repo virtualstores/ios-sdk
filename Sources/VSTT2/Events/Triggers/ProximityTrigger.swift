@@ -12,11 +12,11 @@ public struct ProximityTrigger {
     var id: String
 
     /// If this trigger is enabled or not. If a trigger is disabled, it will not recieve events,
-    var enabled: Bool
+    var isEnabled: Bool
 
     /// How close the user needs to be a point of interest to trigger it. Specified in meters.
     var triggerDistance: Double
 
     /// Applies a filter so that only points of interests that fulfill this function can be triggered.
-    var filterPointOfInteres: Bool
+    var isFilterPointOfInteres: Bool
 }

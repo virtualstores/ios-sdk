@@ -12,6 +12,7 @@ import CoreGraphics
 public struct UploadScanEventsParameters {
     @Inject var config: EnvironmentConfig
 
+    private let apiKey: String
     private let visitId: Int64
     private let requestId: String
     private let barcode: String
@@ -25,8 +26,9 @@ public struct UploadScanEventsParameters {
         case unknown = "UNKOWN"
     }
 
-    init(visitId: Int64, requestId: String, barcode: String, shelfId: Int64,
+    init(apiKey: String, visitId: Int64, requestId: String, barcode: String, shelfId: Int64,
          point: CGPoint, timeStamp: String, type: ScanType) {
+        self.apiKey = apiKey
         self.visitId = visitId
         self.requestId = requestId
         self.barcode = barcode
@@ -49,7 +51,7 @@ extension UploadScanEventsParameters: Routing {
     }
 
     var parameters: [String: Any]? {
-        let parameters = ["barocde": barcode,
+        let parameters = ["barcode": barcode,
                           "shelfIf": shelfId,
                           "x": Double(point.x),
                           "y": Double(point.y),
@@ -59,5 +61,5 @@ extension UploadScanEventsParameters: Routing {
         return parameters
     }
 
-    var headers: [String: String]? { ["apiKey" : "8fc1be06-582e-41ce-b309-61e8fa8e3784" ] }
+    var headers: [String: String]? { ["apiKey": apiKey ] }
 }

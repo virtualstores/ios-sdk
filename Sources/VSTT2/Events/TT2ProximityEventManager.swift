@@ -34,7 +34,7 @@ public class TT2ProximityEventManager: TT2ProximityEvent {
 
         for poi in pointsOfInterest {
             for (_, event) in triggers {
-                if event.enabled, event.filterPointOfInteres, distance(from: poi) < event.triggerDistance {
+                if event.isEnabled, event.isFilterPointOfInteres, distance(from: poi) < event.triggerDistance {
                     proximityEventPublisher.send(poi)
                 }
             }
