@@ -6,7 +6,7 @@
 // Copyright Virtual Stores - 2022
 
 import Foundation
-import UIKit
+import CoreGraphics
 
 public struct BarcodePosition: Codable {
     public let shelfId: Int64?
