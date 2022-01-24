@@ -1,9 +1,9 @@
 //
-//  File.swift
-//  
+// PointDto
+// VSTT2
 //
-//  Created by Hripsime on 2022-01-23.
-//
+// Created by Hripsime on 2022-01-24
+// Copyright Virtual Stores - 2022
 
 import Foundation
 

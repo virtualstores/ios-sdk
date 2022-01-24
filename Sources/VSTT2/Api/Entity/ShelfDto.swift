@@ -48,11 +48,11 @@ public extension ShelfDto {
     static func toShelf(_ dto: ShelfDto) -> Shelf {
         let itemPosition = ItemPosition(xPosition: dto.itemPositionX ?? 0.0, yPosition: dto.itemPositionY ?? 0.0,
                                         offsetX: dto.itemPositionOffsetX ?? 0.0, offsetY: dto.itemPositionOffsetY ?? 0.0)
-        
+
         let points = dto.points ?? []
-        
+
         let shape = points.map({ (point) -> CGPoint in CGPoint(x: point.x!, y: point.y!) })
-        
+
         return Shelf(id: dto.shelfId ?? 0,
                      name: dto.name ?? "",
                      itemPosition: itemPosition,
@@ -61,5 +61,3 @@ public extension ShelfDto {
                      shape: shape)
     }
 }
-
-

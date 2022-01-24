@@ -53,4 +53,16 @@ public struct RtlsOptions: Codable {
         self.mapBoxImageUrl = mapBoxImageUrl
         self.scanLocations = scanLocations
     }
+
+    public var getWidth: Double {
+        self.widthInMeters > 0.0 ? self.widthInMeters : self.width
+    }
+
+    public var getHeight: Double {
+        self.heightInMeters > 0.0 ? self.heightInMeters : self.height
+    }
+
+    public var getSize: CGSize {
+        CGSize(width: self.getWidth, height: self.getHeight)
+    }
 }

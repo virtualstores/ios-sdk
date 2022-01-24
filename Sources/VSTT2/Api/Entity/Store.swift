@@ -53,4 +53,15 @@ public struct Store: Codable {
         serverConnection = try container.decode(ServerConnection.self, forKey: .serverConnection)
         statServerConnection = try container.decode(ServerConnection.self, forKey: .statServerConnection)
     }
+
+    public func getCodesFor(type: PositionedCode.CodeType, floorLevel: Int) -> [PositionedCode] {
+        guard let rtls = rtlsOptions.first(where: { $0.floorLevel == floorLevel }), let scanLocations = rtls.scanLocations, scanLocations.count > 0 else {
+            switch type {
+            case .start: return self.startCodes
+            case .stop: return self.stopCodes
+            }
+        }
+
+        return scanLocations.all(where: { $0.type == type })
+    }
 }

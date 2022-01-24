@@ -9,11 +9,11 @@ import Foundation
 import VSFoundation
 
 public struct StoresListParameters {
-    private let clientId: String
+    private let clientId: Int64
 
     @Inject var config: EnvironmentConfig
 
-    public init(clientId: String) {
+    public init(clientId: Int64) {
         self.clientId = clientId
     }
 }

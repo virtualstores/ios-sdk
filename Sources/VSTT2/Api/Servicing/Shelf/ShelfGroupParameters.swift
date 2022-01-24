@@ -28,7 +28,7 @@ extension ShelfGroupParameters: Routing {
 
         return parameters
     }
-    
+
     var method: RequestType { .GET }
 
 }

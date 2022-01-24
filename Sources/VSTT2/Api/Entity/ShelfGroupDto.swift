@@ -44,13 +44,13 @@ public extension ShelfGroupDto {
     static func toShelfGroups(_ dtos: [ShelfGroupDto]) -> [ShelfGroup] {
         return dtos.map(ShelfGroupDto.toShelfGroup)
     }
-    
+
     static func toShelfGroup(_ dto: ShelfGroupDto) -> ShelfGroup {
         let itemPosition =  ItemPosition(xPosition: dto.itemPositionX ?? 0.0, yPosition: dto.itemPositionY ?? 0.0, offsetX: 0.0, offsetY: 0.0)
-        
+
         return ShelfGroup(id: dto.shelfGroupId ?? 0,
                           name: dto.name ?? "",
-                          itemPosition:itemPosition,
+                          itemPosition: itemPosition,
                           shelves: dto.shelves?.map(ShelfDto.toShelf) ?? [])
     }
 }
