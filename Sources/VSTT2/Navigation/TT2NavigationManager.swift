@@ -33,8 +33,8 @@ final public class TT2NavigationManager: TT2Navigation {
 }
 
 extension TT2NavigationManager {
-    func prepareNavigationSpace(for store: Store, mapUrl: URL, mapfenceUrl: URL, navgraphUrl: URL) {
-
+    func prepareNavigationSpace(for store: Store) {
+        
         if #available(iOS 15.0.0, *) {
             Task.init {
                 do {
@@ -44,7 +44,7 @@ extension TT2NavigationManager {
                          var offsetZones: Data?
                          let mapZones: [MapZone] = []
                          let mapZonePoints: [MapZonePoint] = []
-
+                        
                         if let mapFenceUrl = rtlsOption.mapFenceUrl, let url = URL(string: mapFenceUrl) {
                             mapfence = try await downloadManager.downloadData(from: url)
                         }
@@ -54,7 +54,10 @@ extension TT2NavigationManager {
                             offsetZones =  try await downloadManager.downloadData(from: url)
                         }
 
-                        navgraph = try await downloadManager.downloadData(from: navgraphUrl)
+                        //URL(tryPercentEncoding: rtls.navGraphUrl)
+                        if let navGraphUrl = rtlsOption.navGraphUrl, let navgraphUrl = URL(string: navGraphUrl) {
+                            navgraph = try await downloadManager.downloadData(from: navgraphUrl)
+                        }
 
                         navigationDataCancellable = navigationDataReadyPublisher
                             .sink(receiveValue: { [weak self] isReady in
@@ -62,7 +65,7 @@ extension TT2NavigationManager {
 
                                 self?.navigation = NavigationData(storeId: store.id, rtls: rtlsOption)
 
-                                self?.createNavigationSpace(for: store, rtlsOption: rtlsOption, mapfence: mapfence, navgraph: navgraph, offsetZones: offsetZones, mapZones: mapZones, mapZonePoints: mapZonePoints, mapUrl: mapUrl)
+                                self?.createNavigationSpace(for: store, rtlsOption: rtlsOption, mapfence: mapfence, navgraph: navgraph, offsetZones: offsetZones, mapZones: mapZones, mapZonePoints: mapZonePoints)
                             })
                     }
 
@@ -101,12 +104,15 @@ extension TT2NavigationManager {
             })
     }
 
-    private func createNavigationSpace(for store: Store, rtlsOption: RtlsOptions, mapfence: Data?, navgraph: Data, offsetZones: Data?, mapZones: [MapZone], mapZonePoints: [MapZonePoint], mapUrl: URL) {
-        let mapType = MapType.url(mapUrl)
+    private func createNavigationSpace(for store: Store, rtlsOption: RtlsOptions, mapfence: Data?, navgraph: Data, offsetZones: Data?, mapZones: [MapZone], mapZonePoints: [MapZonePoint]) {
         let startCodes: [PositionedCode] = store.getCodesFor(type: .start, floorLevel: rtlsOption.floorLevel)
         let stopCodes: [PositionedCode] = store.getCodesFor(type: .stop, floorLevel: rtlsOption.floorLevel)
+        
+        let choosenUrl = rtlsOption.mapBoxUrl ?? rtlsOption.mapBoxImageUrl //tryPercentEncoding
 
-        guard let navigation = navigation else { return }
+        guard let navigation = navigation, let choosenUrl = choosenUrl, let mapUrl = URL(string: choosenUrl) else { return }
+
+        let mapType = MapType.url(mapUrl)
 
         let navigationSpace = NavigationSpace(id: rtlsOption.id, name: rtlsOption.name ?? store.name, floorLevel: rtlsOption.floorLevel, mapType: mapType, mapfence: mapfence, mapFenceImage: nil, navgraph: navgraph, offsetZones: offsetZones, mapZones: mapZones, mapZonePoints: mapZonePoints, size: CGSize(width: rtlsOption.getWidth, height: rtlsOption.getHeight), startCodes: startCodes, stopCodes: stopCodes, navigation: navigation)
 

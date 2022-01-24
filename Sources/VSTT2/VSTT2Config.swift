@@ -59,9 +59,16 @@ struct VSTT2Config: Config {
         injector.map(SwapLocationsService.self) {
             SwapLocationsService(with: NetworkManager())
         }
+
+        injector.map(ShelfGroupService.self) {
+            ShelfGroupService(with: NetworkManager())
+        }
     }
 
     private func configureManagers(_ injector: Injector) {
+        injector.map(DownloadManager.self) {
+            DownloadManager()
+        }
         injector.map(Persistence.self) {
             Persistence()
         }
