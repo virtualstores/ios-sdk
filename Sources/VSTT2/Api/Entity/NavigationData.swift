@@ -10,7 +10,7 @@ import Foundation
 public final class NavigationData {
     private let storeId: Int64
     private let rtls: RtlsOptions
-    
+
     var shelfTierItemPositions: [Int64: ItemPosition] = [:]
     var shelfGroups: [ShelfGroup] = []
     var navigationSpaces: [NavigationSpace] = []

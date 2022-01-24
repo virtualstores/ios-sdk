@@ -8,7 +8,7 @@
 import Foundation
 import VSFoundation
 import Combine
-import UIKit
+import CoreGraphics
 
 final public class TT2NavigationManager: TT2Navigation {
     public var navigationSpacePublisher: CurrentValueSubject<[NavigationSpace]?, TT2NavigationError> = .init(nil)
@@ -34,7 +34,6 @@ final public class TT2NavigationManager: TT2Navigation {
 
 extension TT2NavigationManager {
     func prepareNavigationSpace(for store: Store) {
-        
         if #available(iOS 15.0.0, *) {
             Task.init {
                 do {
@@ -44,17 +43,17 @@ extension TT2NavigationManager {
                          var offsetZones: Data?
                          let mapZones: [MapZone] = []
                          let mapZonePoints: [MapZonePoint] = []
-                        
+
                         if let mapFenceUrl = rtlsOption.mapFenceUrl, let url = URL(string: mapFenceUrl) {
                             mapfence = try await downloadManager.downloadData(from: url)
                         }
-                        //add mapZoneUrl
+                        // add mapZoneUrl
 
                         if let mapOffsetsUrl = rtlsOption.mapOffsetsUrl, let url = URL(string: mapOffsetsUrl) {
                             offsetZones =  try await downloadManager.downloadData(from: url)
                         }
 
-                        //URL(tryPercentEncoding: rtls.navGraphUrl)
+                        // URL(tryPercentEncoding: rtls.navGraphUrl)
                         if let navGraphUrl = rtlsOption.navGraphUrl, let navgraphUrl = URL(string: navGraphUrl) {
                             navgraph = try await downloadManager.downloadData(from: navgraphUrl)
                         }
@@ -107,8 +106,8 @@ extension TT2NavigationManager {
     private func createNavigationSpace(for store: Store, rtlsOption: RtlsOptions, mapfence: Data?, navgraph: Data, offsetZones: Data?, mapZones: [MapZone], mapZonePoints: [MapZonePoint]) {
         let startCodes: [PositionedCode] = store.getCodesFor(type: .start, floorLevel: rtlsOption.floorLevel)
         let stopCodes: [PositionedCode] = store.getCodesFor(type: .stop, floorLevel: rtlsOption.floorLevel)
-        
-        let choosenUrl = rtlsOption.mapBoxUrl ?? rtlsOption.mapBoxImageUrl //tryPercentEncoding
+
+        let choosenUrl = rtlsOption.mapBoxUrl ?? rtlsOption.mapBoxImageUrl // tryPercentEncoding
 
         guard let navigation = navigation, let choosenUrl = choosenUrl, let mapUrl = URL(string: choosenUrl) else { return }
 

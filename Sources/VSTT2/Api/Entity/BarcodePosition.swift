@@ -16,20 +16,20 @@ public struct BarcodePosition: Codable {
     public let itemPositionY: Double?
     public let itemPositionOffsetX: Double?
     public let itemPositionOffsetY: Double?
-    
+
     public var itemPosition: CGPoint? {
         guard let x = itemPositionX, let y = itemPositionY else {
             return nil
         }
-        
+
         return CGPoint(x: x, y: y)
     }
-    
+
     public var itemPositionOffset: CGVector? {
         guard let x = itemPositionOffsetX, let y = itemPositionOffsetY else {
             return nil
         }
-        
+
         return CGVector(dx: x, dy: y)
     }
 
