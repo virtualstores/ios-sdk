@@ -63,6 +63,10 @@ struct VSTT2Config: Config {
         injector.map(ShelfGroupService.self) {
             ShelfGroupService(with: NetworkManager())
         }
+
+        injector.map(OrdersService.self) {
+            OrdersService(with: NetworkManager())
+        }
     }
 
     private func configureManagers(_ injector: Injector) {
@@ -79,6 +83,10 @@ struct VSTT2Config: Config {
 
         injector.map(PositionUploadWorker.self) {
             PositionUploadWorker()
+        }
+
+        injector.map(TT2NavigationManager.self) {
+            TT2NavigationManager()
         }
     }
 

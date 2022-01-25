@@ -16,11 +16,12 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var uploadTriggersService: UploadTriggersService
     @Inject var uploadScanEventsService: UploadScanEventsService
     @Inject var positionUploadWorker: PositionUploadWorker
-    
+
     private var store: Store?
     private var uploadThreshold = 0
     private var visitId: Int64?
     private var requestId: String?
+    private var apiKey: String?
     private var timeFormatter: DateFormatter = DateFormatter()
     private var cancellable = Set<AnyCancellable>()
 
@@ -32,6 +33,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
     public func setup(with store: Store, uploadThreshold: Int = 100) {
         self.store = store
+        self.apiKey = store.statServerConnection.apiKey
         self.uploadThreshold = uploadThreshold
         self.requestId = UUID().uuidString.uppercased()
 
@@ -40,10 +42,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:]) {
-        guard let store = store, let requestId = requestId else { return }
+        guard let store = store, let requestId = requestId, let apiKey = store.statServerConnection.apiKey else { return }
 
         let date = self.timeFormatter.string(from: Date())
-        let parameters = CreateVisitsParameters(apiKey: store.serverConnection.apiKey,
+        let parameters = CreateVisitsParameters(apiKey: apiKey,
                                                 requestId: requestId,
                                                 storeId: store.id,
                                                 start: date,
@@ -68,6 +70,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)
                 }
             }).store(in: &cancellable)
+
     }
 
     public func startCollectingHeatMapData() throws {
@@ -126,9 +129,9 @@ private extension TT2AnalyticsManager {
     }
 
     private func uploadData(recordedPositions: [String: [RecordedPosition]]) {
-        guard let visitId = visitId, let requestId = requestId  else { return }
+        guard let visitId = visitId, let requestId = requestId, let apiKey = apiKey else { return }
 
-        let parameters = UploadPositionsParameters(visitId: visitId, requestId: requestId, positionGrps: recordedPositions)
+        let parameters = UploadPositionsParameters(apiKey: apiKey, visitId: visitId, requestId: requestId, positionGrps: recordedPositions)
 
         uploadPositionsService
             .call(with: parameters)
@@ -147,9 +150,9 @@ private extension TT2AnalyticsManager {
     }
 
     private func uploadTriggerEvents(request: PostTriggerEventRequest) {
-        guard let visitId = visitId, let requestId = requestId else { return }
+        guard let visitId = visitId, let requestId = requestId, let apiKey = apiKey else { return }
 
-        let parameters = UploadTriggersParameters(visitId: visitId, requestId: requestId, request: request)
+        let parameters = UploadTriggersParameters(apiKey: apiKey, visitId: visitId, requestId: requestId, request: request)
 
         uploadTriggersService
             .call(with: parameters)
@@ -166,9 +169,9 @@ private extension TT2AnalyticsManager {
     }
 
     private func uploadScanEvents() {
-        guard let visitId = visitId, let requestId = requestId else { return }
-        //receave all this data from app
-        let parameters = UploadScanEventsParameters(visitId: visitId, requestId: requestId, barcode: "", shelfId: 1, point: CGPoint(), timeStamp: "", type: .shelf)
+        guard let visitId = visitId, let requestId = requestId, let apiKey = apiKey else { return }
+        // receave all this data from app
+        let parameters = UploadScanEventsParameters(apiKey: apiKey, visitId: visitId, requestId: requestId, barcode: "", shelfId: 1, point: CGPoint(), timeStamp: "", type: .shelf)
 
         uploadScanEventsService
             .call(with: parameters)
