@@ -12,6 +12,7 @@ import VSPositionKit
 
 final public class VSTT2Manager: VSTT2 {
     public var availableStores: CurrentValueSubject<StoresList?, VSTT2Error> = .init(nil)
+
     // MARK: Private members
     private let context = Context(VSTT2Config())
     private var cancellable = Set<AnyCancellable>()
@@ -23,6 +24,7 @@ final public class VSTT2Manager: VSTT2 {
     @Inject var storesListService: StoresListService
     @Inject var swapLocationsService: SwapLocationsService
     @Inject var ordersService: OrdersService
+    @Inject var itemPositionService: ItemPositionService
     @Inject var tt2PositionManager: TT2PositionManager
     @Inject var navigationManager: TT2NavigationManager
 
@@ -54,13 +56,13 @@ final public class VSTT2Manager: VSTT2 {
         publisherCancellable = navigationManager.navigationSpacePublisher
             .sink { _ in
                 Logger.init(verbosity: .debug).log(message: "Navigation Space Publisher error")
-            } receiveValue: { [weak self]  _ in
+            } receiveValue: { [weak self] _ in
                 guard let self = self, let id = self.activeStore?.id else { return }
 
                 if self.swapLocations.isEmpty {
                     self.getSwapLocations(for: id)
                 }
-            }
+        }
     }
 }
 
@@ -116,6 +118,22 @@ private extension VSTT2Manager {
             }, receiveValue: {_ in
 
             }).store(in: &cancellable)
-
+    }
+    
+    func getItemPosition(storeId: Int64, itemId: String) {
+        let parameters = ItemPositionParameters(storeId: storeId, barcode: itemId)
+        
+        itemPositionService
+            .call(with: parameters)
+            .sink(receiveCompletion: { (completion) in
+                switch completion {
+                case .finished:
+                    break
+                case .failure(let error):
+                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
+                }
+            }, receiveValue: { data in
+                print(data)
+            }).store(in: &cancellable)
     }
 }

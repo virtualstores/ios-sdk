@@ -54,15 +54,15 @@ public struct RtlsOptions: Codable {
         self.scanLocations = scanLocations
     }
 
-    public var getWidth: Double {
+   func rtlsOptionsWidth() -> Double {
         self.widthInMeters > 0.0 ? self.widthInMeters : self.width
     }
 
-    public var getHeight: Double {
+    public func rtlsOptionsHeight() -> Double {
         self.heightInMeters > 0.0 ? self.heightInMeters : self.height
     }
 
-    public var getSize: CGSize {
-        CGSize(width: self.getWidth, height: self.getHeight)
+    public func rtlsOptionsSize() -> CGSize {
+        CGSize(width: rtlsOptionsWidth(), height: rtlsOptionsHeight())
     }
 }

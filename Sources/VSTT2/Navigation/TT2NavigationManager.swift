@@ -17,17 +17,12 @@ final public class TT2NavigationManager: TT2Navigation {
     @Inject var shelfGroupService: ShelfGroupService
     @Inject var storesListService: StoresListService
 
-    private var navigationDataReadyPublisher: CurrentValueSubject<Bool?, Never> = .init(nil)
     private var navigationSpaces = [NavigationSpace]()
-    private var navigation: NavigationData?
-
     private var cancellable: AnyCancellable?
-    private var navigationDataCancellable: AnyCancellable?
 
     init() {}
 
     deinit {
-        navigationDataCancellable?.cancel()
         cancellable?.cancel()
     }
 }
@@ -57,15 +52,12 @@ extension TT2NavigationManager {
                         if let navGraphUrl = rtlsOption.navGraphUrl, let navgraphUrl = URL(string: navGraphUrl) {
                             navgraph = try await downloadManager.downloadData(from: navgraphUrl)
                         }
-
-                        navigationDataCancellable = navigationDataReadyPublisher
-                            .sink(receiveValue: { [weak self] isReady in
-                                guard isReady == true, let navgraph = navgraph else { return }
-
-                                self?.navigation = NavigationData(storeId: store.id, rtls: rtlsOption)
-
-                                self?.createNavigationSpace(for: store, rtlsOption: rtlsOption, mapfence: mapfence, navgraph: navgraph, offsetZones: offsetZones, mapZones: mapZones, mapZonePoints: mapZonePoints)
-                            })
+                        
+                        let navigation = self.createNavigationInfo(with: 1, store: store, floorLevel: rtlsOption.floorLevel, rtlsOption: rtlsOption)
+                        
+                        guard let navgraph = navgraph else { return }
+                        
+                        self.createNavigationSpace(for: store, rtlsOption: rtlsOption, mapfence: mapfence, navgraph: navgraph, offsetZones: offsetZones, mapZones: mapZones, mapZonePoints: mapZonePoints, navigation: navigation)
                     }
 
                     navigationSpacePublisher.send(navigationSpaces)
@@ -76,7 +68,9 @@ extension TT2NavigationManager {
         }
     }
 
-    private func createNavigationInfo(with clientId: Int64, store: Store, floorLevel: Int, mapUrl: URL) {
+    private func createNavigationInfo(with clientId: Int64, store: Store, floorLevel: Int, rtlsOption: RtlsOptions) -> NavigationData {
+        let navigation = NavigationData(storeId: store.id, rtls: rtlsOption)
+
         let shelfGroupParameters = ShelfGroupParameters(storeId: store.id)
         let parameters = StoresListParameters(clientId: clientId)
 
@@ -90,30 +84,32 @@ extension TT2NavigationManager {
                 case .failure(let error):
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)
                 }
-            }, receiveValue: { [weak self] shelfData, storeList in
+            }, receiveValue: { shelfData, storeList in
+                print(storeList.stores.count)
                 let shelfGroups = shelfData.map({ ShelfGroupDto.toShelfGroup($0) })
 
                 if let store = storeList.stores.first(where: { $0.id == store.id }), let rtls = store.rtlsOptions.first(where: { $0.floorLevel == floorLevel }) {
-                    let map = Map(id: store.id, mapURL: rtls.mapBoxUrl ?? "", storeId: store.id, railScale: 0, pixelOffsetX: Int(rtls.startOffsetY), pixelOffsetY: Int(rtls.startOffsetY), pixelWidth: Int(rtls.getWidth), pixelHeight: Int(rtls.getHeight))
+                    let map = Map(id: store.id, mapURL: rtls.mapBoxUrl ?? "", storeId: store.id, railScale: 0, pixelOffsetX: Int(rtls.startOffsetY), pixelOffsetY: Int(rtls.startOffsetY), pixelWidth: Int(rtls.rtlsOptionsWidth()), pixelHeight: Int(rtls.rtlsOptionsHeight()))
 
-                    self?.navigation?.map = map
-                    self?.navigation?.shelfGroups = shelfGroups
-                    self?.navigationDataReadyPublisher.send(true)
+                    navigation.map = map
+                    navigation.shelfGroups = shelfGroups
                 }
             })
+        
+        return navigation
     }
 
-    private func createNavigationSpace(for store: Store, rtlsOption: RtlsOptions, mapfence: Data?, navgraph: Data, offsetZones: Data?, mapZones: [MapZone], mapZonePoints: [MapZonePoint]) {
+    private func createNavigationSpace(for store: Store, rtlsOption: RtlsOptions, mapfence: Data?, navgraph: Data, offsetZones: Data?, mapZones: [MapZone], mapZonePoints: [MapZonePoint], navigation: NavigationData) {
         let startCodes: [PositionedCode] = store.getCodesFor(type: .start, floorLevel: rtlsOption.floorLevel)
         let stopCodes: [PositionedCode] = store.getCodesFor(type: .stop, floorLevel: rtlsOption.floorLevel)
 
         let choosenUrl = rtlsOption.mapBoxUrl ?? rtlsOption.mapBoxImageUrl // tryPercentEncoding
 
-        guard let navigation = navigation, let choosenUrl = choosenUrl, let mapUrl = URL(string: choosenUrl) else { return }
+        guard let choosenUrl = choosenUrl, let mapUrl = URL(string: choosenUrl) else { return }
 
         let mapType = MapType.url(mapUrl)
 
-        let navigationSpace = NavigationSpace(id: rtlsOption.id, name: rtlsOption.name ?? store.name, floorLevel: rtlsOption.floorLevel, mapType: mapType, mapfence: mapfence, mapFenceImage: nil, navgraph: navgraph, offsetZones: offsetZones, mapZones: mapZones, mapZonePoints: mapZonePoints, size: CGSize(width: rtlsOption.getWidth, height: rtlsOption.getHeight), startCodes: startCodes, stopCodes: stopCodes, navigation: navigation)
+        let navigationSpace = NavigationSpace(id: rtlsOption.id, name: rtlsOption.name ?? store.name, floorLevel: rtlsOption.floorLevel, mapType: mapType, mapfence: mapfence, mapFenceImage: nil, navgraph: navgraph, offsetZones: offsetZones, mapZones: mapZones, mapZonePoints: mapZonePoints, size: CGSize(width: rtlsOption.rtlsOptionsWidth(), height: rtlsOption.rtlsOptionsHeight()), startCodes: startCodes, stopCodes: stopCodes, navigation: navigation)
 
         navigationSpaces.append(navigationSpace)
     }

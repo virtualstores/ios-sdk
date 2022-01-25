@@ -20,4 +20,8 @@ public final class NavigationData {
         self.storeId = storeId
         self.rtls = rtls
     }
+    
+    public func getItemPosition(with shelfTierId: Int64) -> ItemPosition? {
+        return shelfTierItemPositions[shelfTierId]
+    }
 }
