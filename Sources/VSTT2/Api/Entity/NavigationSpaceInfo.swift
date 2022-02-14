@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import VSFoundation
 
 public struct NavigationSpaceInfo {
     public let id: Int64

@@ -44,16 +44,16 @@ extension UploadTriggersParameters: Routing {
                               "y": Double(request.userPosition.y)
                           ],
                           "appTrigger": [
-                              "event": request.appTrigger.event
+                              "event": request.appTrigger?.event
                           ],
                           "tags": [
-                              "userId": request.tags.userId,
-                              "elapsedTimeInMinutes": request.tags.elapsedTimeInMinutes,
+                              "userId": request.tags?.userId,
+                              "elapsedTimeInMinutes": request.tags?.elapsedTimeInMinutes,
                               "exampleValue3": ""
                           ],
                           "metadata": [
-                              "title": request.metaData.title,
-                              "description": request.metaData.description,
+                              "title": request.metaData?.title,
+                              "description": request.metaData?.description,
                               "exampleValue3": ""
                           ]] as [String: Any]
 

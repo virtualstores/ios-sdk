@@ -39,6 +39,11 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
         self.timeFormatter.timeZone = TimeZone(secondsFromGMT: 0)
         self.timeFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+        
+        
+       // TriggerEvent(rtlsOptionsId: "58", name: "2", timestamp: Date(), userPosition: CGPoint(x: 26.402997970581055, y: 18.589424133300781), appTrigger: nil, coordinateTrigger: TriggerEvent.CoordinateTrigger(point: CGPoint(x: 27.905910521783994, y: 15.941483636893281), radius: 5), shelfTrigger: nil, zoneTrigger: nil, tags: [:], metaData: [:])
+        
+        self.uploadTriggerEvents(request:PostTriggerEventRequest(name: "", timeStamp: "", userPosition: CGPoint(x: 26.402997970581055, y: 18.589424133300781), appTrigger: nil, tags: nil, metaData: nil))
     }
 
     public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:]) {

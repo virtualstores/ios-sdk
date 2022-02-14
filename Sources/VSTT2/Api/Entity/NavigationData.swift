@@ -6,6 +6,7 @@
 // Copyright Virtual Stores - 2022
 
 import Foundation
+import VSFoundation
 
 public final class NavigationData {
     private let storeId: Int64

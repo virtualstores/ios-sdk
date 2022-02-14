@@ -8,17 +8,16 @@
 import Foundation
 import CoreGraphics
 
+public struct AppTrigger {
+    let event: String
+}
 struct PostTriggerEventRequest {
     let name: String
     let timeStamp: String
     let userPosition: CGPoint
-    let appTrigger: AppTrigger
-    let tags: Tags
-    let metaData: MetaData
-
-    struct AppTrigger {
-        let event: String
-    }
+    let appTrigger: AppTrigger?
+    let tags: Tags?
+    let metaData: MetaData?
 
     struct Tags {
         let userId: String

@@ -12,6 +12,7 @@ import VSPositionKit
 
 final public class VSTT2Manager: VSTT2 {
     public var availableStores: CurrentValueSubject<StoresList?, VSTT2Error> = .init(nil)
+    public var mapFanceDataExistPublisher: CurrentValueSubject<MapFence?, Never> = .init(nil)
 
     // MARK: Private members
     private let context = Context(VSTT2Config())
@@ -21,11 +22,12 @@ final public class VSTT2Manager: VSTT2 {
     private var swapLocations: [SwapLocation] = []
 
     @Inject var positionManager: PositionManager
+    @Inject var mapFenceDataService: MapFenceDataService
     @Inject var storesListService: StoresListService
     @Inject var swapLocationsService: SwapLocationsService
     @Inject var ordersService: OrdersService
     @Inject var itemPositionService: ItemPositionService
-    @Inject var tt2PositionManager: TT2PositionManager
+    @Inject public var tt2PositionManager: TT2PositionManager
     @Inject var navigationManager: TT2NavigationManager
 
     private var publisherCancellable: AnyCancellable?
@@ -44,7 +46,11 @@ final public class VSTT2Manager: VSTT2 {
         self.activeStore = store
         tt2PositionManager.configureStoreData(for: store, floorLevel: floorLevel)
         initiateStore(with: store)
+        
+        guard let url = store.rtlsOptions.first?.mapFenceUrl else { return }
 
+      //  getMapFenceData(with: url)
+        
         bindPublishers()
     }
 
@@ -134,6 +140,26 @@ private extension VSTT2Manager {
                 }
             }, receiveValue: { data in
                 print(data)
+            }).store(in: &cancellable)
+    }
+    
+    private func getMapFenceData(with url: String) {
+        let parameters = MapFenceDataParameters(url: url)
+        mapFenceDataService
+            .call(with: parameters)
+            .sink(receiveCompletion: { (completion) in
+                switch completion {
+                case .finished:
+                    break
+                case .failure(let error):
+                    print(error)
+                }
+            }, receiveValue: { [weak self] (data) in
+                guard let self = self else { return }
+                
+               // self.currentMapFence = data
+                self.positionManager.setupMapFence(with: data)
+                self.mapFanceDataExistPublisher.send(data)
             }).store(in: &cancellable)
     }
 }
