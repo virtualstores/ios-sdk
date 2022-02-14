@@ -21,7 +21,6 @@ final public class VSTT2Manager: VSTT2 {
     private var activeStore: Store?
     private var swapLocations: [SwapLocation] = []
 
-    @Inject var positionManager: PositionManager
     @Inject var mapFenceDataService: MapFenceDataService
     @Inject var storesListService: StoresListService
     @Inject var swapLocationsService: SwapLocationsService
@@ -39,18 +38,17 @@ final public class VSTT2Manager: VSTT2 {
     }
 
     public func setBackgroundAccess(isActive: Bool) {
-        positionManager.setBackgroundAccess(isActive: isActive)
+        tt2PositionManager.positionKitManager.setBackgroundAccess(isActive: isActive)
     }
 
     public func initiateStore(store: Store, floorLevel: Int) {
         self.activeStore = store
-        tt2PositionManager.configureStoreData(for: store, floorLevel: floorLevel)
+        
+        if let url = store.rtlsOptions.first?.mapFenceUrl {
+            getMapFenceData(with: url)
+        }
+        
         initiateStore(with: store)
-        
-        guard let url = store.rtlsOptions.first?.mapFenceUrl else { return }
-
-      //  getMapFenceData(with: url)
-        
         bindPublishers()
     }
 
@@ -157,8 +155,7 @@ private extension VSTT2Manager {
             }, receiveValue: { [weak self] (data) in
                 guard let self = self else { return }
                 
-               // self.currentMapFence = data
-                self.positionManager.setupMapFence(with: data)
+                self.tt2PositionManager.positionKitManager.setupMapFence(with: data)
                 self.mapFanceDataExistPublisher.send(data)
             }).store(in: &cancellable)
     }

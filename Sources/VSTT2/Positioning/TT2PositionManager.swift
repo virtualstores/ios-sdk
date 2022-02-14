@@ -18,7 +18,7 @@ final public class TT2PositionManager: TT2Positioning {
     private var cancellable = Set<AnyCancellable>()
     private var publisherCancellable: AnyCancellable?
     private var positionBundleCancellable: AnyCancellable?
-    private var positionKitManager: PositionManager
+    public var positionKitManager: PositionManager
     private var map: IMap?
     private var location: TT2Location?
     private var currentMapFence: MapFence?
@@ -29,8 +29,9 @@ final public class TT2PositionManager: TT2Positioning {
         self.positionKitManager = positionManager
     }
     
-    public func setupMap(map: IMap?) {
+    public func setupMap(map: IMap?, mapFence: MapFence) {
         self.map = map
+        self.currentMapFence = mapFence
     }
 
     private func bindPublishers() {
@@ -83,12 +84,6 @@ public extension TT2PositionManager {
         }
     }
 
-    func configureStoreData(for store: Store, floorLevel: Int?) {
-        guard let url = store.rtlsOptions.first?.mapFenceUrl else { return }
-        
-        self.getMapFenceData(with: url)
-    }
-    
     func createMapData(rtlsOptions: RtlsOptions) -> MapData? {
         guard let mapFance = currentMapFence else { return nil }
         
@@ -96,28 +91,5 @@ public extension TT2PositionManager {
         let mapData = MapData(rtlsOptions: rtlsOptions, style: MapStyle(), converter: coordinateConverter)
         
         return mapData
-    }
-}
-
-//before positioning setup
-extension TT2PositionManager {
-    private func getMapFenceData(with url: String) {
-        let parameters = MapFenceDataParameters(url: url)
-        mapFenceDataService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    print(error)
-                }
-            }, receiveValue: { [weak self] (data) in
-                guard let self = self else { return }
-                
-                self.currentMapFence = data
-                self.positionKitManager.setupMapFence(with: data)
-                self.mapFanceDataExistPublisher.send(true)
-            }).store(in: &cancellable)
     }
 }
