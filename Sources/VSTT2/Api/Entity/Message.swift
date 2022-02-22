@@ -8,6 +8,7 @@
 import Foundation
 import CoreGraphics
 import UIKit
+import VSFoundation
 
 public struct Message: Equatable, Hashable {
     public struct Product {

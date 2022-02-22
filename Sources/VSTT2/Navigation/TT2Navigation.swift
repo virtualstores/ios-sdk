@@ -12,6 +12,8 @@ import Combine
 public protocol TT2Navigation {
     /// Publisher for  NavigationSpace data
     var navigationSpacePublisher: CurrentValueSubject<[NavigationSpace]?, TT2NavigationError> { get }
+    
+    
 }
 
 public enum TT2NavigationError: Error {
