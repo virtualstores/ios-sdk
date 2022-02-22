@@ -19,9 +19,8 @@ final public class TT2PositionManager: TT2Positioning {
     private var publisherCancellable: AnyCancellable?
     private var positionBundleCancellable: AnyCancellable?
     public var positionKitManager: PositionManager
-    private var map: IMap?
+    private var map: IMapController?
     private var location: TT2Location?
-    private var currentMapFence: MapFence?
     public var positionBundlePublisher: CurrentValueSubject<PositionBundle?, PositionKitError> = .init(nil)
     public var mapFanceDataExistPublisher: CurrentValueSubject<Bool?, Never> = .init(nil)
 
@@ -29,9 +28,8 @@ final public class TT2PositionManager: TT2Positioning {
         self.positionKitManager = positionManager
     }
     
-    public func setupMap(map: IMap?, mapFence: MapFence) {
+    public func setupMap(map: IMapController?) {
         self.map = map
-        self.currentMapFence = mapFence
     }
 
     private func bindPublishers() {
@@ -39,7 +37,7 @@ final public class TT2PositionManager: TT2Positioning {
             .compactMap{ $0 }
             .sink { [weak self] error in
                 self?.positionBundlePublisher.send(completion: error)
-            } receiveValue: { [weak self]  positionBundle in
+            } receiveValue: { [weak self] positionBundle in
                 self?.positionBundlePublisher.send(positionBundle)
                 DispatchQueue.main.async {
                     self?.map?.updateUserLocation(newLocation: positionBundle.position, std: positionBundle.std ?? 0.0)
@@ -84,11 +82,10 @@ public extension TT2PositionManager {
         }
     }
 
-    func createMapData(rtlsOptions: RtlsOptions) -> MapData? {
-        guard let mapFance = currentMapFence else { return nil }
-        
-        let coordinateConverter = BaseCoordinateConverter(heightInPixels: mapFance.properties.height, widthInPixels: mapFance.properties.width, pixelPerMeter: rtlsOptions.pixelsPerMeter, pixelPerLatitude: 1000.0)
-        let mapData = MapData(rtlsOptions: rtlsOptions, style: MapStyle(), converter: coordinateConverter)
+    func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence) -> MapData? {
+        let coordinateConverter = BaseCoordinateConverter(heightInPixels: mapFence.properties.height, widthInPixels: mapFence.properties.width, pixelPerMeter: rtlsOptions.pixelsPerMeter, pixelPerLatitude: 1000.0)
+        let image = UIImage(named: "userMarker")
+        let mapData = MapData(rtlsOptions: rtlsOptions, style: MapStyle(userMarkerImage: image), converter: coordinateConverter)
         
         return mapData
     }

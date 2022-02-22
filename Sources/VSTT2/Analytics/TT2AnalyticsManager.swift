@@ -20,7 +20,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private var store: Store?
     private var uploadThreshold = 0
     private var visitId: Int64?
-    private var requestId: String?
     private var apiKey: String?
     private var timeFormatter: DateFormatter = DateFormatter()
     private var cancellable = Set<AnyCancellable>()
@@ -35,11 +34,9 @@ final public class TT2AnalyticsManager: TT2Analytics {
         self.store = store
         self.apiKey = store.statServerConnection.apiKey
         self.uploadThreshold = uploadThreshold
-        self.requestId = UUID().uuidString.uppercased()
 
         self.timeFormatter.timeZone = TimeZone(secondsFromGMT: 0)
         self.timeFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
-        
         
        // TriggerEvent(rtlsOptionsId: "58", name: "2", timestamp: Date(), userPosition: CGPoint(x: 26.402997970581055, y: 18.589424133300781), appTrigger: nil, coordinateTrigger: TriggerEvent.CoordinateTrigger(point: CGPoint(x: 27.905910521783994, y: 15.941483636893281), radius: 5), shelfTrigger: nil, zoneTrigger: nil, tags: [:], metaData: [:])
         
@@ -47,12 +44,12 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:]) {
-        guard let store = store, let requestId = requestId, let apiKey = store.statServerConnection.apiKey else { return }
+        guard let storeId = store?.statServerConnection.storeId, let apiKey = store?.statServerConnection.apiKey else { return }
 
         let date = self.timeFormatter.string(from: Date())
         let parameters = CreateVisitsParameters(apiKey: apiKey,
-                                                requestId: requestId,
-                                                storeId: store.id,
+                                                requestId: UUID().uuidString.uppercased(),
+                                                storeId: storeId,
                                                 start: date,
                                                 stop: date,
                                                 deviceInformation: deviceInformation,
@@ -69,11 +66,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
                 }
             }, receiveValue: { [weak self] (data) in
                 self?.visitId = data.visitId
-                do {
-                    try self?.startCollectingHeatMapData()
-                } catch {
-                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
-                }
             }).store(in: &cancellable)
 
     }
@@ -104,7 +96,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     public func onNewPositionBundle(point: CGPoint) {
         if isRecording {
             // navigationSpace.id
-            recordPosition(rtlsOptionId: 1, point: point)
+            recordPosition(rtlsOptionId: 18, point: point)
         }
     }
 }
@@ -134,9 +126,9 @@ private extension TT2AnalyticsManager {
     }
 
     private func uploadData(recordedPositions: [String: [RecordedPosition]]) {
-        guard let visitId = visitId, let requestId = requestId, let apiKey = apiKey else { return }
+        guard let visitId = visitId, let apiKey = apiKey else { return }
 
-        let parameters = UploadPositionsParameters(apiKey: apiKey, visitId: visitId, requestId: requestId, positionGrps: recordedPositions)
+        let parameters = UploadPositionsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions)
 
         uploadPositionsService
             .call(with: parameters)
@@ -155,9 +147,9 @@ private extension TT2AnalyticsManager {
     }
 
     private func uploadTriggerEvents(request: PostTriggerEventRequest) {
-        guard let visitId = visitId, let requestId = requestId, let apiKey = apiKey else { return }
+        guard let visitId = visitId, let apiKey = apiKey else { return }
 
-        let parameters = UploadTriggersParameters(apiKey: apiKey, visitId: visitId, requestId: requestId, request: request)
+        let parameters = UploadTriggersParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), request: request)
 
         uploadTriggersService
             .call(with: parameters)
@@ -174,9 +166,9 @@ private extension TT2AnalyticsManager {
     }
 
     private func uploadScanEvents() {
-        guard let visitId = visitId, let requestId = requestId, let apiKey = apiKey else { return }
+        guard let visitId = visitId, let apiKey = apiKey else { return }
         // receave all this data from app
-        let parameters = UploadScanEventsParameters(apiKey: apiKey, visitId: visitId, requestId: requestId, barcode: "", shelfId: 1, point: CGPoint(), timeStamp: "", type: .shelf)
+        let parameters = UploadScanEventsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), barcode: "", shelfId: 1, point: CGPoint(), timeStamp: "", type: .shelf)
 
         uploadScanEventsService
             .call(with: parameters)

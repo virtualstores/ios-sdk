@@ -30,7 +30,7 @@ extension UploadPositionsParameters: Routing {
     var path: String { "/positions" }
 
     var queryItems: [String: String]? {
-        let parameters = ["visitId": String(visitId), "requestId": requestId] as [String: String]
+        let parameters = ["requestId": requestId, "visitId": String(visitId)] as [String: String]
 
         return parameters
     }

@@ -6,14 +6,20 @@
 // Copyright Virtual Stores - 2021
 import Foundation
 import Combine
+import Foundation
+import VSFoundation
 
-/// Manager for VSTT2 data. Will give all data which need iOS app
+///
+/// Interface for TT2 SDK.
+///  1- To get the SDK ready to work first Call initialize method. This will prepare the SDK for  all other purposes.
+///  2- To initialize your store, call initStore
+///  3- When your store is ready, you are ready to initialize a floor.
 public protocol VSTT2 {
     /// Temporary setter for activating and deactivating background access in positionKit
     func setBackgroundAccess(isActive: Bool)
 
     /// Method for initiate selected Store data
-    func initiateStore(store: Store, floorLevel: Int)
+    func initiateStore(store: Store)
 }
 
 public enum VSTT2Error: Error {
