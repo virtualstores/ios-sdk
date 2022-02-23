@@ -12,21 +12,41 @@ public struct AppTrigger {
     let event: String
 }
 struct PostTriggerEventRequest {
+    let rtlsOptionsId: String
     let name: String
     let timeStamp: String
     let userPosition: CGPoint
     let appTrigger: AppTrigger?
-    let tags: Tags?
-    let metaData: MetaData?
-
-    struct Tags {
-        let userId: String
-        let elapsedTimeInMinutes: String
+    let coordinateTrigger: CoordinateTrigger?
+    let shelfTrigger: ShelfTrigger?
+    let zoneTrigger: ZoneTrigger?
+    let tags: [String: String]
+    let metaData: [String: String]
+    
+    struct AppTrigger {
+        let event: String
     }
 
-    struct MetaData {
-        let title: String
-        let description: String
+    struct CoordinateTrigger {
+        let point: CGPoint
+        let radius: Double
+    }
+
+    struct ShelfTrigger {
+        let shelfGroupId: Int?
+        let shelfId: Int?
+        let shelfTierId: Int?
+    }
+
+    struct ZoneTrigger {
+        let zoneId: String
+        let groupId: String
+        let type: ZoneType
+
+        enum ZoneType: String {
+            case enter = "ENTER"
+            case exit = "EXIT"
+        }
     }
 }
 
