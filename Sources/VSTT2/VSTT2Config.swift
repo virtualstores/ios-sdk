@@ -88,9 +88,17 @@ struct VSTT2Config: Config {
         injector.map(PositionUploadWorker.self) {
             PositionUploadWorker()
         }
-
-        injector.map(TT2NavigationManager.self) {
-            TT2NavigationManager()
+        
+        injector.map(VSTT2FloorManager.self) {
+            VSTT2FloorManager()
+        }
+        
+        injector.map(MapZoneParser.self) {
+            MapZoneParser()
+        }
+        
+        injector.map(TT2ZoneManager.self) {
+            TT2ZoneManager()
         }
     }
 
