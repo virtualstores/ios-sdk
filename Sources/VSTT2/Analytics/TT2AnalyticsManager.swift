@@ -9,6 +9,7 @@ import Foundation
 import VSFoundation
 import Combine
 import CoreGraphics
+import UIKit
 
 final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var createVisitsService: CreateVisitsService
@@ -16,6 +17,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var uploadTriggersService: UploadTriggersService
     @Inject var uploadScanEventsService: UploadScanEventsService
     @Inject var positionUploadWorker: PositionUploadWorker
+    @Inject var zoneManager: TT2ZoneManager
 
     private var store: Store?
     private var uploadThreshold = 0
@@ -23,6 +25,8 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private var apiKey: String?
     private var timeFormatter: DateFormatter = DateFormatter()
     private var cancellable = Set<AnyCancellable>()
+    private var zoneEnterCancellable: AnyCancellable?
+    private var zoneExitCancellable: AnyCancellable?
 
     /// now we are uploading positions each time when they are 100
     private var recordedPositionsCount = 0
@@ -37,10 +41,8 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
         self.timeFormatter.timeZone = TimeZone(secondsFromGMT: 0)
         self.timeFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
-        
-       // TriggerEvent(rtlsOptionsId: "58", name: "2", timestamp: Date(), userPosition: CGPoint(x: 26.402997970581055, y: 18.589424133300781), appTrigger: nil, coordinateTrigger: TriggerEvent.CoordinateTrigger(point: CGPoint(x: 27.905910521783994, y: 15.941483636893281), radius: 5), shelfTrigger: nil, zoneTrigger: nil, tags: [:], metaData: [:])
-        
-        self.uploadTriggerEvents(request:PostTriggerEventRequest(name: "", timeStamp: "", userPosition: CGPoint(x: 26.402997970581055, y: 18.589424133300781), appTrigger: nil, tags: nil, metaData: nil))
+    
+        bindPublishers()
     }
 
     public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:]) {
@@ -98,6 +100,43 @@ final public class TT2AnalyticsManager: TT2Analytics {
             // navigationSpace.id
             recordPosition(rtlsOptionId: 18, point: point)
         }
+        
+        zoneManager.onNewPosition(currentPosition: point)
+    }
+    
+    public func bindPublishers() {
+        self.zoneEnterCancellable = zoneManager.zoneEnteredPublisher
+            .compactMap { $0 }
+            .sink { _ in
+                Logger.init().log(message: "zoneEnteredPublisher error")
+            } receiveValue: { [weak self] data in
+                guard let event = self?.postTriggerEvent(for: data) else { return }
+                
+                self?.uploadTriggerEvents(request: event)
+            }
+        
+        self.zoneExitCancellable = zoneManager.zoneExitedPublisher
+            .compactMap { $0 }
+            .sink { _ in
+                Logger.init().log(message: "zoneExitedPublisher error")
+            } receiveValue: { [weak self] data in
+                guard let event = self?.postTriggerEvent(for: data) else { return }
+                
+                self?.uploadTriggerEvents(request: event)
+            }
+    }
+    
+    private func postTriggerEvent(for event: TriggerEvent) ->PostTriggerEventRequest {
+        //TODO: remove hardcoded 18
+        return  PostTriggerEventRequest(rtlsOptionsId: "18", name: event.name,
+                                        timeStamp: self.timeFormatter.string(from: event.timestamp),
+                                        userPosition: event.userPosition,
+                                        appTrigger: event.appTrigger?.asPostTrigger,
+                                        coordinateTrigger: event.coordinateTrigger?.asPostTrigger,
+                                        shelfTrigger: event.shelfTrigger?.asPostTrigger,
+                                        zoneTrigger: event.zoneTrigger?.asPostTrigger,
+                                        tags: event.tags,
+                                        metaData: event.metaData)
     }
 }
 
@@ -161,7 +200,7 @@ private extension TT2AnalyticsManager {
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)
                 }
             }, receiveValue: { (_) in
-               /// use data
+                Logger.init(verbosity: .debug).log(message: "uploadTriggerEvents success")
             }).store(in: &cancellable)
     }
 
