@@ -15,21 +15,27 @@ import UIKit
 final public class TT2PositionManager: TT2Positioning {
     @Inject var mapFenceDataService: MapFenceDataService
 
+    public var positionBundlePublisher: CurrentValueSubject<PositionBundle?, PositionKitError> = .init(nil)
+    public var mapFanceDataExistPublisher: CurrentValueSubject<Bool?, Never> = .init(nil)
+    
     private var cancellable = Set<AnyCancellable>()
     private var publisherCancellable: AnyCancellable?
     private var positionBundleCancellable: AnyCancellable?
     public var positionKitManager: PositionManager
     private var map: IMapController?
     private var location: TT2Location?
-    public var positionBundlePublisher: CurrentValueSubject<PositionBundle?, PositionKitError> = .init(nil)
-    public var mapFanceDataExistPublisher: CurrentValueSubject<Bool?, Never> = .init(nil)
-
+    private var analyticseManager: TT2AnalyticsManager?
+    
     public init(positionManager: PositionManager) {
         self.positionKitManager = positionManager
     }
     
     public func setupMap(map: IMapController?) {
         self.map = map
+    }
+    
+    public func setupAnalyticsManager(manager: TT2AnalyticsManager) {
+        self.analyticseManager = manager
     }
 
     private func bindPublishers() {
@@ -40,6 +46,7 @@ final public class TT2PositionManager: TT2Positioning {
             } receiveValue: { [weak self] positionBundle in
                 self?.positionBundlePublisher.send(positionBundle)
                 DispatchQueue.main.async {
+                    self?.analyticseManager?.onNewPositionBundle(point: positionBundle.position)
                     self?.map?.updateUserLocation(newLocation: positionBundle.position, std: positionBundle.std ?? 0.0)
                 }
             }
@@ -80,13 +87,5 @@ public extension TT2PositionManager {
             Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
                                                 message: "StartUpdatingLocation error")
         }
-    }
-
-    func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence) -> MapData? {
-        let coordinateConverter = BaseCoordinateConverter(heightInPixels: mapFence.properties.height, widthInPixels: mapFence.properties.width, pixelPerMeter: rtlsOptions.pixelsPerMeter, pixelPerLatitude: 1000.0)
-        let image = UIImage(named: "userMarker")
-        let mapData = MapData(rtlsOptions: rtlsOptions, style: MapStyle(userMarkerImage: image), converter: coordinateConverter)
-        
-        return mapData
     }
 }

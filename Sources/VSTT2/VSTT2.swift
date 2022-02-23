@@ -20,6 +20,9 @@ public protocol VSTT2 {
 
     /// Method for initiate selected Store data
     func initiateStore(store: Store)
+    
+    /// Methode for creating MapData for MapSdk
+    func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence) -> MapData? 
 }
 
 public enum VSTT2Error: Error {
