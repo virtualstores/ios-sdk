@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreGraphics
+import VSFoundation
 
 internal struct MessageCardDto: Codable {
     internal enum CardType: Int, Codable {
@@ -92,6 +93,8 @@ internal struct MessageDto: Codable {
             return nil
         }
 
+        let zones = self.exposureDefinition.zones?.map { MapZone(id: String($0.rtlsOptionsId), name: $0.id, zone: $0.coordinates[0].map { CGPoint(x: $0[0], y: $0[1]) }, parentId: nil, description: nil)} ?? []
+        
         return Message(
             id: self.id,
             name: self.name,
@@ -102,7 +105,7 @@ internal struct MessageDto: Codable {
             image: URL(string: self.card.imageUrl ?? ""),
             exposureType: self.exposureDefinition.type.toExposureType(),
             radius: self.exposureDefinition.productRadiusInMeters ?? 10.0,
-            zones: self.exposureDefinition.zones?.map { MapZone(id: $0.rtlsOptionsId, name: $0.id, zone: $0.coordinates[0].map { CGPoint(x: $0[0], y: $0[1]) })} ?? [],
+            zones: zones,
             selectedProducts: self.exposureDefinition.selectedProducts?.map { Message.Product(storeId: $0.storeId, barcode: $0.barcode) },
             categories: self.exposureDefinition.clientCategories?.map { Message.Category(id: $0.id, clientId: $0.clientId, name: $0.name) },
             shelf: nil

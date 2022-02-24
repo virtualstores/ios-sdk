@@ -21,5 +21,15 @@ public struct MessagesParameters {
 extension MessagesParameters: Routing {
     var environmentConfig: EnvironmentConfig { config }
 
-    var path: String { "messages?storeId=\(storeId)" }
+    var method: RequestType { .GET }
+    
+    var path: String { "/messages" }
+    
+    
+    var queryItems: [String: String]? {
+        let parameters = ["storeId": String(storeId)] as [String: String]
+
+        return parameters
+    }
+    
 }

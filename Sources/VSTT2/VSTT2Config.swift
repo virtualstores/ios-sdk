@@ -71,6 +71,10 @@ struct VSTT2Config: Config {
         injector.map(ItemPositionService.self) {
             ItemPositionService(with: NetworkManager())
         }
+        
+        injector.map(MessagesService.self) {
+            MessagesService(with: NetworkManager())
+        }
     }
 
     private func configureManagers(_ injector: Injector) {
@@ -99,6 +103,10 @@ struct VSTT2Config: Config {
         
         injector.map(TT2ZoneManager.self) {
             TT2ZoneManager()
+        }
+        
+        injector.map(TT2AreaEventManager.self) {
+            TT2AreaEventManager()
         }
     }
 
