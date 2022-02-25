@@ -28,7 +28,7 @@ public protocol VSTT2Floor {
     /// Messages  for showing in floor
     var messages: [Message]? { get }
     
-    var mapDataPublisher: CurrentValueSubject<(zones: [MapZone]?, points: [MapZonePoint]?), Never> { get }
+    var mapDataPublisher: CurrentValueSubject<(mapFence: MapFence?, zones: [MapZone]?, points: [MapZonePoint]?), Never> { get }
 
     /// Methode for setup Active Floor with options
     func setActiveFloor(with rtlsOptions: RtlsOptions)

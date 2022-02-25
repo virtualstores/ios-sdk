@@ -16,7 +16,6 @@ final public class TT2PositionManager: TT2Positioning {
     @Inject var mapFenceDataService: MapFenceDataService
 
     public var positionBundlePublisher: CurrentValueSubject<PositionBundle?, PositionKitError> = .init(nil)
-    public var mapFanceDataExistPublisher: CurrentValueSubject<Bool?, Never> = .init(nil)
     
     private var cancellable = Set<AnyCancellable>()
     private var publisherCancellable: AnyCancellable?

@@ -19,6 +19,8 @@ public class TT2EventManager: TT2Event {
     public var pointOfInterestPublisher: CurrentValueSubject<PointOfInterest?, Never> = .init(nil)
     
     private var activeStoreId: Int64?
+    private var rtlsOptionsId: Int64 = 0
+
     private var messages: [Message] = []
     private var latestMessageLoad: Date?
     private let reloadMessageInterval: TimeInterval = 3600.0
@@ -27,9 +29,10 @@ public class TT2EventManager: TT2Event {
     private var cancellable = Set<AnyCancellable>()
     private var zoneEnterCancellable: AnyCancellable?
     
-    internal func setup(with storeId: Int64, zones: [Zone]) {
+    internal func setup(with storeId: Int64, zones: [Zone], rtlsOptionsId: Int64) {
         self.activeStoreId = storeId
         self.zones = zones
+        self.rtlsOptionsId = rtlsOptionsId
         
         zoneEventDetectore.setup(with: zones)
         loadMessagesIfNeeded()
@@ -104,7 +107,7 @@ public class TT2EventManager: TT2Event {
         let appTrigger = TriggerEvent.EventType.appTrigger(TriggerEvent.AppTrigger(event: message.name, zoneIds: zoneIds))
         let type = message.cardType == .big ? "BIG" : "SMALL"
         
-        let event = TriggerEvent(rtlsOptionsId: "", name: message.name, timestamp: Date(), userPosition: .zero, eventType: appTrigger, tags:  ["messageShown": String(message.id)], metaData: ["Title": message.title, "Body": message.description, "Size": type])
+        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, timestamp: Date(), userPosition: .zero, eventType: appTrigger, tags:  ["messageShown": String(message.id)], metaData: ["Title": message.title, "Body": message.description, "Size": type])
         
         self.zoneEventDetectore.add(event: event)
     }
@@ -112,7 +115,7 @@ public class TT2EventManager: TT2Event {
     private func createCoordinatEvents(for message: Message) {
         let coordinateTrigger = TriggerEvent.EventType.coordinateTrigger(TriggerEvent.CoordinateTrigger(point: .zero, radius: message.radius))
         
-        let event = TriggerEvent(rtlsOptionsId: "", name: message.name, timestamp: Date(), userPosition: .zero, eventType: coordinateTrigger, tags: [:], metaData: [:])
+        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, timestamp: Date(), userPosition: .zero, eventType: coordinateTrigger, tags: [:], metaData: [:])
         self.coordinateEventDetectore.add(event: event)
     }
 }

@@ -25,8 +25,7 @@ public class VSTT2FloorManager: VSTT2Floor {
     public var offsetZones: Data?
     public var navgraph: Data?
     
-    public var mapDataPublisher: CurrentValueSubject<(zones: [MapZone]?, points: [MapZonePoint]?), Never> = .init((zones: nil, points: nil))
-    public var floorDataLoaded: CurrentValueSubject<MapFence?, Never> = .init(nil)
+    public var mapDataPublisher: CurrentValueSubject<(mapFence: MapFence?, zones: [MapZone]?, points: [MapZonePoint]?), Never> = .init((mapFence: nil, zones: nil, points: nil))
 
     public var startCodes: PositionedCode? {
         self.activeFloor?.scanLocations?.first(where: { $0.type == .start })
@@ -37,6 +36,7 @@ public class VSTT2FloorManager: VSTT2Floor {
     }
 
     private var cancellable = Set<AnyCancellable>()
+    private let dispatchGroup = DispatchGroup()
 
     init() {}
     
@@ -62,11 +62,17 @@ private extension VSTT2FloorManager {
         getMapFenceData()
         getMapZones()
         getNavGraph()
+        
+        dispatchGroup.notify(queue: .main) {
+            if let mapFance = self.mapFence {
+                self.mapDataPublisher.send((mapFence: mapFance, zones: self.mapZones, points: self.mapZonePoints))
+            }
+        }
     }
     
     private func getMapFenceData() {
         guard let url = self.activeFloor?.mapFenceUrl  else { return }
-        
+        dispatchGroup.enter()
         let parameters = MapFenceDataParameters(url: url)
         mapFenceDataService
             .call(with: parameters)
@@ -79,13 +85,14 @@ private extension VSTT2FloorManager {
                 }
             }, receiveValue: { [weak self] (data) in
                 self?.mapFence = data
-                self?.floorDataLoaded.send(data)
+                self?.dispatchGroup.leave()
             }).store(in: &cancellable)
     }
     
     private func getMapZones() {
         guard let mapZonesUrl = self.activeFloor?.mapZonesUrl, let url = URL(string: mapZonesUrl) else { return }
-        
+        dispatchGroup.enter()
+
         downloadManager.loadData(from: url) { result in
             switch result {
             case .success(let data):
@@ -93,8 +100,7 @@ private extension VSTT2FloorManager {
                 
                 self.mapZones = mapData.mapzones
                 self.mapZonePoints = mapData.mapPoints
-                self.mapDataPublisher.send((zones: self.mapZones, points: self.mapZonePoints))
-                print(self.mapZones)
+                self.dispatchGroup.leave()
             case .failure(let error):
                 Logger.init().log(message: error.localizedDescription)
             }
@@ -103,11 +109,13 @@ private extension VSTT2FloorManager {
     
     private func getNavGraph() {
         guard let navGraphUrl = self.activeFloor?.navGraphUrl, let url = URL(string: navGraphUrl) else { return }
-        
+        dispatchGroup.enter()
+
         downloadManager.loadData(from: url) { result in
             switch result {
             case .success(let data):
                 self.navgraph = data
+                self.dispatchGroup.leave()
             case .failure(let error):
                 Logger.init().log(message: error.localizedDescription)
             }

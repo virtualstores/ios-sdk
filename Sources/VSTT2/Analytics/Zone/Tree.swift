@@ -12,12 +12,14 @@ public class Tree {
     public let root: Zone
     public private(set) var activeZones: [Zone] = []
     public private(set) var floorLevels: [Int: String] = [:]
+    public internal(set) var currentFloorLevel: Int
     
     private let converter: BaseCoordinateConverter
     
-    init(root: Zone, converter: BaseCoordinateConverter) {
+    init(root: Zone, converter: BaseCoordinateConverter, currentFloorLevel: Int = 0) {
         self.root = root
         self.converter = converter
+        self.currentFloorLevel = currentFloorLevel
     }
     
     public func print() {
@@ -87,7 +89,7 @@ public class Tree {
     }
 
     public func getZoneWith(name: String) -> [Zone]? {
-        let zones = self.getAllZones()?.all(where: { $0.name == name })
+        let zones = self.getAllZones()?.all(where: { $0.name == name && $0.floorLevel == currentFloorLevel })
         
         return zones
     }
