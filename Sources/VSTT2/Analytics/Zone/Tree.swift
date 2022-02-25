@@ -86,6 +86,12 @@ public class Tree {
       return zones.first(where: { $0.id == id })
     }
 
+    public func getZoneWith(name: String) -> [Zone]? {
+        let zones = self.getAllZones()?.all(where: { $0.name == name })
+        
+        return zones
+    }
+    
     public func getZonesFor(floorLevel: Int) -> [Zone]? {
         let zones = self.getAllZones()?.all(where: { $0.floorLevel == floorLevel })
         return zones

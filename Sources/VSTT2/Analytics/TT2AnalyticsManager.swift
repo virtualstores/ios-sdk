@@ -17,7 +17,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var uploadTriggersService: UploadTriggersService
     @Inject var uploadScanEventsService: UploadScanEventsService
     @Inject var positionUploadWorker: PositionUploadWorker
+    
+    ///ZoneManager is helping handle in-out events
     @Inject var zoneManager: TT2ZoneManager
+    @Inject public var areaEvenManager: TT2EventManager
 
     private var store: Store?
     private var uploadThreshold = 0
@@ -87,6 +90,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     public func stopVisit() {
         do {
             guard let points = try positionUploadWorker.getPoints() else { return }
+            
             self.uploadData(recordedPositions: points)
             self.recordedPositionsCount = 0
         } catch {
@@ -102,6 +106,12 @@ final public class TT2AnalyticsManager: TT2Analytics {
         }
         
         zoneManager.onNewPosition(currentPosition: point)
+        areaEvenManager.onNewPosition(currentPosition: point)
+    }
+    
+    public func addTriggerEvent(for event: TriggerEvent) {
+        let event = postTriggerEvent(for: event)
+        uploadTriggerEvents(request: event)
     }
     
     public func bindPublishers() {
@@ -128,19 +138,22 @@ final public class TT2AnalyticsManager: TT2Analytics {
     
     private func postTriggerEvent(for event: TriggerEvent) ->PostTriggerEventRequest {
         //TODO: remove hardcoded 18
-        return  PostTriggerEventRequest(rtlsOptionsId: "18", name: event.name,
+        
+        let eventType = event.eventType?.getTrigger()
+        return  PostTriggerEventRequest(rtlsOptionsId: event.rtlsOptionsId, name: event.name,
                                         timeStamp: self.timeFormatter.string(from: event.timestamp),
                                         userPosition: event.userPosition,
-                                        appTrigger: event.appTrigger?.asPostTrigger,
-                                        coordinateTrigger: event.coordinateTrigger?.asPostTrigger,
-                                        shelfTrigger: event.shelfTrigger?.asPostTrigger,
-                                        zoneTrigger: event.zoneTrigger?.asPostTrigger,
+                                        appTrigger: eventType?.appTrigger?.asPostTrigger,
+                                        coordinateTrigger: eventType?.coordinateTrigger?.asPostTrigger,
+                                        shelfTrigger: eventType?.shelfTrigger?.asPostTrigger,
+                                        zoneTrigger: eventType?.zoneTrigger?.asPostTrigger,
                                         tags: event.tags,
                                         metaData: event.metaData)
     }
 }
 
 private extension TT2AnalyticsManager {
+    // MARK: Heatmap data
     func recordPosition(rtlsOptionId: Int64, point: CGPoint) {
         let id = String(rtlsOptionId)
 
@@ -163,7 +176,8 @@ private extension TT2AnalyticsManager {
     private func checkIfPartialUpload() -> Bool {
         return recordedPositionsCount > self.uploadThreshold
     }
-
+    
+    ///Uploading Heatmap data
     private func uploadData(recordedPositions: [String: [RecordedPosition]]) {
         guard let visitId = visitId, let apiKey = apiKey else { return }
 
@@ -185,6 +199,7 @@ private extension TT2AnalyticsManager {
             }).store(in: &cancellable)
     }
 
+    // MARK: Trigger Events
     private func uploadTriggerEvents(request: PostTriggerEventRequest) {
         guard let visitId = visitId, let apiKey = apiKey else { return }
 

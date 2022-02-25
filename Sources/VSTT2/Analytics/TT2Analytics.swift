@@ -27,6 +27,8 @@ public protocol TT2Analytics {
 
     /// Updates  position data each time
     func onNewPositionBundle(point: CGPoint)
+    
+    func addTriggerEvent(for event: TriggerEvent)
 }
 
 enum TT2AnalyticsError: Error {

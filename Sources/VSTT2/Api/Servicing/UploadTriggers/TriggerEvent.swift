@@ -7,16 +7,14 @@
 
 import Foundation
 import CoreGraphics
+import VSFoundation
 
 public class TriggerEvent {
   public let rtlsOptionsId: String
   public let name: String
   public let timestamp: Date
   public let userPosition: CGPoint
-  public let appTrigger: AppTrigger?
-  public let coordinateTrigger: CoordinateTrigger?
-  public let shelfTrigger: ShelfTrigger?
-  public let zoneTrigger: ZoneTrigger?
+  public var eventType: EventType?
   public var tags: [String: String]
   public var metaData: [String: String]
 
@@ -25,10 +23,7 @@ public class TriggerEvent {
     name: String,
     timestamp: Date,
     userPosition: CGPoint,
-    appTrigger: AppTrigger? = nil,
-    coordinateTrigger: CoordinateTrigger? = nil,
-    shelfTrigger: ShelfTrigger? = nil,
-    zoneTrigger: ZoneTrigger? = nil,
+    eventType: EventType? = nil,
     tags: [String: String] = [:],
     metaData: [String: String] = [:]
   ) {
@@ -36,14 +31,35 @@ public class TriggerEvent {
     self.name = name
     self.timestamp = timestamp
     self.userPosition = userPosition
-    self.appTrigger = appTrigger
-    self.coordinateTrigger = coordinateTrigger
-    self.shelfTrigger = shelfTrigger
-    self.zoneTrigger = zoneTrigger
+    self.eventType = eventType
     self.tags = tags
     self.metaData = metaData
   }
 
+    public enum EventType {
+        case appTrigger(AppTrigger)
+        case coordinateTrigger(CoordinateTrigger)
+        case shelfTrigger(ShelfTrigger)
+        case zoneTrigger(ZoneTrigger)
+        
+        
+        func getTrigger() -> (appTrigger: AppTrigger?, coordinateTrigger: CoordinateTrigger?, shelfTrigger: ShelfTrigger?, zoneTrigger: ZoneTrigger?) {
+            
+            var app: AppTrigger?
+            var coordinate: CoordinateTrigger?
+            var shelf: ShelfTrigger?
+            var zone: ZoneTrigger?
+            switch self {
+            case .appTrigger(let appTrigger): app = appTrigger
+            case .coordinateTrigger(let coordinateTrigger): coordinate = coordinateTrigger
+            case .shelfTrigger(let shefTrigger): shelf = shefTrigger
+            case .zoneTrigger(let zoneTrigger): zone = zoneTrigger
+            }
+            
+            return (appTrigger: app, coordinateTrigger: coordinate, shelfTrigger: shelf, zoneTrigger: zone)
+        }
+    }
+     
   public func add(tags: [String: String]) {
     tags.forEach { (key, value) in
       self.tags[key] = value
@@ -58,6 +74,7 @@ public class TriggerEvent {
 
   public struct AppTrigger {
     public let event: String
+    public let zoneIds: [String]
 
     var asPostTrigger: PostTriggerEventRequest.AppTrigger {
       PostTriggerEventRequest.AppTrigger(event: event)

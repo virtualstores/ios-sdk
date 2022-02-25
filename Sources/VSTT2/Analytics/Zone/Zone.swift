@@ -23,6 +23,7 @@ public class Zone: Equatable {
     internal var navigationPoint: CGPoint?
     private let converter: BaseCoordinateConverter
 
+    private var bezierPath: UIBezierPath?
 
     init(id:String, name: String, polygon: [CGPoint] = [], navigationPoint: CGPoint? = nil, parent: Zone? = nil, children: Dictionary<String, Zone> = [:], searchTerms: [String] = [], floorLevel: Int, converter: BaseCoordinateConverter) {
         self.id = id
@@ -96,6 +97,28 @@ public class Zone: Equatable {
         }
         
         return !list.isEmpty ? list : nil
+    }
+    
+    func contains(point: CGPoint) -> Bool {
+        if self.bezierPath == nil {
+            guard points.count > 0 else {
+                return false
+            }
+            
+            let path = UIBezierPath()
+            path.move(to: points[0])
+            for point in points {
+                path.addLine(to: point)
+            }
+            path.close()
+            self.bezierPath = path
+        }
+        
+        guard let path = self.bezierPath else {
+            return false
+        }
+        
+        return path.contains(point)
     }
 
     /// Uses name parameter for comparison

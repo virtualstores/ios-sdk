@@ -105,8 +105,16 @@ struct VSTT2Config: Config {
             TT2ZoneManager()
         }
         
-        injector.map(TT2AreaEventManager.self) {
-            TT2AreaEventManager()
+        injector.map(TT2EventManager.self) {
+            TT2EventManager()
+        }
+        
+        injector.map(ZoneEventDetector.self) {
+            ZoneEventDetector()
+        }
+        
+        injector.map(CoordinateEventDetector.self) {
+            CoordinateEventDetector()
         }
     }
 
