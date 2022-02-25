@@ -15,7 +15,7 @@ protocol EventDetector {
     var events: [TriggerEvent] { get }
     
     /// Zoone event publisher for sending data to the app
-    var zooneEventPublisher: CurrentValueSubject<TriggerEvent?, Never> { get }
+    var eventPublisher: CurrentValueSubject<TriggerEvent?, Never> { get }
 
     /// Setup methode for using zone list for checking user zone place
     func setup(with zones: [Zone])

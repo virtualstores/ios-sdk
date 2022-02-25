@@ -18,7 +18,7 @@ public protocol TT2Event {
     var pointOfInterestPublisher: CurrentValueSubject<PointOfInterest?, Never> { get }
     
     /// Methode for being able to addEvent
-    func addEvent(with id: String, event: TriggerEvent)
+    func addEvent(event: TriggerEvent)
 
     /// Methode for being able to removeEvent
     func removeEvent(with id: String)

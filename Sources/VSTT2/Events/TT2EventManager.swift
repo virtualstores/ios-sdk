@@ -28,6 +28,8 @@ public class TT2EventManager: TT2Event {
     
     private var cancellable = Set<AnyCancellable>()
     private var zoneEnterCancellable: AnyCancellable?
+    private var coordinateEnterCancellable: AnyCancellable?
+    
     
     internal func setup(with storeId: Int64, zones: [Zone], rtlsOptionsId: Int64) {
         self.activeStoreId = storeId
@@ -39,7 +41,15 @@ public class TT2EventManager: TT2Event {
         bindPubloshers()
     }
     
-    public func addEvent(with id: String, event: TriggerEvent) {}
+    public func addEvent(event: TriggerEvent) {
+        switch event.eventType {
+        case .appTrigger(_):
+            zoneEventDetectore.add(event: event)
+        case .coordinateTrigger(_):
+            coordinateEventDetectore.add(event: event)
+        default: break
+        }
+    }
 
     public func removeEvent(with id: String) { }
     
@@ -49,12 +59,20 @@ public class TT2EventManager: TT2Event {
     }
     
     public func bindPubloshers() {
-        self.zoneEnterCancellable = zoneEventDetectore.zooneEventPublisher
+        self.zoneEnterCancellable = zoneEventDetectore.eventPublisher
             .compactMap { $0 }
             .sink { _ in
                 Logger.init().log(message: "zoneEnteredPublisher error")
             } receiveValue: { [weak self] event in
                 
+                self?.messageEventPublisher.send( event)
+            }
+        
+        self.coordinateEnterCancellable = coordinateEventDetectore.eventPublisher
+            .compactMap { $0 }
+            .sink { _ in
+                Logger.init().log(message: "zoneEnteredPublisher error")
+            } receiveValue: { [weak self] event in
                 self?.messageEventPublisher.send( event)
             }
     }
@@ -107,7 +125,7 @@ public class TT2EventManager: TT2Event {
         let appTrigger = TriggerEvent.EventType.appTrigger(TriggerEvent.AppTrigger(event: message.name, zoneIds: zoneIds))
         let type = message.cardType == .big ? "BIG" : "SMALL"
         
-        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, timestamp: Date(), userPosition: .zero, eventType: appTrigger, tags:  ["messageShown": String(message.id)], metaData: ["Title": message.title, "Body": message.description, "Size": type])
+        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, description: message.description, eventType: appTrigger, tags:  ["messageShown": String(message.id)], metaData: ["Title": message.title, "Body": message.description, "Size": type])
         
         self.zoneEventDetectore.add(event: event)
     }
@@ -115,7 +133,7 @@ public class TT2EventManager: TT2Event {
     private func createCoordinatEvents(for message: Message) {
         let coordinateTrigger = TriggerEvent.EventType.coordinateTrigger(TriggerEvent.CoordinateTrigger(point: .zero, radius: message.radius))
         
-        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, timestamp: Date(), userPosition: .zero, eventType: coordinateTrigger, tags: [:], metaData: [:])
+        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, description: message.description, eventType: coordinateTrigger, tags: [:], metaData: [:])
         self.coordinateEventDetectore.add(event: event)
     }
 }

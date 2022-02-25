@@ -13,7 +13,7 @@ import Combine
 internal class ZoneEventDetector: EventDetector {
     var events: [TriggerEvent] = []
     
-    public var zooneEventPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
+    public var eventPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
 
     private var zoones: [Zone]?
 
@@ -34,8 +34,11 @@ internal class ZoneEventDetector: EventDetector {
             guard let zones = self.zoones?.all(where: { $0.contains(point: currentPosition)}) else { return }
             
             for zone in zones {
-                if let appEvent = event.eventType?.getTrigger().appTrigger, appEvent.zoneIds.contains(zone.name) {
-                    self.zooneEventPublisher.send(event)
+                if let appEvent = event.eventType.getTrigger().appTrigger, appEvent.zoneIds.contains(zone.name) {
+                    event.updateEventData(for: currentPosition, timestamp: Date())
+                    guard event.userPosition != .zero else { return }
+                    
+                    self.eventPublisher.send(event)
                 }
             }
         }

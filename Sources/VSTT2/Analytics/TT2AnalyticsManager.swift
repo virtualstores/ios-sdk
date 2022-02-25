@@ -17,10 +17,8 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var uploadTriggersService: UploadTriggersService
     @Inject var uploadScanEventsService: UploadScanEventsService
     @Inject var positionUploadWorker: PositionUploadWorker
-    
-    ///ZoneManager is helping handle in-out events
     @Inject var zoneManager: TT2ZoneManager
-    @Inject public var areaEvenManager: TT2EventManager
+    @Inject public var evenManager: TT2EventManager
 
     private var store: Store?
     private var uploadThreshold = 0
@@ -30,18 +28,20 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private var cancellable = Set<AnyCancellable>()
     private var zoneEnterCancellable: AnyCancellable?
     private var zoneExitCancellable: AnyCancellable?
-
+    private var isRecording: Bool = false
+    private var rtlsOptionId: Int64?
     /// now we are uploading positions each time when they are 100
     private var recordedPositionsCount = 0
-    private var isRecording: Bool = false
 
+    public var startHeatMapCollectingPublisher: CurrentValueSubject<Void?, Never> = .init(nil)
+    
     public init() {}
 
-    public func setup(with store: Store, uploadThreshold: Int = 100) {
+    public func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int = 100) {
         self.store = store
         self.apiKey = store.statServerConnection.apiKey
         self.uploadThreshold = uploadThreshold
-
+        self.rtlsOptionId = rtlsOptionId
         self.timeFormatter.timeZone = TimeZone(secondsFromGMT: 0)
         self.timeFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
     
@@ -71,6 +71,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
                 }
             }, receiveValue: { [weak self] (data) in
                 self?.visitId = data.visitId
+                self?.startHeatMapCollectingPublisher.send(())
             }).store(in: &cancellable)
 
     }
@@ -101,12 +102,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
     public func onNewPositionBundle(point: CGPoint) {
         if isRecording {
-            // navigationSpace.id
-            recordPosition(rtlsOptionId: 18, point: point)
+            recordPosition(rtlsOptionId: self.rtlsOptionId ?? 0, point: point)
+            zoneManager.onNewPosition(currentPosition: point)
+            evenManager.onNewPosition(currentPosition: point)
         }
-        
-        zoneManager.onNewPosition(currentPosition: point)
-        areaEvenManager.onNewPosition(currentPosition: point)
     }
     
     public func addTriggerEvent(for event: TriggerEvent) {
@@ -137,16 +136,14 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
     
     private func postTriggerEvent(for event: TriggerEvent) ->PostTriggerEventRequest {
-        //TODO: remove hardcoded 18
-        
-        let eventType = event.eventType?.getTrigger()
+        let eventType = event.eventType.getTrigger()
         return  PostTriggerEventRequest(rtlsOptionsId: event.rtlsOptionsId, name: event.name,
                                         timeStamp: self.timeFormatter.string(from: event.timestamp),
                                         userPosition: event.userPosition,
-                                        appTrigger: eventType?.appTrigger?.asPostTrigger,
-                                        coordinateTrigger: eventType?.coordinateTrigger?.asPostTrigger,
-                                        shelfTrigger: eventType?.shelfTrigger?.asPostTrigger,
-                                        zoneTrigger: eventType?.zoneTrigger?.asPostTrigger,
+                                        appTrigger: eventType.appTrigger?.asPostTrigger,
+                                        coordinateTrigger: eventType.coordinateTrigger?.asPostTrigger,
+                                        shelfTrigger: eventType.shelfTrigger?.asPostTrigger,
+                                        zoneTrigger: eventType.zoneTrigger?.asPostTrigger,
                                         tags: event.tags,
                                         metaData: event.metaData)
     }

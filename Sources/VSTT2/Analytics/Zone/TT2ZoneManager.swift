@@ -11,6 +11,7 @@ import Combine
 import VSFoundation
 import VSPositionKit
 
+///ZoneManager is helping handle in-out events
 public class TT2ZoneManager: TT2Zone {
     public var zoneEnteredPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
     public var zoneExitedPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
@@ -34,7 +35,6 @@ public class TT2ZoneManager: TT2Zone {
     
     public func onNewPosition(currentPosition: CGPoint) {
         zonesPoint.forEach { polygon in
-            print(polygon)
             if isPointInside(point: currentPosition, coordinates: polygon) {
                 if !self.activeInside.contains(polygon) {
                     if let event = createZoomEnteredEvent(for: currentPosition, polygon: polygon) {
@@ -102,7 +102,7 @@ public class TT2ZoneManager: TT2Zone {
         insideZones[groupId] = zone.polygon
         
         let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: groupId, type: .enter))
-        return TriggerEvent(rtlsOptionsId: String(rtlsOptions.id), name: zone.name, timestamp: Date(),
+        return TriggerEvent(rtlsOptionsId: String(rtlsOptions.id), name: zone.name, description: "", timestamp: Date(),
                             userPosition: currentPosition, eventType: zoneTrigger)
     }
     
@@ -113,7 +113,7 @@ public class TT2ZoneManager: TT2Zone {
             
             let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: key, type: .exit))
             
-            let event = TriggerEvent(rtlsOptionsId: String(rtlsOptions.id),name: zone.name, timestamp: Date(),
+            let event = TriggerEvent(rtlsOptionsId: String(rtlsOptions.id),name: zone.name, description: "", timestamp: Date(),
                                      userPosition: currentPosition, eventType: zoneTrigger)
             
             zoneExitedPublisher.send(event)
