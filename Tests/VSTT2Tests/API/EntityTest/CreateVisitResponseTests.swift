@@ -6,7 +6,7 @@
 // Copyright Virtual Stores - 2022
 
 import XCTest
-@testable import VSEngineWrapper
+//@testable import VSEngineWrapper
 import VSTT2
 
 extension String {

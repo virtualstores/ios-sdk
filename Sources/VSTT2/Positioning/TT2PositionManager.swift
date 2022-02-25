@@ -55,10 +55,22 @@ final public class TT2PositionManager: TT2Positioning {
 public extension TT2PositionManager {
     func startUpdatingLocation(_ location: TT2Location) throws {
         try positionKitManager.start()
-        
-        positionKitManager.startNavigation(with: location.course.degrees,
-                                           xPosition: location.position.xPosition,
-                                           yPosition: location.position.yPosition)
+
+        if location.uncertainAngle {
+            // TODO: Get north from RTLS options
+            let north = 0.0//TT2.shared.getRTLSForCurrentFloorLevel()?.north ?? 0.0
+            let heading = positionKitManager.locationHeadingPublisher.value
+            let course = TT2Course(fromDegrees: -heading.magneticHeading + 90 - north)
+            positionKitManager.startNavigation(with: course.degrees,
+                                               xPosition: location.position.xPosition,
+                                               yPosition: location.position.yPosition,
+                                               uncertainAngle: location.uncertainAngle)
+        } else {
+            positionKitManager.startNavigation(with: location.course.degrees,
+                                               xPosition: location.position.xPosition,
+                                               yPosition: location.position.yPosition,
+                                               uncertainAngle: location.uncertainAngle)
+        }
 
         bindPublishers()
     }
@@ -79,7 +91,7 @@ public extension TT2PositionManager {
 
     func synchronize(code: PositionedCode, syncDirection: Bool = false) {
         let location = TT2Location(position: TT2Position(point: code.point, offset: CGPoint(x: 0.0, y: 0.0)),
-                                   course: TT2Course(fromDegrees: code.direction), syncDirection: syncDirection)
+                                   course: TT2Course(fromDegrees: code.direction), syncDirection: syncDirection, uncertainAngle: false)
         do {
             try startUpdatingLocation(location)
         } catch {
