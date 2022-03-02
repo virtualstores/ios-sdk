@@ -78,9 +78,14 @@ struct VSTT2Config: Config {
     }
 
     private func configureManagers(_ injector: Injector) {
+        injector.map(TT2PositionManager.self) {
+            TT2PositionManager(positionManager: PositionManager())
+        }
+        
         injector.map(DownloadManager.self) {
             DownloadManager()
         }
+        
         injector.map(Persistence.self) {
             Persistence()
         }
@@ -115,6 +120,10 @@ struct VSTT2Config: Config {
         
         injector.map(CoordinateEventDetector.self) {
             CoordinateEventDetector()
+        }
+        
+        injector.map(TT2AnalyticsManager.self) {
+            TT2AnalyticsManager()
         }
     }
 
