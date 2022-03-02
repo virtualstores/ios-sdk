@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreGraphics
+import VSFoundation
 
 public struct Store: Codable {
     public let id: Int64
