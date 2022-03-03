@@ -12,10 +12,6 @@ import VSFoundation
 import CoreGraphics
 
 public protocol INavigation {
-    /// Publisher for position Bundle
-    /// //need to be done inside
-    var positionBundlePublisher: CurrentValueSubject<PositionBundle?, PositionKitError> { get }
-
     /// Synchronize the position manager with a currently known position.
     func start(_ location: TT2Location) throws
 

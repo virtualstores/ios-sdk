@@ -14,8 +14,6 @@ import UIKit
 
 final public class Navigation: INavigation {
     @Inject var mapFenceDataService: MapFenceDataService
-
-    public var positionBundlePublisher: CurrentValueSubject<PositionBundle?, PositionKitError> = .init(nil)
     
     private var cancellable = Set<AnyCancellable>()
     private var publisherCancellable: AnyCancellable?
@@ -40,12 +38,11 @@ final public class Navigation: INavigation {
     private func bindPublishers() {
         positionBundleCancellable = positionKitManager.positionPublisher
             .compactMap{ $0 }
-            .sink { [weak self] error in
-                self?.positionBundlePublisher.send(completion: error)
+            .sink { error in
+                Logger.init().log(message: "PositionKitError noData")
             } receiveValue: { [weak self] positionBundle in
-                self?.positionBundlePublisher.send(positionBundle)
+                self?.analyticseManager?.onNewPositionBundle(point: positionBundle.position)
                 DispatchQueue.main.async {
-                    self?.analyticseManager?.onNewPositionBundle(point: positionBundle.position)
                     self?.map?.updateUserLocation(newLocation: positionBundle.position, std: positionBundle.std ?? 0.0)
                 }
             }
