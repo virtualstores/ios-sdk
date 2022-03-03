@@ -17,7 +17,6 @@ public class VSTT2FloorManager: VSTT2Floor {
     public var activeFloor: RtlsOptions?
     public var floors: [RtlsOptions] = []
     public var pathFinder: VSPathFinder?
-    public var mapFence: MapFence?
     public var zones: Data?
     public var messages: [Message]?
     public var mapZones: [MapZone] = []
@@ -25,8 +24,6 @@ public class VSTT2FloorManager: VSTT2Floor {
     public var offsetZones: Data?
     public var navgraph: Data?
     
-    public var mapDataPublisher: CurrentValueSubject<(mapFence: MapFence?, zones: [MapZone]?, points: [MapZonePoint]?), Never> = .init((mapFence: nil, zones: nil, points: nil))
-
     public var startCodes: PositionedCode? {
         self.activeFloor?.scanLocations?.first(where: { $0.type == .start })
     }
@@ -38,14 +35,12 @@ public class VSTT2FloorManager: VSTT2Floor {
     private var cancellable = Set<AnyCancellable>()
     private let dispatchGroup = DispatchGroup()
 
+    private var mapFence: MapFence?
+
     init() {}
     
     public func setActiveFloor(with rtlsOptions: RtlsOptions) {
-        guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
-                
-        self.activeFloor = rtlsOptions
-        
-        getFloorData()
+        self.setActiveFloor(with: rtlsOptions) { (mapFence, zones, points) in }
     }
     
     public func setActiveFloor(with floorLevel: Int) { }
@@ -55,17 +50,27 @@ public class VSTT2FloorManager: VSTT2Floor {
     func setupFloors(with rtlsOptions: [RtlsOptions]) {
         self.floors = rtlsOptions
     }
+    
+    internal func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence?, zones: [MapZone]?, points: [MapZonePoint]?)) -> ()) {
+        guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
+                
+        self.activeFloor = rtlsOptions
+        
+        getFloorData { (mapFence, zones, points) in
+            completion((mapFence: mapFence, zones: zones, points: points))
+        }
+    }
 }
 
 private extension VSTT2FloorManager {
-    private func getFloorData() {
+    private func getFloorData(completion: @escaping ((mapFence: MapFence?, zones: [MapZone]?, points: [MapZonePoint]?)) -> ()) {
         getMapFenceData()
         getMapZones()
         getNavGraph()
         
         dispatchGroup.notify(queue: .main) {
             if let mapFance = self.mapFence {
-                self.mapDataPublisher.send((mapFence: mapFance, zones: self.mapZones, points: self.mapZonePoints))
+                completion((mapFence: mapFance, zones: self.mapZones, points: self.mapZonePoints))
             }
         }
     }

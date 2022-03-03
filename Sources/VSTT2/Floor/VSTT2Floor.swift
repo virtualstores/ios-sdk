@@ -19,17 +19,12 @@ public protocol VSTT2Floor {
     /// PathFinder for floor
     var pathFinder: VSPathFinder? { get }
     
-    /// MapFence data for floor
-    var mapFence: MapFence? { get }
-    
     /// Zones  in floor
     var zones: Data? { get }
     
     /// Messages  for showing in floor
     var messages: [Message]? { get }
     
-    var mapDataPublisher: CurrentValueSubject<(mapFence: MapFence?, zones: [MapZone]?, points: [MapZonePoint]?), Never> { get }
-
     /// Methode for setup Active Floor with options
     func setActiveFloor(with rtlsOptions: RtlsOptions)
     
