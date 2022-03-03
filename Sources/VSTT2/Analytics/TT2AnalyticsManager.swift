@@ -32,19 +32,20 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private var rtlsOptionId: Int64?
     /// now we are uploading positions each time when they are 100
     private var recordedPositionsCount = 0
+    private var config: EnvironmentConfig?
 
     public var startHeatMapCollectingPublisher: CurrentValueSubject<Void?, Never> = .init(nil)
     
     public init() {}
 
-    public func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int = 100) {
+    public func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int = 100, config: EnvironmentConfig?) {
         self.store = store
         self.apiKey = store.statServerConnection.apiKey
         self.uploadThreshold = uploadThreshold
         self.rtlsOptionId = rtlsOptionId
         self.timeFormatter.timeZone = TimeZone(secondsFromGMT: 0)
         self.timeFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
-    
+        self.config = config
         bindPublishers()
     }
 
@@ -59,7 +60,8 @@ final public class TT2AnalyticsManager: TT2Analytics {
                                                 stop: date,
                                                 deviceInformation: deviceInformation,
                                                 tags: tags,
-                                                metaData: metaData)
+                                                metaData: metaData,
+                                                config: config)
         createVisitsService
             .call(with: parameters)
             .sink(receiveCompletion: { (completion) in
@@ -100,7 +102,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         }
     }
 
-    public func onNewPositionBundle(point: CGPoint) {
+    internal func onNewPositionBundle(point: CGPoint) {
         if isRecording {
             recordPosition(rtlsOptionId: self.rtlsOptionId ?? 0, point: point)
             zoneManager.onNewPosition(currentPosition: point)
@@ -174,11 +176,11 @@ private extension TT2AnalyticsManager {
         return recordedPositionsCount > self.uploadThreshold
     }
     
-    ///Uploading Heatmap data
+    ///Uploading Heatmap data, config: <#EnvironmentConfig#>
     private func uploadData(recordedPositions: [String: [RecordedPosition]]) {
         guard let visitId = visitId, let apiKey = apiKey else { return }
 
-        let parameters = UploadPositionsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions)
+        let parameters = UploadPositionsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions, config: config)
 
         uploadPositionsService
             .call(with: parameters)
@@ -200,7 +202,7 @@ private extension TT2AnalyticsManager {
     private func uploadTriggerEvents(request: PostTriggerEventRequest) {
         guard let visitId = visitId, let apiKey = apiKey else { return }
 
-        let parameters = UploadTriggersParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), request: request)
+        let parameters = UploadTriggersParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), request: request, config: config)
 
         uploadTriggersService
             .call(with: parameters)
@@ -219,7 +221,7 @@ private extension TT2AnalyticsManager {
     private func uploadScanEvents() {
         guard let visitId = visitId, let apiKey = apiKey else { return }
         // receave all this data from app
-        let parameters = UploadScanEventsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), barcode: "", shelfId: 1, point: CGPoint(), timeStamp: "", type: .shelf)
+        let parameters = UploadScanEventsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), barcode: "", shelfId: 1, point: CGPoint(), timeStamp: "", type: .shelf, config: config)
 
         uploadScanEventsService
             .call(with: parameters)

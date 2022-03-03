@@ -14,7 +14,6 @@ import UIKit
 
 final public class TT2: ITT2 {
     private let context = Context(VSTT2Config())
-    public var mapFanceDataExistPublisher: CurrentValueSubject<MapFence?, Never> = .init(nil)
     
     /// Managers for helping VSTT to work with separate small modules
     @Inject public var navigation: Navigation
@@ -64,11 +63,9 @@ final public class TT2: ITT2 {
                     if let mapFence = mapFence {
                         self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtlsOption, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
                         self?.setupMapfence(with: mapFence)
-                        self?.mapFanceDataExistPublisher.send(mapFence)
                     }
                     
                     self?.setupAnalytics(for: zones, points: points)
-                    
                     completion()
                 }
             }
