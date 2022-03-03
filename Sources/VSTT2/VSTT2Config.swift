@@ -10,18 +10,16 @@ import VSFoundation
 import VSPositionKit
 
 struct VSTT2Config: Config {
+    public init() { }
+    
     func configure(_ injector: Injector) {
+        configureManagers(injector)
         configureHelpers(injector)
         configureApiEnvironment(injector)
         configureServices(injector)
-        configureManagers(injector)
     }
 
     private func configureApiEnvironment(_ injector: Injector) {
-        injector.map(EnvironmentConfig.self) {
-            EnvironmentConfig(raw: "development")
-        }
-
         injector.map(ClientsListParameters.self) {
             ClientsListParameters()
         }
@@ -78,8 +76,8 @@ struct VSTT2Config: Config {
     }
 
     private func configureManagers(_ injector: Injector) {
-        injector.map(TT2PositionManager.self) {
-            TT2PositionManager(positionManager: PositionManager())
+        injector.map(Navigation.self) {
+            Navigation(positionManager: PositionManager())
         }
         
         injector.map(DownloadManager.self) {
@@ -124,6 +122,10 @@ struct VSTT2Config: Config {
         
         injector.map(TT2AnalyticsManager.self) {
             TT2AnalyticsManager()
+        }
+        
+        injector.map(Position.self) {
+            Position()
         }
     }
 

@@ -11,17 +11,17 @@ import VSFoundation
 public struct ItemPositionParameters {
     private let storeId: Int64
     private let barcode: String
+    private let config: EnvironmentConfig?
 
-    @Inject var config: EnvironmentConfig
-
-    public init(storeId: Int64, barcode: String) {
+    public init(storeId: Int64, barcode: String, config: EnvironmentConfig?) {
         self.storeId = storeId
         self.barcode = barcode
+        self.config = config
     }
 }
 
 extension ItemPositionParameters: Routing {
-    var environmentConfig: EnvironmentConfig { config }
+    var environmentConfig: EnvironmentConfig? { config }
 
     var path: String { "/shelfgroups/barcodes" }
 

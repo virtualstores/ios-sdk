@@ -10,23 +10,23 @@ import VSFoundation
 import CoreGraphics
 
 public struct UploadTriggersParameters {
-    @Inject var config: EnvironmentConfig
-    
+    private let config: EnvironmentConfig?
     private let apiKey: String
     private let visitId: Int64
     private let requestId: String
     private let request: PostTriggerEventRequest
     
-    init(apiKey: String, visitId: Int64, requestId: String, request: PostTriggerEventRequest) {
+    init(apiKey: String, visitId: Int64, requestId: String, request: PostTriggerEventRequest, config: EnvironmentConfig?) {
         self.apiKey = apiKey
         self.visitId = visitId
         self.requestId = requestId
         self.request = request
+        self.config = config
     }
 }
 
 extension UploadTriggersParameters: Routing {
-    var environmentConfig: EnvironmentConfig { .analytics }
+    var environmentConfig: EnvironmentConfig? { config }
     
     var queryItems: [String: String]? {
         let parameters = ["requestId": requestId, "visitId": String(visitId)] as [String: String]

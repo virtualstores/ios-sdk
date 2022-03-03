@@ -29,12 +29,13 @@ public class TT2EventManager: TT2Event {
     private var cancellable = Set<AnyCancellable>()
     private var zoneEnterCancellable: AnyCancellable?
     private var coordinateEnterCancellable: AnyCancellable?
+    private var config: EnvironmentConfig?
     
-    
-    internal func setup(with storeId: Int64, zones: [Zone], rtlsOptionsId: Int64) {
+    internal func setup(with storeId: Int64, zones: [Zone], rtlsOptionsId: Int64, config: EnvironmentConfig?) {
         self.activeStoreId = storeId
         self.zones = zones
         self.rtlsOptionsId = rtlsOptionsId
+        self.config = config
         
         zoneEventDetectore.setup(with: zones)
         loadMessagesIfNeeded()
@@ -90,7 +91,7 @@ public class TT2EventManager: TT2Event {
     private func loadMessages() {
         guard let storeId = activeStoreId else { return }
 
-        let parameters = MessagesParameters(storeId: storeId)
+        let parameters = MessagesParameters(storeId: storeId, config: config)
         messagesService
             .call(with: parameters)
             .sink(receiveCompletion: { (completion) in

@@ -9,23 +9,23 @@ import Foundation
 import VSFoundation
 
 public struct UploadPositionsParameters {
-    @Inject var config: EnvironmentConfig
-
+    private var config: EnvironmentConfig?
     private let apiKey: String
     private let visitId: Int64
     private let requestId: String
     let positionGrps: [String: [RecordedPosition]]
 
-    init(apiKey: String, visitId: Int64, requestId: String, positionGrps: [String: [RecordedPosition]]) {
+    init(apiKey: String, visitId: Int64, requestId: String, positionGrps: [String: [RecordedPosition]], config: EnvironmentConfig?) {
         self.apiKey = apiKey
         self.visitId = visitId
         self.requestId = requestId
         self.positionGrps = positionGrps
+        self.config = config
     }
 }
 
 extension UploadPositionsParameters: Routing {
-    var environmentConfig: EnvironmentConfig { .analytics }
+    var environmentConfig: EnvironmentConfig? { config }
 
     var path: String { "/positions" }
 

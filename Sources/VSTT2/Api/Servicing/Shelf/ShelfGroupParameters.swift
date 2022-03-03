@@ -9,17 +9,17 @@ import Foundation
 import VSFoundation
 
 public struct ShelfGroupParameters {
+    private let config: EnvironmentConfig
     private let storeId: Int64
 
-    @Inject var config: EnvironmentConfig
-
-    public init(storeId: Int64) {
+    public init(storeId: Int64, config: EnvironmentConfig) {
+        self.config = config
         self.storeId = storeId
     }
 }
 
 extension ShelfGroupParameters: Routing {
-    var environmentConfig: EnvironmentConfig { config }
+    var environmentConfig: EnvironmentConfig? { config }
 
     var path: String { "/shelfgroups" }
 
