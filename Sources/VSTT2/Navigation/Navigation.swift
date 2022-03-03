@@ -54,8 +54,7 @@ public extension Navigation {
         try positionKitManager.start()
 
         if location.uncertainAngle {
-            // TODO: Get north from RTLS options
-            let north = 0.0//TT2.shared.getRTLSForCurrentFloorLevel()?.north ?? 0.0
+            let north = positionKitManager.rtlsOption?.north ?? 0.0
             let heading = positionKitManager.locationHeadingPublisher.value
             let course = TT2Course(fromDegrees: -heading.magneticHeading + 90 - north)
             positionKitManager.startNavigation(with: course.degrees,
