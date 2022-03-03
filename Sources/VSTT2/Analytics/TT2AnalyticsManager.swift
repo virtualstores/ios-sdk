@@ -11,6 +11,8 @@ import Combine
 import CoreGraphics
 import UIKit
 
+
+
 final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var createVisitsService: CreateVisitsService
     @Inject var uploadPositionsService: UploadPositionsService
@@ -24,7 +26,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private var uploadThreshold = 0
     private var visitId: Int64?
     private var apiKey: String?
-    private var timeFormatter: DateFormatter = DateFormatter()
     private var cancellable = Set<AnyCancellable>()
     private var zoneEnterCancellable: AnyCancellable?
     private var zoneExitCancellable: AnyCancellable?
@@ -43,8 +44,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
         self.apiKey = store.statServerConnection.apiKey
         self.uploadThreshold = uploadThreshold
         self.rtlsOptionId = rtlsOptionId
-        self.timeFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-        self.timeFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
         self.config = config
         bindPublishers()
     }
@@ -52,7 +51,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:]) {
         guard let storeId = store?.statServerConnection.storeId, let apiKey = store?.statServerConnection.apiKey else { return }
 
-        let date = self.timeFormatter.string(from: Date())
+        let date = DateFormatter.standardFormatter.string(from: Date())
         let parameters = CreateVisitsParameters(apiKey: apiKey,
                                                 requestId: UUID().uuidString.uppercased(),
                                                 storeId: storeId,
@@ -139,8 +138,9 @@ final public class TT2AnalyticsManager: TT2Analytics {
     
     private func postTriggerEvent(for event: TriggerEvent) ->PostTriggerEventRequest {
         let eventType = event.eventType.getTrigger()
+        let timestamp = DateFormatter.standardFormatter.string(from: event.timestamp)
         return  PostTriggerEventRequest(rtlsOptionsId: event.rtlsOptionsId, name: event.name,
-                                        timeStamp: self.timeFormatter.string(from: event.timestamp),
+                                        timeStamp: timestamp,
                                         userPosition: event.userPosition,
                                         appTrigger: eventType.appTrigger?.asPostTrigger,
                                         coordinateTrigger: eventType.coordinateTrigger?.asPostTrigger,
@@ -157,7 +157,8 @@ private extension TT2AnalyticsManager {
         let id = String(rtlsOptionId)
 
         recordedPositionsCount += 1
-        positionUploadWorker.insert(id: id, xPosition: Double(point.x), yPosition: Double(point.y), time: self.timeFormatter.string(from: Date()), uploadStatus: .pending)
+        let time = DateFormatter.standardFormatter.string(from: Date())
+        positionUploadWorker.insert(id: id, xPosition: Double(point.x), yPosition: Double(point.y), time: time, uploadStatus: .pending)
 
         if self.checkIfPartialUpload() {
             do {
@@ -220,7 +221,7 @@ private extension TT2AnalyticsManager {
 
     private func uploadScanEvents() {
         guard let visitId = visitId, let apiKey = apiKey else { return }
-        // receave all this data from app
+        // Receive all this data from app
         let parameters = UploadScanEventsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), barcode: "", shelfId: 1, point: CGPoint(), timeStamp: "", type: .shelf, config: config)
 
         uploadScanEventsService
