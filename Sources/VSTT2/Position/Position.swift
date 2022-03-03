@@ -9,11 +9,13 @@ import Foundation
 import Combine
 
 public class Position: IPosition {
-    var shelfTierItemPositions: [Int64: ItemPosition] = [:]
+    private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
+    private var shelfGroups: [ShelfGroup]?
     
     public init() {}
     
     func setup(with shelfGroups: [ShelfGroup]) {
+        self.shelfGroups = shelfGroups
         for group in shelfGroups {
             for shelf in group.shelves {
                 for tier in shelf.shelfTiers {
@@ -24,8 +26,7 @@ public class Position: IPosition {
     }
     
     public func getByShelfName(shelfName: String, completion: @escaping (ItemPosition) -> ()) {
-        //check if name is id
-        guard let id = Int64(shelfName), let position = shelfTierItemPositions[id] else { return }
+        guard let position = shelfGroups?.first(where: { $0.name == shelfName})?.itemPosition else { return }
         
         completion(position)
     }

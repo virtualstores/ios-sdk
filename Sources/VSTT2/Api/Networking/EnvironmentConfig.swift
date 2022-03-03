@@ -8,23 +8,30 @@
 import Foundation
 
 /// Here we can have all setups depended what we need to use for each environment
-enum EnvironmentConfig: String {
-    init?(raw: String) {
-        self.init(rawValue: raw)
-    }
+public class EnvironmentConfig {
+    private var _centralServerConnection: ServerConnection?
+    public var centralServerConnection: ServerConnection {
+        get {
+            guard let config = _centralServerConnection else { fatalError("ServerConnection not initialized") }
 
-    case production
-    case development
-    case analytics
-
-    func baseURL() -> String {
-        switch self {
-        case .production:
-            return "https://PROD.virtualstores.se"
-        case .development:
-            return "https://gunnis-hp-central.ih.vs-office.se/api/v1"
-        case .analytics:
-            return "https://gunnis-hp-stat.ih.vs-office.se/api/v2"
+            return config
         }
+    }
+    
+    private var _analyticsServerConnection: ServerConnection?
+    public var analyticsServerConnection: ServerConnection {
+        get {
+            guard let config = _analyticsServerConnection else { fatalError("ServerConnection not initialized") }
+
+            return config
+        }
+    }
+     
+    func initCentralServerConnection(with url: String, apiKey: String) {
+        self._centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url, mqttAddress: nil, storeId: nil)
+    }
+    
+    func initAnalyticsServerConnection(with url: String, apiKey: String) {
+        self._analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url, mqttAddress: nil, storeId: nil)
     }
 }
