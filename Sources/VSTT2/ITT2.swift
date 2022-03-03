@@ -15,6 +15,18 @@ import VSFoundation
 ///  1- To get the SDK ready to work first Call initialize method. This will prepare the SDK for  all other purposes.
 ///  2- To initialize your store, call initStore
 public protocol ITT2 {
+    /// Navigation manager
+    var navigation: Navigation { get }
+    
+    /// Analytics manager
+    var analytics: TT2AnalyticsManager { get }
+    
+    /// Floor manager
+    var floor: VSTT2FloorManager { get }
+    
+    /// Position manager
+    var position: Position { get }
+    
     /// Method for initialize TT2 for specific client
     func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (StoresList) -> ())
     

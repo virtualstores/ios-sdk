@@ -11,6 +11,12 @@ import Combine
 import UIKit
 
 internal class TT2Internal {
+    /// Managers for helping VSTT to work with separate small modules
+    @Inject var navigation: Navigation
+    @Inject var analytics: TT2AnalyticsManager
+    @Inject var floorManager: VSTT2FloorManager
+    @Inject var position: Position
+    
     /// Services for getting the api data
     @Inject var storesListService: StoresListService
     @Inject var swapLocationsService: SwapLocationsService

@@ -15,11 +15,29 @@ import UIKit
 final public class TT2: ITT2 {
     private let context = Context(VSTT2Config())
     
-    /// Managers for helping VSTT to work with separate small modules
-    @Inject public var navigation: Navigation
-    @Inject public var analytics: TT2AnalyticsManager
-    @Inject public var floorManager: VSTT2FloorManager
-    @Inject public var position: Position
+    public var navigation: Navigation {
+        guard let navigation = tt2Internal?.navigation else { fatalError("tt2Internal is not initialized") }
+        
+        return navigation
+    }
+    
+    public var analytics: TT2AnalyticsManager {
+        guard let analytics = tt2Internal?.analytics else { fatalError("tt2Internal is not initialized") }
+        
+        return analytics
+    }
+    
+    public var floor: VSTT2FloorManager {
+        guard let floor = tt2Internal?.floorManager else { fatalError("tt2Internal is not initialized") }
+        
+        return floor
+    }
+    
+    public var position: Position {
+        guard let position = tt2Internal?.position else { fatalError("tt2Internal is not initialized") }
+        
+        return position
+    }
     
     public var coordinateConverter: ICoordinateConverter?
     public var mapData: MapData?
@@ -40,12 +58,12 @@ final public class TT2: ITT2 {
     public func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (StoresList) -> ()) {
         config.initCentralServerConnection(with: apiUrl, apiKey: apiKey)
         
-        navigation.setupAnalyticsManager(manager: analytics)
-        
         self.tt2Internal = TT2Internal(config: config)
         self.tt2Internal?.getStores(with: clientId, completion: { stores in
             completion(stores)
         })
+        
+        navigation.setupAnalyticsManager(manager: analytics)
     }
     
     public func setBackgroundAccess(isActive: Bool) {
@@ -54,12 +72,12 @@ final public class TT2: ITT2 {
     
     public func initiateStore(store: Store, completion: @escaping () -> ()) {
         self.activeStore = store
-        self.floorManager.setupFloors(with: store.rtlsOptions)
+        self.floor.setupFloors(with: store.rtlsOptions)
         
         for rtlsOption in store.rtlsOptions {
             if rtlsOption.isDefault {
                 self.rtlsOption = rtlsOption
-                self.floorManager.setActiveFloor(with: rtlsOption) { [weak self] (mapFence, zones, points) in
+                self.floor.setActiveFloor(with: rtlsOption) { [weak self] (mapFence, zones, points) in
                     if let mapFence = mapFence {
                         self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtlsOption, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
                         self?.setupMapfence(with: mapFence)
