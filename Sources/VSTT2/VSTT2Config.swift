@@ -15,14 +15,7 @@ struct VSTT2Config: Config {
     func configure(_ injector: Injector) {
         configureManagers(injector)
         configureHelpers(injector)
-        configureApiEnvironment(injector)
         configureServices(injector)
-    }
-
-    private func configureApiEnvironment(_ injector: Injector) {
-        injector.map(ClientsListParameters.self) {
-            ClientsListParameters()
-        }
     }
 
     private func configureServices(_ injector: Injector) {

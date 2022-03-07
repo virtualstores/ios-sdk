@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import VSFoundation
 
 public class Position: IPosition {
     private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
@@ -26,7 +27,9 @@ public class Position: IPosition {
     }
     
     public func getByShelfName(shelfName: String, completion: @escaping (ItemPosition) -> ()) {
-        guard let position = shelfGroups?.first(where: { $0.name == shelfName})?.itemPosition else { return }
+        //TODO: change logic
+        let shelfGroup = shelfGroups?.first(where: { $0.name == shelfName })
+        guard let position = shelfGroup?.shelves.first(where: { $0.name == shelfName })?.itemPosition else { return }
         
         completion(position)
     }

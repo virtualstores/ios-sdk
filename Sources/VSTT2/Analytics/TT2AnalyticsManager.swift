@@ -90,15 +90,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func stopVisit() {
-        do {
-            guard let points = try positionUploadWorker.getPoints() else { return }
-            
-            self.uploadData(recordedPositions: points)
-            self.recordedPositionsCount = 0
-        } catch {
-            Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
-                                                message: "GetPoints from SQLite error")
-        }
+        guard let points = positionUploadWorker.getAllPoints() else { return }
+        
+        self.uploadData(recordedPositions: points, recordingStoped: true)
+        self.recordedPositionsCount = 0
     }
 
     internal func onNewPositionBundle(point: CGPoint) {
@@ -178,7 +173,7 @@ private extension TT2AnalyticsManager {
     }
     
     ///Uploading Heatmap data, config: <#EnvironmentConfig#>
-    private func uploadData(recordedPositions: [String: [RecordedPosition]]) {
+    private func uploadData(recordedPositions: [String: [RecordedPosition]], recordingStoped: Bool = false) {
         guard let visitId = visitId, let apiKey = apiKey else { return }
 
         let parameters = UploadPositionsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions, config: config)
@@ -188,7 +183,11 @@ private extension TT2AnalyticsManager {
             .sink(receiveCompletion: { [weak self] (completion) in
                 switch completion {
                 case .finished:
-                    self?.positionUploadWorker.removePoints()
+                    if recordingStoped {
+                        self?.positionUploadWorker.removeAllPoints()
+                    } else {
+                        self?.positionUploadWorker.removePoints()
+                    }
                 case .failure(let error):
                     self?.positionUploadWorker.updatePointsAfter(uploadingFailed: true)
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)

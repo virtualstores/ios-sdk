@@ -13,86 +13,57 @@ import CoreGraphics
 import UIKit
 
 final public class Navigation: INavigation {
-    @Inject var mapFenceDataService: MapFenceDataService
-    
-    private var cancellable = Set<AnyCancellable>()
-    private var publisherCancellable: AnyCancellable?
-    private var positionBundleCancellable: AnyCancellable?
     public var positionKitManager: PositionManager
-    private var map: IMapController?
-    private var location: TT2Location?
-    private var analyticseManager: TT2AnalyticsManager?
+    public var isActive: Bool = false
     
     public init(positionManager: PositionManager) {
         self.positionKitManager = positionManager
     }
-    
-    public func setupMap(map: IMapController?) {
-        self.map = map
-    }
-    
-    public func setupAnalyticsManager(manager: TT2AnalyticsManager) {
-        self.analyticseManager = manager
-    }
-
-    private func bindPublishers() {
-        positionBundleCancellable = positionKitManager.positionPublisher
-            .compactMap{ $0 }
-            .sink { error in
-                Logger.init().log(message: "PositionKitError noData")
-            } receiveValue: { [weak self] positionBundle in
-                self?.analyticseManager?.onNewPositionBundle(point: positionBundle.position)
-                DispatchQueue.main.async {
-                    self?.map?.updateUserLocation(newLocation: positionBundle.position, std: positionBundle.std ?? 0.0)
-                }
-            }
-    }
 }
 
 public extension Navigation {
-    func start(_ location: TT2Location) throws {
+    func start(startPosition: CGPoint, startAngel: Double) throws {
         try positionKitManager.start()
-
-        if location.uncertainAngle {
-            let north = positionKitManager.rtlsOption?.north ?? 0.0
-            let heading = positionKitManager.locationHeadingPublisher.value
-            let course = TT2Course(fromDegrees: -heading.magneticHeading + 90 - north)
-            positionKitManager.startNavigation(with: course.degrees,
-                                               xPosition: location.position.xPosition,
-                                               yPosition: location.position.yPosition,
-                                               uncertainAngle: location.uncertainAngle)
-        } else {
-            positionKitManager.startNavigation(with: location.course.degrees,
-                                               xPosition: location.position.xPosition,
-                                               yPosition: location.position.yPosition,
-                                               uncertainAngle: location.uncertainAngle)
-        }
-
-        bindPublishers()
+        
+        positionKitManager.startNavigation(with: startAngel,
+                                           xPosition: startPosition.x,
+                                           yPosition: startPosition.y,
+                                           uncertainAngle: false)
+        isActive = true
     }
-
-    func start(with code: PositionedCode, offset: Double? = nil, syncDirection: Bool = false) {
-        if let offset = offset {
-            let dir = code.direction + offset
-            let code = PositionedCode(code: code.code, xPosition: code.xPosition, yPosition: code.yPosition, direction: dir, type: code.type)
-            synchronize(code: code, syncDirection: syncDirection)
-        } else {
-            synchronize(code: code, syncDirection: syncDirection)
-        }
+    
+    func start(code: PositionedCode) throws {
+        try start(startPosition: code.point, startAngel: code.direction)
     }
-
-    func stop(saveRecording: Bool = false, uploadRecording: Bool = false) {
+    
+    func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
+        let pointWithOffset = TT2PointWithOffset(point: position.point, offset: position.offsetPoint)
+        
+        positionKitManager.syncPosition(position: pointWithOffset, syncRotation: syncRotation, forceSync: forceSync, uncertainAngle: false)
+    }
+    
+    func compassStartNavigation(startPosition: CGPoint) throws {
+        try positionKitManager.start()
+        
+        let north = positionKitManager.rtlsOption?.north ?? 0.0
+        let heading = positionKitManager.locationHeadingPublisher.value
+        let course = TT2Course(fromDegrees: -heading.magneticHeading + 90 - north)
+        positionKitManager.startNavigation(with: course.degrees,
+                                           xPosition: startPosition.x,
+                                           yPosition: startPosition.y,
+                                           uncertainAngle: true)
+    }
+    
+    func compassSyncPosition(position: ItemPosition) throws  {
+        let pointWithOffset = TT2PointWithOffset(point: position.point, offset: position.offsetPoint)
+        
+        positionKitManager.syncPosition(position: pointWithOffset, syncRotation: true, forceSync: true, uncertainAngle: true)
+    }
+    
+    func stop() {
         positionKitManager.stop()
+        isActive = false
     }
 
-    func synchronize(code: PositionedCode, syncDirection: Bool = false) {
-        let location = TT2Location(position: TT2Position(point: code.point, offset: CGPoint(x: 0.0, y: 0.0)),
-                                   course: TT2Course(fromDegrees: code.direction), syncDirection: syncDirection, uncertainAngle: false)
-        do {
-            try start(location)
-        } catch {
-            Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
-                                                message: "StartUpdatingLocation error")
-        }
-    }
+    func prepareAngle() { }
 }

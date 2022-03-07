@@ -12,12 +12,27 @@ import VSFoundation
 import CoreGraphics
 
 public protocol INavigation {
-    /// Synchronize the position manager with a currently known position.
-    func start(_ location: TT2Location) throws
-
+    /// Flag for checking if sdk is active
+    var isActive: Bool { get }
+    
+    /// Synchronize the position manager with  startPosition and startAngel
+    func start(startPosition: CGPoint, startAngel: Double) throws
+ 
     /// Synchronize the position manager with a positioned code.
-    func start(with code: PositionedCode, offset: Double?, syncDirection: Bool)
+    func start(code: PositionedCode) throws
 
+    /// Synchronize the position manager with a position, syncRotation and forceSync
+    func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws
+    
+    /// Start the position with compass
+    func compassStartNavigation(startPosition: CGPoint) throws
+        
+    /// Synchronize the position with compass
+    func compassSyncPosition(position: ItemPosition) throws
+    
     /// This will stop notifying the location publishers.
-    func stop(saveRecording: Bool, uploadRecording: Bool)
+    func stop()
+    
+    /// Provide device start angle
+    func prepareAngle()
 }

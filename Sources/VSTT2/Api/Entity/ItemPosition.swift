@@ -38,8 +38,13 @@ public struct ItemPosition: Codable {
     public var offset: CGVector {
         CGVector(dx: offsetX, dy: offsetY)
     }
+    
+    public var offsetPoint: CGPoint {
+        CGPoint(x: offsetX, y: offsetY)
+    }
 
     public var pointWithOffset: CGPoint {
         CGPoint(x: point.x + offset.dx, y: point.y + offset.dy)
     }
 }
+
