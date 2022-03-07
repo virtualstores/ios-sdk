@@ -10,13 +10,11 @@ import VSFoundation
 
 public struct UploadPositionsParameters {
     private var config: EnvironmentConfig?
-    private let apiKey: String
     private let visitId: Int64
     private let requestId: String
     let positionGrps: [String: [RecordedPosition]]
 
-    init(apiKey: String, visitId: Int64, requestId: String, positionGrps: [String: [RecordedPosition]], config: EnvironmentConfig?) {
-        self.apiKey = apiKey
+    init(visitId: Int64, requestId: String, positionGrps: [String: [RecordedPosition]], config: EnvironmentConfig?) {
         self.visitId = visitId
         self.requestId = requestId
         self.positionGrps = positionGrps
@@ -40,6 +38,4 @@ extension UploadPositionsParameters: Routing {
 
         return parameters
     }
-
-    var headers: [String: String]? { ["apiKey": apiKey ] }
 }

@@ -41,7 +41,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
     public func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int = 100, config: EnvironmentConfig?) {
         self.store = store
-        self.apiKey = store.statServerConnection.apiKey
         self.uploadThreshold = uploadThreshold
         self.rtlsOptionId = rtlsOptionId
         self.config = config
@@ -49,11 +48,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:]) {
-        guard let storeId = store?.statServerConnection.storeId, let apiKey = store?.statServerConnection.apiKey else { return }
+        guard let storeId = store?.statServerConnection.storeId else { return }
 
         let date = DateFormatter.standardFormatter.string(from: Date())
-        let parameters = CreateVisitsParameters(apiKey: apiKey,
-                                                requestId: UUID().uuidString.uppercased(),
+        let parameters = CreateVisitsParameters(requestId: UUID().uuidString.uppercased(),
                                                 storeId: storeId,
                                                 start: date,
                                                 stop: date,
@@ -174,9 +172,9 @@ private extension TT2AnalyticsManager {
     
     ///Uploading Heatmap data, config: <#EnvironmentConfig#>
     private func uploadData(recordedPositions: [String: [RecordedPosition]], recordingStoped: Bool = false) {
-        guard let visitId = visitId, let apiKey = apiKey else { return }
+        guard let visitId = visitId else { return }
 
-        let parameters = UploadPositionsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions, config: config)
+        let parameters = UploadPositionsParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions, config: config)
 
         uploadPositionsService
             .call(with: parameters)
