@@ -27,11 +27,17 @@ public protocol ITT2 {
     /// Position manager
     var position: Position { get }
     
+    /// List of active stores
+    var activeStores: [TT2Store] { get }
+    
+    /// List of available stores
+    var stores: [TT2Store] { get }
+
     /// Method for initialize TT2 for specific client
-    func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (StoresList) -> ())
+    func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (Error?) -> ())
     
     /// Method for initiate selected Store data
-    func initiateStore(store: Store, completion: @escaping () -> ())
+    func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ())
     
     /// Temporary setter for activating and deactivating background access in positionKit
     func setBackgroundAccess(isActive: Bool)

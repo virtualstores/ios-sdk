@@ -27,9 +27,14 @@ internal class TT2Internal {
     private let config: EnvironmentConfig
     private var swapLocations: [SwapLocation] = []
     private var cancellable = Set<AnyCancellable>()
-    
+    private var positionBundleCancellable: AnyCancellable?
+
+    internal var internalStores: [Store] = []
+
     public init(config: EnvironmentConfig) {
         self.config = config
+        
+        bindPublishers()
     }
     
     func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence, coordinateConverter: ICoordinateConverter?) -> MapData? {
@@ -41,19 +46,23 @@ internal class TT2Internal {
         return mapData
     }
     
-    func getStores(with clientId: Int64, completion: @escaping (StoresList) -> ()) {
+    
+    func getStores(with clientId: Int64, completion: @escaping (Error?) -> ()) {
         let parameters = StoresListParameters(clientId: clientId, config: config)
+        
         storesListService
             .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
+            .sink(receiveCompletion: { (result) in
+                switch result {
                 case .finished:
                     break
-                case .failure:
+                case .failure(let error):
+                    completion(error)
                     Logger.init().log(message: "No available store")
                 }
             }, receiveValue: { (data) in
-                completion(data)
+                self.internalStores = data.stores
+                completion(nil)
             }).store(in: &cancellable)
     }
     
@@ -78,6 +87,17 @@ internal class TT2Internal {
                 //  self?.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetY), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
                 
             }).store(in: &cancellable)
+    }
+    
+    
+    private func bindPublishers() {
+        positionBundleCancellable = navigation.positionKitManager.positionPublisher
+            .compactMap{ $0 }
+            .sink { error in
+                Logger.init().log(message: "PositionKitError noData")
+            } receiveValue: { [weak self] positionBundle in
+                self?.analytics.onNewPositionBundle(point: positionBundle.position)
+            }
     }
     
     private func getSwapLocations(for storeId: Int64) {

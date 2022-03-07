@@ -15,6 +15,18 @@ import UIKit
 final public class TT2: ITT2 {
     private let context = Context(VSTT2Config())
     
+    public var stores: [TT2Store] {
+        guard let stores = tt2Internal?.internalStores else { fatalError("tt2Internal is not initialized")}
+        
+        return stores.map({ $0.toTT2Store() })
+    }
+    
+    public var activeStores: [TT2Store] {
+        guard let stores = tt2Internal?.internalStores else { fatalError("tt2Internal is not initialized")}
+        
+        return stores.filter({ $0.active }).map({ $0.toTT2Store() })
+    }
+    
     public var navigation: Navigation {
         guard let navigation = tt2Internal?.navigation else { fatalError("tt2Internal is not initialized") }
         
@@ -48,33 +60,31 @@ final public class TT2: ITT2 {
     // MARK: Private members
     private let config = EnvironmentConfig()
     private var tt2Internal: TT2Internal?
-    private var activeStore: Store?
-
-    private var cancellable = Set<AnyCancellable>()
-    private var flooreMapDataCancellable: AnyCancellable?
+    private var activeStore: TT2Store?
     
     public init() {}
     
-    public func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (StoresList) -> ()) {
+    public func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (Error?) -> ()) {
         config.initCentralServerConnection(with: apiUrl, apiKey: apiKey)
         
         self.tt2Internal = TT2Internal(config: config)
         self.tt2Internal?.getStores(with: clientId, completion: { stores in
-            completion(stores)
+            completion(nil)
         })
-        
-        navigation.setupAnalyticsManager(manager: analytics)
     }
     
     public func setBackgroundAccess(isActive: Bool) {
         navigation.positionKitManager.setBackgroundAccess(isActive: isActive)
     }
     
-    public func initiateStore(store: Store, completion: @escaping () -> ()) {
-        self.activeStore = store
-        self.floor.setupFloors(with: store.rtlsOptions)
+    public func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ()) {
+        ///check
+        guard let currentStore = tt2Internal?.internalStores.first(where: { $0.id == store.id }) else { return }
         
-        for rtlsOption in store.rtlsOptions {
+        self.activeStore = store
+        self.floor.setupFloors(with: currentStore.rtlsOptions)
+        
+        for rtlsOption in currentStore.rtlsOptions {
             if rtlsOption.isDefault {
                 self.rtlsOption = rtlsOption
                 self.floor.setActiveFloor(with: rtlsOption) { [weak self] (mapFence, zones, points) in
@@ -84,12 +94,12 @@ final public class TT2: ITT2 {
                     }
                     
                     self?.setupAnalytics(for: zones, points: points)
-                    completion()
+                    completion(nil)
                 }
             }
         }
         
-        setupAnalytics(for: store)
+        setupAnalytics(for: currentStore)
         tt2Internal?.getShelfGroups(for: store.id, activeFloor: self.rtlsOption, completion: { [weak self]
             shelfGroups in
             self?.position.setup(with: shelfGroups)
