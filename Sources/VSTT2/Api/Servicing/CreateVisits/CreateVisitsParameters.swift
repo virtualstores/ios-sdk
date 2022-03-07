@@ -10,7 +10,6 @@ import VSFoundation
 
 public struct CreateVisitsParameters {
     private var config: EnvironmentConfig?
-    private let apiKey: String
     private let requestId: String
     private let storeId: Int64
     private let start: String
@@ -19,9 +18,8 @@ public struct CreateVisitsParameters {
     private let tags: [String: String]
     private let metaData: [String: String]
 
-    public init(apiKey: String, requestId: String, storeId: Int64, start: String,
+    public init(requestId: String, storeId: Int64, start: String,
                 stop: String, deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String], config: EnvironmentConfig?) {
-        self.apiKey = apiKey
         self.requestId = requestId
         self.storeId = storeId
         self.start = start
@@ -59,6 +57,4 @@ extension CreateVisitsParameters: Routing {
 
         return parameters
     }
-
-    var headers: [String: String]? { ["APIKey": apiKey ] }
 }

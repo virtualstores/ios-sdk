@@ -49,7 +49,11 @@ extension Routing {
 
     var encoding: ParameterEncoding { ParameterEncoding.json }
 
-    var headers: [String: String]? { ["apiKey" : "kanelbulle"] }
+    var headers: [String: String]? {
+        guard let apiKey = environmentConfig?.centralServerConnection.apiKey else { fatalError("apiKey is not exist") }
+
+       return  ["apiKey" : apiKey]
+    }
 
     var urlRequest: URLRequest? {
         @Inject var logger: Logger

@@ -126,7 +126,7 @@ private extension TT2 {
     
     private func setupAnalytics(for store: Store) {
         let analyticsConfig = EnvironmentConfig()
-        guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.serverConnection.apiKey else { return }
+        guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
         
         analyticsConfig.initCentralServerConnection(with: "https://gunnis-hp-stat.ih.vs-office.se/api/v2", apiKey: apiKey)
         analytics.setup(with: store, rtlsOptionId: self.rtlsOption?.id, config: analyticsConfig)
