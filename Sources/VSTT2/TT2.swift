@@ -128,14 +128,18 @@ private extension TT2 {
         let analyticsConfig = EnvironmentConfig()
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.serverConnection.apiKey else { return }
         
-        analyticsConfig.initCentralServerConnection(with: "https://gunnis-hp-stat.ih.vs-office.se/api/v2", apiKey: apiKey)
+        analyticsConfig.initCentralServerConnection(with: "\(serverAddress)/api/v2", apiKey: apiKey)
         analytics.setup(with: store, rtlsOptionId: self.rtlsOption?.id, config: analyticsConfig)
     }
     
-    private func setupAnalytics(for zones: [MapZone]?, points: [MapZonePoint]?) {
+    private func setupAnalytics(for zones: [Int: [MapZone]]?, points: [Int: [MapZonePoint]]?) {
         guard let rtlsOption = rtlsOption, let store = activeStore, let zones = zones else { return }
-        
-        mapZonesTree?.add(rtlsOption.floorLevel, store.name, zones, points ?? [])
+
+        zones.forEach { (key, value) in
+            guard let zonePoints = points?[key] else { return }
+
+            mapZonesTree?.add(key, store.name, value, zonePoints)
+        }
         
         self.mapZonesTree?.print()
         guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevel: rtlsOption.floorLevel) else { return }

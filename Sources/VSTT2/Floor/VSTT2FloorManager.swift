@@ -19,8 +19,8 @@ public class VSTT2FloorManager: VSTT2Floor {
     public var pathFinder: VSPathFinder?
     public var zones: Data?
     public var messages: [Message]?
-    public var mapZones: [MapZone] = []
-    public var mapZonePoints: [MapZonePoint] = []
+    public var mapZones: [Int : [MapZone]] = [:]
+    public var mapZonePoints: [Int : [MapZonePoint]] = [:]
     public var offsetZones: Data?
     public var navgraph: Data?
     
@@ -51,7 +51,7 @@ public class VSTT2FloorManager: VSTT2Floor {
         self.floors = rtlsOptions
     }
     
-    internal func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence?, zones: [MapZone]?, points: [MapZonePoint]?)) -> ()) {
+    internal func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence?, zones: [Int: [MapZone]]?, points: [Int: [MapZonePoint]]?)) -> ()) {
         guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
                 
         self.activeFloor = rtlsOptions
@@ -63,7 +63,7 @@ public class VSTT2FloorManager: VSTT2Floor {
 }
 
 private extension VSTT2FloorManager {
-    private func getFloorData(completion: @escaping ((mapFence: MapFence?, zones: [MapZone]?, points: [MapZonePoint]?)) -> ()) {
+    private func getFloorData(completion: @escaping ((mapFence: MapFence?, zones: [Int: [MapZone]]?, points: [Int: [MapZonePoint]]?)) -> ()) {
         getMapFenceData()
         getMapZones()
         getNavGraph()
@@ -95,20 +95,22 @@ private extension VSTT2FloorManager {
     }
     
     private func getMapZones() {
-        guard let mapZonesUrl = self.activeFloor?.mapZonesUrl, let url = URL(string: mapZonesUrl) else { return }
-        dispatchGroup.enter()
+        floors.forEach { rtls in
+          guard let mapZonesUrl = rtls.mapZonesUrl, let url = URL(string: mapZonesUrl) else { return }
+          dispatchGroup.enter()
 
-        downloadManager.loadData(from: url) { result in
-            switch result {
-            case .success(let data):
-                let mapData = MapZoneParser.getMapZonesData(fromJsonData: data)
-                
-                self.mapZones = mapData.mapzones
-                self.mapZonePoints = mapData.mapPoints
-                self.dispatchGroup.leave()
-            case .failure(let error):
-                Logger.init().log(message: error.localizedDescription)
-            }
+          downloadManager.loadData(from: url) { result in
+              switch result {
+              case .success(let data):
+                  let mapData = MapZoneParser.getMapZonesData(fromJsonData: data)
+
+                  self.mapZones[rtls.floorLevel] = mapData.mapzones
+                  self.mapZonePoints[rtls.floorLevel] = mapData.mapPoints
+                  self.dispatchGroup.leave()
+              case .failure(let error):
+                  Logger.init().log(message: error.localizedDescription)
+              }
+          }
         }
     }
     
