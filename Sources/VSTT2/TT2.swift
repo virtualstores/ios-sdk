@@ -86,18 +86,18 @@ final public class TT2: ITT2 {
         
         for rtlsOption in currentStore.rtlsOptions {
             if rtlsOption.isDefault {
-                self.rtlsOption = rtlsOption
-                self.floor.setActiveFloor(with: rtlsOption) { [weak self] (mapFence, zones, points) in
-                    if let mapFence = mapFence {
-                        self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtlsOption, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
-                        self?.setupMapfence(with: mapFence)
-                    }
-                    
-                    self?.setupAnalytics(for: zones, points: points)
-                    completion(nil)
+                self.setActiveFloor(rtls: rtlsOption) { (error) in
+                    completion(error)
                 }
             }
         }
+
+      if rtlsOption == nil {
+          guard let rtls = currentStore.rtlsOptions.first else { return }
+          self.setActiveFloor(rtls: rtls) { (error) in
+              completion(error)
+          }
+      }
         
         setupAnalytics(for: currentStore)
         tt2Internal?.getShelfGroups(for: store.id, activeFloor: self.rtlsOption, completion: { [weak self]
@@ -112,6 +112,19 @@ final public class TT2: ITT2 {
 }
 
 private extension TT2 {
+    private func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
+        self.rtlsOption = rtls
+        self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zones, points) in
+            if let mapFence = mapFence {
+                self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
+                self?.setupMapfence(with: mapFence)
+            }
+
+            self?.setupAnalytics(for: zones, points: points)
+            completion(nil)
+        }
+    }
+
     private func setupMapfence(with data: MapFence) {
         guard let rtlsOption = self.rtlsOption, let name = self.activeStore?.name else { return }
         

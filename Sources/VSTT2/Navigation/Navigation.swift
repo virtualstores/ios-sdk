@@ -37,6 +37,8 @@ public extension Navigation {
     }
     
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
+        guard isActive else { return }
+
         let pointWithOffset = TT2PointWithOffset(point: position.point, offset: position.offsetPoint)
         
         positionKitManager.syncPosition(position: pointWithOffset, syncRotation: syncRotation, forceSync: forceSync, uncertainAngle: false)
@@ -52,10 +54,18 @@ public extension Navigation {
                                            xPosition: startPosition.x,
                                            yPosition: startPosition.y,
                                            uncertainAngle: true)
+        isActive = true
     }
     
     func compassSyncPosition(position: ItemPosition) throws  {
-        let pointWithOffset = TT2PointWithOffset(point: position.point, offset: position.offsetPoint)
+        guard isActive else { return }
+
+        let north = positionKitManager.rtlsOption?.north ?? 0.0
+        let heading = positionKitManager.locationHeadingPublisher.value
+        let course = TT2Course(fromDegrees: -heading.magneticHeading + 90 - north)
+        let point = position.point
+        let offset = CGPoint(x: point.x + cos(course.degrees), y: point.y + sin(course.degrees))
+        let pointWithOffset = TT2PointWithOffset(point: point, offset: offset)
         
         positionKitManager.syncPosition(position: pointWithOffset, syncRotation: true, forceSync: true, uncertainAngle: true)
     }
