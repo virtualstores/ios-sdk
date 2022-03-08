@@ -31,6 +31,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private var zoneExitCancellable: AnyCancellable?
     private var isRecording: Bool = false
     private var rtlsOptionId: Int64?
+    private var latestRecordedPosition = Date()
     /// now we are uploading positions each time when they are 100
     private var recordedPositionsCount = 0
     private var config: EnvironmentConfig?
@@ -147,6 +148,8 @@ final public class TT2AnalyticsManager: TT2Analytics {
 private extension TT2AnalyticsManager {
     // MARK: Heatmap data
     func recordPosition(rtlsOptionId: Int64, point: CGPoint) {
+        guard Date().timeIntervalSince(latestRecordedPosition) > 0.2 else { return }
+        self.latestRecordedPosition = Date()
         let id = String(rtlsOptionId)
 
         recordedPositionsCount += 1

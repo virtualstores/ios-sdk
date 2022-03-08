@@ -92,12 +92,12 @@ final public class TT2: ITT2 {
             }
         }
 
-      if rtlsOption == nil {
-          guard let rtls = currentStore.rtlsOptions.first else { return }
-          self.setActiveFloor(rtls: rtls) { (error) in
-              completion(error)
-          }
-      }
+        if rtlsOption == nil {
+            guard let rtls = currentStore.rtlsOptions.first else { return }
+            self.setActiveFloor(rtls: rtls) { (error) in
+                completion(error)
+            }
+        }
         
         setupAnalytics(for: currentStore)
         tt2Internal?.getShelfGroups(for: store.id, activeFloor: self.rtlsOption, completion: { [weak self]
