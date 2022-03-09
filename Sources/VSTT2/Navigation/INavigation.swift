@@ -16,7 +16,7 @@ public protocol INavigation {
     var isActive: Bool { get }
     
     /// Synchronize the position manager with  startPosition and startAngel
-    func start(startPosition: CGPoint, startAngel: Double) throws
+    func start(startPosition: CGPoint, startAngle: Double) throws
  
     /// Synchronize the position manager with a positioned code.
     func start(code: PositionedCode) throws

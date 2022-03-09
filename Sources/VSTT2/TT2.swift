@@ -86,16 +86,16 @@ final public class TT2: ITT2 {
         
         for rtlsOption in currentStore.rtlsOptions {
             if rtlsOption.isDefault {
-                self.rtlsOption = rtlsOption
-                self.floor.setActiveFloor(with: rtlsOption) { [weak self] (mapFence, zones, points) in
-                    if let mapFence = mapFence {
-                        self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtlsOption, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
-                        self?.setupMapfence(with: mapFence)
-                    }
-                    
-                    self?.setupAnalytics(for: zones, points: points)
-                    completion(nil)
+                self.setActiveFloor(rtls: rtlsOption) { (error) in
+                    completion(error)
                 }
+            }
+        }
+
+        if rtlsOption == nil {
+            guard let rtls = currentStore.rtlsOptions.first else { return }
+            self.setActiveFloor(rtls: rtls) { (error) in
+                completion(error)
             }
         }
         
@@ -112,6 +112,19 @@ final public class TT2: ITT2 {
 }
 
 private extension TT2 {
+    private func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
+        self.rtlsOption = rtls
+        self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zones, points) in
+            if let mapFence = mapFence {
+                self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
+                self?.setupMapfence(with: mapFence)
+            }
+
+            self?.setupAnalytics(for: zones, points: points)
+            completion(nil)
+        }
+    }
+
     private func setupMapfence(with data: MapFence) {
         guard let rtlsOption = self.rtlsOption, let name = self.activeStore?.name else { return }
         
@@ -128,14 +141,18 @@ private extension TT2 {
         let analyticsConfig = EnvironmentConfig()
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
         
-        analyticsConfig.initCentralServerConnection(with: "https://gunnis-hp-stat.ih.vs-office.se/api/v2", apiKey: apiKey)
+        analyticsConfig.initCentralServerConnection(with: "\(serverAddress)/api/v2", apiKey: apiKey)
         analytics.setup(with: store, rtlsOptionId: self.rtlsOption?.id, config: analyticsConfig)
     }
     
-    private func setupAnalytics(for zones: [MapZone]?, points: [MapZonePoint]?) {
+    private func setupAnalytics(for zones: [Int: [MapZone]]?, points: [Int: [MapZonePoint]]?) {
         guard let rtlsOption = rtlsOption, let store = activeStore, let zones = zones else { return }
-        
-        mapZonesTree?.add(rtlsOption.floorLevel, store.name, zones, points ?? [])
+
+        zones.forEach { (key, value) in
+            guard let zonePoints = points?[key] else { return }
+
+            mapZonesTree?.add(key, store.name, value, zonePoints)
+        }
         
         self.mapZonesTree?.print()
         guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevel: rtlsOption.floorLevel) else { return }

@@ -65,12 +65,7 @@ public class Zone: Equatable {
     }
     
     func recursivePrint(_ padding: String) {
-        if self.parent != nil {
-            Logger.init(verbosity: .debug).log(message: "\(padding)\(self.name)")
-        } else {
-            Logger.init(verbosity: .debug).log(message: padding)
-            Logger.init(verbosity: .debug).log(message: self.name)
-        }
+        Logger.init(verbosity: .debug).log(message: "\(padding)\(self.name)")
         
         for key in self.children.keys {
             self.children[key]?.recursivePrint(padding + "    ")
