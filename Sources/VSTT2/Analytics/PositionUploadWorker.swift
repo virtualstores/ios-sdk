@@ -29,13 +29,14 @@ final class PositionUploadWorker {
         }
     }
 
+    /// Will return filtered points
     func getPoints() throws -> [String: [RecordedPosition]]? {
         var pointsList: [String: [RecordedPosition]] = [:]
-            let positions = persistence.get(arrayOf: PositionObject.self)
-            let filteredPositions = positions.filter { $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
-
+        let positions = persistence.get(arrayOf: PositionObject.self)
+        let filteredPositions = positions.filter { $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
+        
         self.updateObjectStatus(objects: filteredPositions, status: PointStatus.inProgress)
-
+        
         for object in filteredPositions {
             if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key {
                 let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timeStamp: timeStamp)
@@ -45,7 +46,25 @@ final class PositionUploadWorker {
                 pointsList[key]?.append(recordedPosition)
             }
         }
-
+        
+        return pointsList
+    }
+    
+    /// Will return all points
+    func getAllPoints() -> [String: [RecordedPosition]]? {
+        var pointsList: [String: [RecordedPosition]] = [:]
+        let positions = persistence.get(arrayOf: PositionObject.self)
+                
+        for object in positions {
+            if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key {
+                let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timeStamp: timeStamp)
+                if pointsList[key] == nil {
+                    pointsList[key] = []
+                }
+                pointsList[key]?.append(recordedPosition)
+            }
+        }
+        
         return pointsList
     }
 
@@ -66,6 +85,19 @@ final class PositionUploadWorker {
             } catch {
                 Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
                                                     message: "Remove Points After Uploading SQLite error")
+            }
+        }
+    }
+    
+    func removeAllPoints() {
+        let positions = persistence.get(arrayOf: PositionObject.self)
+
+        for object in positions {
+            do {
+                try persistence.delete(object)
+            } catch {
+                Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+                                                    message: "Remove All Points After Uploading SQLite error")
             }
         }
     }

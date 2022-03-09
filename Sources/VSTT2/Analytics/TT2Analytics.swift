@@ -8,13 +8,16 @@
 import Foundation
 import VSFoundation
 import CoreGraphics
+import Combine
 
 public protocol TT2Analytics {
+    var startHeatMapCollectingPublisher: CurrentValueSubject<Void?, Never> { get }
+
     /// Start  Analytics with device data
     func startVisit(deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String])
 
     /// Setup analytics Manager with needed data
-    func setup(with store: Store, uploadThreshold: Int)
+    func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int, config: EnvironmentConfig?)
 
     /// Start  Collecting Heat Map
     func startCollectingHeatMapData() throws
@@ -24,9 +27,9 @@ public protocol TT2Analytics {
 
     /// Stop  Analytics
     func stopVisit()
-
-    /// Updates  position data each time
-    func onNewPositionBundle(point: CGPoint)
+    
+    /// Method for adding event from app
+    func addTriggerEvent(for event: TriggerEvent)
 }
 
 enum TT2AnalyticsError: Error {

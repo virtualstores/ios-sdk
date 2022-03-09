@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct ShelfGroup: Codable {
+public struct ShelfGroup {
     public let id: Int64
     public let name: String
     public let itemPosition: ItemPosition

@@ -9,28 +9,26 @@ import Foundation
 import VSFoundation
 
 public struct UploadPositionsParameters {
-    @Inject var config: EnvironmentConfig
-
-    private let apiKey: String
+    private var config: EnvironmentConfig?
     private let visitId: Int64
     private let requestId: String
     let positionGrps: [String: [RecordedPosition]]
 
-    init(apiKey: String, visitId: Int64, requestId: String, positionGrps: [String: [RecordedPosition]]) {
-        self.apiKey = apiKey
+    init(visitId: Int64, requestId: String, positionGrps: [String: [RecordedPosition]], config: EnvironmentConfig?) {
         self.visitId = visitId
         self.requestId = requestId
         self.positionGrps = positionGrps
+        self.config = config
     }
 }
 
 extension UploadPositionsParameters: Routing {
-    var environmentConfig: EnvironmentConfig { .analytics }
+    var environmentConfig: EnvironmentConfig? { config }
 
     var path: String { "/positions" }
 
     var queryItems: [String: String]? {
-        let parameters = ["visitId": String(visitId), "requestId": requestId] as [String: String]
+        let parameters = ["requestId": requestId, "visitId": String(visitId)] as [String: String]
 
         return parameters
     }
@@ -40,6 +38,4 @@ extension UploadPositionsParameters: Routing {
 
         return parameters
     }
-
-    var headers: [String: String]? { ["apiKey": apiKey ] }
 }

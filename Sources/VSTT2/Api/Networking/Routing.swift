@@ -9,7 +9,6 @@ import Foundation
 import VSFoundation
 
 protocol Routing {
-
     /// Base url
     var baseURL: String { get }
     /// Request type
@@ -28,13 +27,17 @@ protocol Routing {
     /// Final UrlRequest
     var urlRequest: URLRequest? { get }
     /// Environment config data
-    var environmentConfig: EnvironmentConfig { get }
+    var environmentConfig: EnvironmentConfig? { get }
 }
 
 extension Routing {
-    var environmentConfig: EnvironmentConfig { .development }
+    var environmentConfig: EnvironmentConfig? { nil }
 
-    var baseURL: String { environmentConfig.baseURL() }
+    var baseURL: String {
+        guard let url = environmentConfig?.centralServerConnection.serverAddress else { fatalError("baseURL is not exist") }
+        
+        return url
+    }
 
     var method: RequestType { .POST }
 
@@ -46,7 +49,11 @@ extension Routing {
 
     var encoding: ParameterEncoding { ParameterEncoding.json }
 
-    var headers: [String: String]? { ["apiKey" : "kanelbulle"] }
+    var headers: [String: String]? {
+        guard let apiKey = environmentConfig?.centralServerConnection.apiKey else { fatalError("apiKey is not exist") }
+
+       return  ["apiKey" : apiKey]
+    }
 
     var urlRequest: URLRequest? {
         @Inject var logger: Logger

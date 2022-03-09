@@ -8,6 +8,7 @@
 import Foundation
 import CoreGraphics
 import UIKit
+import VSFoundation
 
 public struct Message: Equatable, Hashable {
     public struct Product {
@@ -87,24 +88,5 @@ public struct Message: Equatable, Hashable {
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(self.id)
-    }
-}
-
-extension Message: AreaEvent {
-    public var area: EventArea {
-        let path = UIBezierPath()
-        self.zones.forEach { zone in
-            guard let firstCoordinate = zone.zone.first else { return }
-
-            let zoneCurve = UIBezierPath()
-            zoneCurve.move(to: firstCoordinate)
-
-            zone.zone[1...].forEach { point in
-                zoneCurve.addLine(to: point)
-            }
-
-            path.append(zoneCurve)
-        }
-        return path
     }
 }

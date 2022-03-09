@@ -19,7 +19,7 @@ public struct ServerConnection: Codable {
         self.mqttAddress = mqttAddress
         self.storeId = storeId
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 

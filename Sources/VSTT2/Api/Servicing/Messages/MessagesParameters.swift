@@ -10,16 +10,25 @@ import VSFoundation
 
 public struct MessagesParameters {
     private let storeId: Int64
+    private let config: EnvironmentConfig?
 
-    @Inject var config: EnvironmentConfig
-
-    public init(storeId: Int64) {
+    public init(storeId: Int64, config: EnvironmentConfig?) {
         self.storeId = storeId
+        self.config = config
     }
 }
 
 extension MessagesParameters: Routing {
-    var environmentConfig: EnvironmentConfig { config }
+    var environmentConfig: EnvironmentConfig? { config }
 
-    var path: String { "messages?storeId=\(storeId)" }
+    var method: RequestType { .GET }
+    
+    var path: String { "/messages" }
+    
+    var queryItems: [String: String]? {
+        let parameters = ["storeId": String(storeId)] as [String: String]
+
+        return parameters
+    }
+    
 }

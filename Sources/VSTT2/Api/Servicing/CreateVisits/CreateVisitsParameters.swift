@@ -9,9 +9,7 @@ import Foundation
 import VSFoundation
 
 public struct CreateVisitsParameters {
-    @Inject var config: EnvironmentConfig
-
-    private let apiKey: String
+    private var config: EnvironmentConfig?
     private let requestId: String
     private let storeId: Int64
     private let start: String
@@ -20,9 +18,8 @@ public struct CreateVisitsParameters {
     private let tags: [String: String]
     private let metaData: [String: String]
 
-    public init(apiKey: String, requestId: String, storeId: Int64, start: String,
-                stop: String, deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String]) {
-        self.apiKey = apiKey
+    public init(requestId: String, storeId: Int64, start: String,
+                stop: String, deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String], config: EnvironmentConfig?) {
         self.requestId = requestId
         self.storeId = storeId
         self.start = start
@@ -30,11 +27,12 @@ public struct CreateVisitsParameters {
         self.deviceInformation = deviceInformation
         self.tags = tags
         self.metaData = metaData
+        self.config = config
     }
 }
 
 extension CreateVisitsParameters: Routing {
-    var environmentConfig: EnvironmentConfig { .analytics }
+    var environmentConfig: EnvironmentConfig? { config }
 
     var queryItems: [String: String]? {
         let parameters = ["requestId": requestId] as [String: String]
@@ -45,7 +43,7 @@ extension CreateVisitsParameters: Routing {
     var path: String { "/visits" }
 
     var parameters: [String: Any]? {
-        let parameters = ["storeId": 1,
+        let parameters = ["storeId": storeId,
                           "start": start,
                           "stop": stop,
                           "deviceInformation": [
@@ -59,6 +57,4 @@ extension CreateVisitsParameters: Routing {
 
         return parameters
     }
-
-    var headers: [String: String]? { ["APIKey": apiKey ] }
 }

@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreGraphics
+import VSFoundation
 import UIKit
 
 public struct AreaTrigger {

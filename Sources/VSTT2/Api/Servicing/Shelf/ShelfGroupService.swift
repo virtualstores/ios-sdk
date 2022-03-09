@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 final class ShelfGroupService: DataFetchingManager {
-    func call(with parameters: ShelfGroupParameters) -> AnyPublisher<ShelfGroup, Error> {
+    func call(with parameters: ShelfGroupParameters) -> AnyPublisher<[ShelfGroupDto], Error> {
         return self.execute(parameters, errorType: Error.self)
     }
 }

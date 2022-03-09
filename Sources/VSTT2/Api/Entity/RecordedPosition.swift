@@ -11,4 +11,10 @@ struct RecordedPosition: Codable {
     let xPosition: Double
     let yPosition: Double
     let timeStamp: String
+    
+    private enum CodingKeys: String, CodingKey {
+        case xPosition = "x"
+        case yPosition = "y"
+        case timeStamp = "timeStamp"
+    }
 }

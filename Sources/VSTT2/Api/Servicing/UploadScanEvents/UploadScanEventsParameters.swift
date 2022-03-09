@@ -10,8 +10,7 @@ import VSFoundation
 import CoreGraphics
 
 public struct UploadScanEventsParameters {
-    @Inject var config: EnvironmentConfig
-
+    private let config: EnvironmentConfig?
     private let apiKey: String
     private let visitId: Int64
     private let requestId: String
@@ -27,7 +26,7 @@ public struct UploadScanEventsParameters {
     }
 
     init(apiKey: String, visitId: Int64, requestId: String, barcode: String, shelfId: Int64,
-         point: CGPoint, timeStamp: String, type: ScanType) {
+         point: CGPoint, timeStamp: String, type: ScanType, config: EnvironmentConfig?) {
         self.apiKey = apiKey
         self.visitId = visitId
         self.requestId = requestId
@@ -36,11 +35,12 @@ public struct UploadScanEventsParameters {
         self.point = point
         self.timeStamp = timeStamp
         self.type = type
+        self.config = config
     }
 }
 
 extension UploadScanEventsParameters: Routing {
-    var environmentConfig: EnvironmentConfig { .analytics }
+    var environmentConfig: EnvironmentConfig? { config }
 
     var path: String { "/scanevents" }
 
