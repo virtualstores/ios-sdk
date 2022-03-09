@@ -51,6 +51,12 @@ final public class TT2: ITT2 {
         return position
     }
     
+    public var user: UserSettings {
+        guard let user = tt2Internal?.user else { fatalError("tt2Internal is not initialized") }
+        
+        return user
+    }
+    
     public var coordinateConverter: ICoordinateConverter?
     public var mapData: MapData?
     public var map: Map?

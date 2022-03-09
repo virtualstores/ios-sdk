@@ -27,11 +27,16 @@ public class Position: IPosition {
     }
     
     public func getByShelfName(shelfName: String, completion: @escaping (ItemPosition) -> ()) {
-        //TODO: change logic
-        let shelfGroup = shelfGroups?.first(where: { $0.name == shelfName })
-        guard let position = shelfGroup?.shelves.first(where: { $0.name == shelfName })?.itemPosition else { return }
+        var position: ItemPosition?
+        shelfGroups?.forEach({ shelfGroup in
+            if let shelf = shelfGroup.shelves.first(where: { $0.name == shelfName }) {
+                position = shelf.itemPosition
+            }
+        })
         
-        completion(position)
+        guard let itemPosition = position else { return }
+        
+        completion(itemPosition)
     }
 
     public func getByBarcode(barcode: String, completion: @escaping (Item) -> ()) {

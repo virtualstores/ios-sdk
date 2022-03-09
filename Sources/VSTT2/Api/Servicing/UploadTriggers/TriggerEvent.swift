@@ -18,6 +18,7 @@ public class TriggerEvent {
     public var eventType: EventType
     public var tags: [String: String]
     public var metaData: [String: String]
+    public var hasBeenTriggered: Bool
     
     public init(
         rtlsOptionsId: String,
@@ -27,7 +28,8 @@ public class TriggerEvent {
         userPosition: CGPoint = .zero,
         eventType: EventType,
         tags: [String: String] = [:],
-        metaData: [String: String] = [:]
+        metaData: [String: String] = [:],
+        hasBeenTriggered: Bool = false
     ) {
         self.rtlsOptionsId = rtlsOptionsId
         self.name = name
@@ -37,6 +39,7 @@ public class TriggerEvent {
         self.eventType = eventType
         self.tags = tags
         self.metaData = metaData
+        self.hasBeenTriggered = hasBeenTriggered
     }
     
     public func updateEventData(for userPosition: CGPoint, timestamp: Date) {
@@ -44,6 +47,10 @@ public class TriggerEvent {
         
         self.userPosition = userPosition
         self.timestamp = timestamp
+    }
+    
+    public func updateEventStatus(hasBeenTriggered: Bool = false) {
+        self.hasBeenTriggered = hasBeenTriggered
     }
     
     public enum EventType {

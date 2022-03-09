@@ -36,8 +36,10 @@ internal class ZoneEventDetector: EventDetector {
             for zone in zones {
                 if let appEvent = event.eventType.getTrigger().appTrigger, appEvent.zoneIds.contains(zone.name) {
                     event.updateEventData(for: currentPosition, timestamp: Date())
-                    guard event.userPosition != .zero else { return }
+
+                    guard event.userPosition != .zero, !event.hasBeenTriggered else { return }
                     
+                    event.updateEventStatus(hasBeenTriggered: true)
                     self.eventPublisher.send(event)
                 }
             }

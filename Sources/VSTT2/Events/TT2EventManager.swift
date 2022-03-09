@@ -53,7 +53,7 @@ public class TT2EventManager: TT2Event {
     }
 
     public func removeEvent(with id: String) { }
-    
+
     public func onNewPosition(currentPosition: CGPoint) {
         zoneEventDetectore.onNewPosition(currentPosition: currentPosition)
         coordinateEventDetectore.onNewPosition(currentPosition: currentPosition)

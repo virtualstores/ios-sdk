@@ -16,6 +16,7 @@ internal class TT2Internal {
     @Inject var analytics: TT2AnalyticsManager
     @Inject var floorManager: VSTT2FloorManager
     @Inject var position: Position
+    @Inject var user: UserSettings
     
     /// Services for getting the api data
     @Inject var storesListService: StoresListService

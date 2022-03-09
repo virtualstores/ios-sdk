@@ -96,6 +96,9 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     internal func onNewPositionBundle(point: CGPoint) {
+        guard Date().timeIntervalSince(latestRecordedPosition) > 0.2 else { return }
+        self.latestRecordedPosition = Date()
+
         if isRecording {
             recordPosition(rtlsOptionId: self.rtlsOptionId ?? 0, point: point)
             zoneManager.onNewPosition(currentPosition: point)
@@ -148,8 +151,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
 private extension TT2AnalyticsManager {
     // MARK: Heatmap data
     func recordPosition(rtlsOptionId: Int64, point: CGPoint) {
-        guard Date().timeIntervalSince(latestRecordedPosition) > 0.2 else { return }
-        self.latestRecordedPosition = Date()
+    
         let id = String(rtlsOptionId)
 
         recordedPositionsCount += 1

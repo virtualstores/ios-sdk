@@ -120,6 +120,10 @@ struct VSTT2Config: Config {
         injector.map(Position.self) {
             Position()
         }
+        
+        injector.map(UserSettings.self) {
+            UserSettings()
+        }
     }
 
     private func configureHelpers(_ injector: Injector) {
