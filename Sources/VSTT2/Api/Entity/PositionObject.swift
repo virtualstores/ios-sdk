@@ -5,6 +5,8 @@
 // Created by Hripsime on 2022-01-18.
 // Copyright Virtual Stores - 2021
 
+import VSFoundation
+
 enum PointStatus: String {
     case pending
     case inProgress
