@@ -27,7 +27,11 @@ public protocol ITT2 {
     /// Position manager
     var position: Position { get }
     
-    var user: UserSettings { get }
+    /// User Settings manager
+    var userSettings: UserSettings { get }
+    
+    /// Active store
+    var activeStore: TT2Store? { get }
     
     /// List of active stores
     var activeStores: [TT2Store] { get }
