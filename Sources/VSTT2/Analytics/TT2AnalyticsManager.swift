@@ -73,7 +73,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
                 self?.visitId = data.visitId
                 self?.startHeatMapCollectingPublisher.send(())
             }).store(in: &cancellable)
-
     }
 
     public func startCollectingHeatMapData() throws {

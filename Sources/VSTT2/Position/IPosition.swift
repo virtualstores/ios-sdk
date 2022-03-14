@@ -10,11 +10,11 @@ import Combine
 
 public protocol IPosition {
     /// Method will return ItemPosition for shelfName
-    func getByShelfName(shelfName: String, completion: @escaping (ItemPosition) -> ())
+    func getBy(shelfName: String, completion: @escaping (ItemPosition) -> ())
     
     /// Method will return Item for barcode
-    func getByBarcode(barcode: String, completion: @escaping (Item) -> ())
+    func getBy(barcode: String, completion: @escaping ([BarcodePosition]?) -> ())
     
     /// Method will return Items for barcodes
-    func getByBarcode(barcodes: [String], completion: @escaping ([Item]) -> ())
+    func getBy(barcodes: [String], completion: @escaping ([String : [BarcodePosition]]) -> ())
 }

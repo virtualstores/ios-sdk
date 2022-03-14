@@ -68,11 +68,11 @@ public extension Navigation {
     }
     
     func compassSyncPosition(position: ItemPosition) throws  {
-        guard var degrees = self.heading?.degrees, isActive else { return }
+        guard var heading = self.heading, isActive else { return }
         //degrees = degrees + 180
 
         let point = position.point
-        let offset = CGPoint(x: point.x + cos(degrees), y: point.y + sin(degrees))
+        let offset = CGPoint(x: point.x + cos(heading.radians), y: point.y + sin(heading.radians))
         Logger(verbosity: .debug).log(message: "Point: \(point)")
         Logger(verbosity: .debug).log(message: "Offset: \(offset)")
         Logger(verbosity: .debug).log(message: "Direction: \(positionKitManager.directionPublisher.value?.angle)")
