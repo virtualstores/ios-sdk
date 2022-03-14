@@ -90,11 +90,9 @@ public class TriggerEvent {
     
     public struct AppTrigger {
         public let event: String
-        public let zoneIds: [String]
         
-        public init(event: String, zoneIds: [String]) {
+        public init(event: String) {
             self.event = event
-            self.zoneIds = zoneIds
         }
         
         var asPostTrigger: PostTriggerEventRequest.AppTrigger {

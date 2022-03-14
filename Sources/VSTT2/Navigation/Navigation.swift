@@ -56,7 +56,7 @@ public extension Navigation {
         positionKitManager.syncPosition(position: pointWithOffset, syncRotation: syncRotation, forceSync: forceSync, uncertainAngle: false)
     }
     
-    func compassStartNavigation(startPosition: CGPoint) throws {
+    func start(startPosition: CGPoint) throws {
         guard let heading = self.heading, !isActive else { throw PositionKitError.alreadyStarted }
         try positionKitManager.start()
 
@@ -67,8 +67,8 @@ public extension Navigation {
         isActive = true
     }
     
-    func compassSyncPosition(position: ItemPosition) throws  {
-        guard var heading = self.heading, isActive else { return }
+    func syncPosition(position: ItemPosition) throws  {
+        guard let heading = self.heading, isActive else { return }
         //degrees = degrees + 180
 
         let point = position.point

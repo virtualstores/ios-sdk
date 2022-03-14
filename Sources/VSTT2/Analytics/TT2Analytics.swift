@@ -11,10 +11,8 @@ import CoreGraphics
 import Combine
 
 public protocol TT2Analytics {
-    var startHeatMapCollectingPublisher: CurrentValueSubject<Void?, Never> { get }
-
     /// Start  Analytics with device data
-    func startVisit(deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String])
+    func startVisit(deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String], completion: @escaping (Error?) -> Void)
 
     /// Setup analytics Manager with needed data
     func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int, config: EnvironmentConfig?)
