@@ -1,18 +1,17 @@
 //
-//  File.swift
+//  quickstart.txt
 //  VSTT2
 //
 //  Created by Théodore Roos on 2022-03-15.
 //
 
 
-Hello <#Name#>
+Hi <#Name#>
+Here is a link to TT2 Quick Start guide https://virtualstores.github.io/tt2/
 To start using the SDK you will need
-serverUrl: <#serverurl#>
+serverUrl: <#serverUrl#>
 apikey: <#apiKey#>
-Link to TT2 Quick Start guide https://github.com/virtualstores/tt2
 
 Requirements:
 - In your projects build settings you will need to set the "Enable bitcode" to "No"
 - Currently the latest version of Xcode (13.3) is not working with binaries in SPM, please use 13.2.1 or earlier versions
-

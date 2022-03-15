@@ -8,13 +8,14 @@
 
 ## Installation
 
-###Using as a dependency
+#### Using as a dependency
 
 `Using Swift 5.5`
 
 1. Using Xcode 13 go to File > Add packages...
 2. Paste the project URL in search bar: [https://github.com/virtualstores/ios-sdk](https://github.com/virtualstores/ios-sdk)
-3. Click on next and select the project target
+3. Use release verion `0.0.7` 
+4. Click on next and select the project target
 
 If you have doubts, please, check the following links:
 
