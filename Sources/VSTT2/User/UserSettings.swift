@@ -13,9 +13,7 @@ public class UserSettings: IUserSettings {
 
     public func setUser(user: User) {
         var object = TT2User()
-        object.gender = user.gender
-        object.age = user.age
-        object.id = user.id
+        object.setup(id: user.id, userId: user.userId, userHeight: user.userHeight, name: user.name)
         do {
             try persistence.save(&object)
         } catch {

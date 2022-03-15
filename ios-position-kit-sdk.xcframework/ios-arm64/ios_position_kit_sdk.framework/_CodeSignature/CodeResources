@@ -14,11 +14,11 @@
 		</data>
 		<key>Frameworks/qps.framework/qps</key>
 		<data>
-		KnXe21Y5nvicRx9bVh7Xv//Q46Y=
+		55YO70DLpnk8opiQeoS3xlDUwzE=
 		</data>
 		<key>Headers/ios_position_kit_sdk-Swift.h</key>
 		<data>
-		Gz8b4gPTE+kfwHg60JacSFPtjy0=
+		jgJRJQcXO5GJoLhjyvrQrwy28kc=
 		</data>
 		<key>Headers/ios_position_kit_sdk.h</key>
 		<data>
@@ -30,27 +30,27 @@
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64-apple-ios.swiftdoc</key>
 		<data>
-		QPrbg1yoj937XGUxsaQdKBlloLk=
+		gQRLeS7EMRiFKap0BtYE0/gd+m0=
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64-apple-ios.swiftinterface</key>
 		<data>
-		HwP0meP82PlbmZgh3FXKwkjqyBQ=
+		M1LEf2DCYcAfuOF9iSEpFVlRu2E=
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64-apple-ios.swiftmodule</key>
 		<data>
-		EY9bkDBKtsx9hm5FCrZPoim2a3s=
+		moKWyPS9Vf4FexXiTRCrnja2gao=
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftdoc</key>
 		<data>
-		QPrbg1yoj937XGUxsaQdKBlloLk=
+		gQRLeS7EMRiFKap0BtYE0/gd+m0=
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftinterface</key>
 		<data>
-		HwP0meP82PlbmZgh3FXKwkjqyBQ=
+		M1LEf2DCYcAfuOF9iSEpFVlRu2E=
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftmodule</key>
 		<data>
-		EY9bkDBKtsx9hm5FCrZPoim2a3s=
+		moKWyPS9Vf4FexXiTRCrnja2gao=
 		</data>
 		<key>Modules/module.modulemap</key>
 		<data>
@@ -77,14 +77,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			re76M1GCxH6Smd9Q+CLhETbUV/POhFhZI0p7Zqbv28U=
+			WMdx6UuV9QOiLfG7XHVZvFa8NY6d8r8geteCfI178Xg=
 			</data>
 		</dict>
 		<key>Headers/ios_position_kit_sdk-Swift.h</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			zpW8GE/FUSkU8iLMeP9uhbKMcaSXtc/8HcBc9QzuSDU=
+			yxSb7HB1fsxLuZIJKWwbMDa0vED8apLfP29G0wb7l5Q=
 			</data>
 		</dict>
 		<key>Headers/ios_position_kit_sdk.h</key>
@@ -98,42 +98,42 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			bq4TOGC/AD3x30W5C7P3/uIIPWC/PNGxWTd2OC2CfHM=
+			9FrEBXl/UySMTSMQ1NK44fJJUKOjsf6c5YDD/2/+WKs=
 			</data>
 		</dict>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64-apple-ios.swiftinterface</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			vMbpTgr0TiUfNYdoa/zOt6DaQXtY8iyy9snYsinI1aU=
+			IzTRA6xW44swVTvqZrQMy2Eug4l6NxvmqlGwPNEQLUM=
 			</data>
 		</dict>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64-apple-ios.swiftmodule</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			s5vpyU9DGRKS1RZgbTc+EsCZZQha/4LpZn3O7IqsPqo=
+			jAEJBMiat1kTeSbRiWg+xYLvTt2koP/XgwZ7bKi836A=
 			</data>
 		</dict>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftdoc</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			bq4TOGC/AD3x30W5C7P3/uIIPWC/PNGxWTd2OC2CfHM=
+			9FrEBXl/UySMTSMQ1NK44fJJUKOjsf6c5YDD/2/+WKs=
 			</data>
 		</dict>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftinterface</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			vMbpTgr0TiUfNYdoa/zOt6DaQXtY8iyy9snYsinI1aU=
+			IzTRA6xW44swVTvqZrQMy2Eug4l6NxvmqlGwPNEQLUM=
 			</data>
 		</dict>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftmodule</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			s5vpyU9DGRKS1RZgbTc+EsCZZQha/4LpZn3O7IqsPqo=
+			jAEJBMiat1kTeSbRiWg+xYLvTt2koP/XgwZ7bKi836A=
 			</data>
 		</dict>
 		<key>Modules/module.modulemap</key>

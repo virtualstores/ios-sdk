@@ -12,9 +12,6 @@ import UIKit
 import VSFoundation
 import _Concurrency
 @_exported import ios_position_kit_sdk
-public protocol IFakeSensorManager : ios_position_kit_sdk.ISensorManager {
-  func setFakeData(data: [VSFoundation.MotionSensorData])
-}
 public struct PositionData {
 }
 public struct RotationBundle {
@@ -49,13 +46,6 @@ public enum VPSWrapperError : Swift.Error {
 }
 public struct MapFenceData {
 }
-public struct PositionKitTestConfig : VSFoundation.Config {
-  public init()
-  public func configure(_ injector: VSFoundation.Injector)
-}
-extension Swift.Double {
-  public static var interval100Hz: Swift.Double
-}
 public struct Path {
   public let head: [CoreGraphics.CGPoint]
   public let body: [CoreGraphics.CGPoint]
@@ -86,31 +76,6 @@ final public class PositionManager {
   final public func stop()
   final public func setBackgroundAccess(isActive: Swift.Bool)
   @objc deinit
-}
-extension CoreLocation.CLAuthorizationStatus : Swift.CustomStringConvertible {
-  public var description: Swift.String {
-    get
-  }
-}
-public protocol ISensorManager {
-  var isRunning: Swift.Bool { get }
-  var sensorPublisher: Combine.CurrentValueSubject<VSFoundation.MotionSensorData?, ios_position_kit_sdk.SensorError> { get }
-  var altimeterPublisher: Combine.CurrentValueSubject<VSFoundation.AltitudeSensorData?, ios_position_kit_sdk.SensorError> { get }
-  func start() throws
-  func startMotion() throws
-  func startAltimeter() throws
-  func stop()
-  func stopMotion()
-  func stopAltimeter()
-}
-public enum SensorError : Swift.Error {
-  case noData
-  case sensorNotAvaliable
-  case altimeterError(Swift.Error)
-}
-public struct PositionKitConfig : VSFoundation.Config {
-  public init()
-  public func configure(_ injector: VSFoundation.Injector)
 }
 public enum PositionKitError : Swift.Error {
   case noPositions
