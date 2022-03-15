@@ -24,15 +24,15 @@ let package = Package(
         .target(
             name: "VSTT2",
             dependencies: [
-                "ios-position-kit-sdk",
+                "VSPositionKit",
                 .product(name: "SQLite", package: "SQLite.swift"),
                 .product(name: "VSFoundation", package: "ios-foundation"),
             ]),
         .testTarget(
             name: "VSTT2Tests",
-            dependencies: ["VSTT2",  "ios-position-kit-sdk"]),
+            dependencies: ["VSTT2",  "VSPositionKit"]),
         .binaryTarget(
-            name: "ios-position-kit-sdk",
+            name: "VSPositionKit",
             path: "ios-position-kit-sdk.xcframework"),
     ]
 )
