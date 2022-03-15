@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 import VSFoundation
-import VSPositionKit
+import ios_position_kit_sdk
 import CoreGraphics
 import UIKit
 
@@ -75,7 +75,7 @@ public extension Navigation {
         let offset = CGPoint(x: point.x + cos(degrees), y: point.y + sin(degrees))
         Logger(verbosity: .debug).log(message: "Point: \(point)")
         Logger(verbosity: .debug).log(message: "Offset: \(offset)")
-        Logger(verbosity: .debug).log(message: "Direction: \(positionKitManager.directionPublisher.value?.angle)")
+       // Logger(verbosity: .debug).log(message: "Direction: \(positionKitManager.directionPublisher.value?.angle)")
         let pointWithOffset = TT2PointWithOffset(point: point, offset: offset)
         
         positionKitManager.syncPosition(position: pointWithOffset, syncRotation: true, forceSync: true, uncertainAngle: true)

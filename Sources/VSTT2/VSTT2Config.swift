@@ -7,7 +7,7 @@
 
 import Foundation
 import VSFoundation
-import VSPositionKit
+import ios_position_kit_sdk
 
 struct VSTT2Config: Config {
     public init() { }
