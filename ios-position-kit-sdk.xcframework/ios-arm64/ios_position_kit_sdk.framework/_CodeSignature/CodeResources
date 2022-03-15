@@ -4,6 +4,18 @@
 <dict>
 	<key>files</key>
 	<dict>
+		<key>Frameworks/qps.framework/Info.plist</key>
+		<data>
+		ce5S4IU860i7n9fk0pKPUShne0Q=
+		</data>
+		<key>Frameworks/qps.framework/_CodeSignature/CodeResources</key>
+		<data>
+		DCPFGBWgExthdSL+6IHi/R31hQA=
+		</data>
+		<key>Frameworks/qps.framework/qps</key>
+		<data>
+		Fm98VSfrFZB60fVl8qNyUuZtpuk=
+		</data>
 		<key>Headers/ios_position_kit_sdk-Swift.h</key>
 		<data>
 		Gz8b4gPTE+kfwHg60JacSFPtjy0=
@@ -47,6 +59,27 @@
 	</dict>
 	<key>files2</key>
 	<dict>
+		<key>Frameworks/qps.framework/Info.plist</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			ZX0ltfmRr21XrBwa/YdozmA/yDuYX0bMYVXXx4xDlQ0=
+			</data>
+		</dict>
+		<key>Frameworks/qps.framework/_CodeSignature/CodeResources</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			Awn0jtB8HrA3EMQgjAW11o6NO9idGrD3NXN88cK2Ki0=
+			</data>
+		</dict>
+		<key>Frameworks/qps.framework/qps</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			QO3opZ7qojFo1j6dJ/vLzRUriJBPwcBw9LMS3knyxbo=
+			</data>
+		</dict>
 		<key>Headers/ios_position_kit_sdk-Swift.h</key>
 		<dict>
 			<key>hash2</key>
