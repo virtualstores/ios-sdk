@@ -81,10 +81,6 @@ struct VSTT2Config: Config {
             Persistence()
         }
 
-        injector.map(PositionManager.self) {
-            PositionManager()
-        }
-
         injector.map(PositionUploadWorker.self) {
             PositionUploadWorker()
         }
