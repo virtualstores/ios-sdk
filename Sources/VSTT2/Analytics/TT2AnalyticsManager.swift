@@ -35,8 +35,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
     /// now we are uploading positions each time when they are 100
     private var recordedPositionsCount = 0
     private var config: EnvironmentConfig?
-
-    public var startHeatMapCollectingPublisher: CurrentValueSubject<Void?, Never> = .init(nil)
     
     public init() {}
 
@@ -48,7 +46,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         bindPublishers()
     }
 
-    public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:]) {
+    public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:], completion: @escaping (Error?) -> Void) {
         guard let storeId = store?.statServerConnection.storeId else { return }
 
         let date = DateFormatter.standardFormatter.string(from: Date())
@@ -62,18 +60,17 @@ final public class TT2AnalyticsManager: TT2Analytics {
                                                 config: config)
         createVisitsService
             .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
+            .sink(receiveCompletion: { (subscriberCompletion) in
+                switch subscriberCompletion {
+                case .finished: break
                 case .failure(let error):
-                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
+                    Logger(verbosity: .debug).log(message: error.localizedDescription)
+                    completion(error)
                 }
             }, receiveValue: { [weak self] (data) in
                 self?.visitId = data.visitId
-                self?.startHeatMapCollectingPublisher.send(())
+                completion(nil)
             }).store(in: &cancellable)
-
     }
 
     public func startCollectingHeatMapData() throws {

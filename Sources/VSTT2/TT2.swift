@@ -107,10 +107,10 @@ final public class TT2: ITT2 {
         }
         
         setupAnalytics(for: currentStore)
-        tt2Internal?.getShelfGroups(for: store.id, activeFloor: self.rtlsOption, completion: { [weak self]
-            shelfGroups in
-            self?.position.setup(with: shelfGroups)
-        })
+        tt2Internal?.getShelfGroups(for: store.id, activeFloor: self.rtlsOption) { [weak self] shelfGroups in
+            guard let config = self?.config else { return }
+            self?.position.setup(with: shelfGroups, config: config, storeId: currentStore.id)
+        }
     }
     
     public func getMapData() -> MapData? {

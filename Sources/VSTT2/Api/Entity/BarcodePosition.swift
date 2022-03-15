@@ -9,6 +9,7 @@ import Foundation
 import CoreGraphics
 
 public struct BarcodePosition: Codable {
+    public let rtlsOptionsId: Int64?
     public let shelfId: Int64?
     public let shelfTierId: Int64?
     public let barcode: String?
@@ -33,7 +34,8 @@ public struct BarcodePosition: Codable {
         return CGVector(dx: x, dy: y)
     }
 
-    public init(shelfId: Int64?, shelfTierId: Int64?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, barcode: String?) {
+    public init(rtlsOptionsId: Int64?, shelfId: Int64?, shelfTierId: Int64?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, barcode: String?) {
+        self.rtlsOptionsId = rtlsOptionsId
         self.shelfId = shelfId
         self.shelfTierId = shelfTierId
         self.barcode = barcode

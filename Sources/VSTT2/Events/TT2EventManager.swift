@@ -44,10 +44,8 @@ public class TT2EventManager: TT2Event {
     
     public func addEvent(event: TriggerEvent) {
         switch event.eventType {
-        case .appTrigger(_):
-            zoneEventDetectore.add(event: event)
-        case .coordinateTrigger(_):
-            coordinateEventDetectore.add(event: event)
+        case .zoneTrigger(_): zoneEventDetectore.add(event: event)
+        case .coordinateTrigger(_): coordinateEventDetectore.add(event: event)
         default: break
         }
     }
@@ -65,8 +63,7 @@ public class TT2EventManager: TT2Event {
             .sink { _ in
                 Logger.init().log(message: "zoneEnteredPublisher error")
             } receiveValue: { [weak self] event in
-                
-                self?.messageEventPublisher.send( event)
+                self?.messageEventPublisher.send(event)
             }
         
         self.coordinateEnterCancellable = coordinateEventDetectore.eventPublisher
@@ -74,7 +71,7 @@ public class TT2EventManager: TT2Event {
             .sink { _ in
                 Logger.init().log(message: "zoneEnteredPublisher error")
             } receiveValue: { [weak self] event in
-                self?.messageEventPublisher.send( event)
+                self?.messageEventPublisher.send(event)
             }
     }
     
@@ -121,12 +118,10 @@ public class TT2EventManager: TT2Event {
     }
     
     private func createZoneEvents(for message: Message) {
-        let zoneIds = message.zones.map({ String($0.name) })
-
-        let appTrigger = TriggerEvent.EventType.appTrigger(TriggerEvent.AppTrigger(event: message.name, zoneIds: zoneIds))
+        let trigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: message.zones.first!.name, groupId: "", type: .enter))
         let type = message.cardType == .big ? "BIG" : "SMALL"
         
-        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, description: message.description, eventType: appTrigger, tags:  ["messageShown": String(message.id)], metaData: ["Title": message.title, "Body": message.description, "Size": type])
+        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, description: message.description, eventType: trigger, tags:  ["messageShown": String(message.id)], metaData: ["Title": message.title, "Body": message.description, "Size": type])
         
         self.zoneEventDetectore.add(event: event)
     }
