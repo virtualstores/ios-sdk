@@ -5,7 +5,6 @@
 //  Created by Théodore Roos on 2022-03-15.
 //
 
-
 Hi <#Name#>
 Here is a link to TT2 Quick Start guide https://virtualstores.github.io/tt2/
 To start using the SDK you will need
