@@ -10,6 +10,12 @@ import Foundation
 /// Here we can have all setups depended what we need to use for each environment
 public class EnvironmentConfig {
     private var _centralServerConnection: ServerConnection?
+
+    enum EndPoints: String {
+        case v1 = "/api/v1"
+        case v2 = "/api/v2"
+    }
+
     public var centralServerConnection: ServerConnection {
         get {
             guard let config = _centralServerConnection else { fatalError("ServerConnection not initialized") }
@@ -27,8 +33,8 @@ public class EnvironmentConfig {
         }
     }
      
-    func initCentralServerConnection(with url: String, apiKey: String) {
-        self._centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url, mqttAddress: nil, storeId: nil)
+    func initCentralServerConnection(with url: String, endPoint: EndPoints, apiKey: String) {
+        self._centralServerConnection = ServerConnection(apiKey: apiKey + endPoint.rawValue, serverAddress: url, mqttAddress: nil, storeId: nil)
     }
     
     func initAnalyticsServerConnection(with url: String, apiKey: String) {

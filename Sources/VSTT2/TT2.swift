@@ -72,8 +72,8 @@ final public class TT2: ITT2 {
     public init() {}
     
     public func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (Error?) -> ()) {
-        config.initCentralServerConnection(with: apiUrl, apiKey: apiKey)
-        
+        config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
+
         self.tt2Internal = TT2Internal(config: config)
         self.tt2Internal?.getStores(with: clientId, completion: { stores in
             completion(nil)
@@ -148,7 +148,7 @@ private extension TT2 {
         let analyticsConfig = EnvironmentConfig()
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
         
-        analyticsConfig.initCentralServerConnection(with: "\(serverAddress)/api/v2", apiKey: apiKey)
+        analyticsConfig.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
         analytics.setup(with: store, rtlsOptionId: self.rtlsOption?.id, config: analyticsConfig)
     }
     
