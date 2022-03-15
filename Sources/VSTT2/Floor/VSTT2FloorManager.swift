@@ -8,7 +8,7 @@
 import Foundation
 import VSFoundation
 import Combine
-import VSPositionKit
+import ios_position_kit_sdk
 
 public class VSTT2FloorManager: VSTT2Floor {
     @Inject var downloadManager: DownloadManager

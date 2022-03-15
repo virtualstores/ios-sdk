@@ -6,7 +6,6 @@
 // Copyright Virtual Stores - 2022
 
 import XCTest
-//@testable import VSEngineWrapper
 import VSTT2
 @testable import VSFoundation
 

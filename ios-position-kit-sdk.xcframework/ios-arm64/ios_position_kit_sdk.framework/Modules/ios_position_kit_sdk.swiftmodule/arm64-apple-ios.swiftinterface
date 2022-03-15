@@ -1,0 +1,143 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 5.5.1 (swiftlang-1300.0.31.4 clang-1300.0.29.6)
+// swift-module-flags: -target arm64-apple-ios13.0 -enable-objc-interop -enable-library-evolution -swift-version 5 -enforce-exclusivity=checked -O -module-name ios_position_kit_sdk
+import Combine
+import CoreFoundation
+import CoreGraphics
+import CoreLocation
+import CoreMotion
+import Foundation
+import Swift
+import UIKit
+import VSFoundation
+import _Concurrency
+@_exported import ios_position_kit_sdk
+public struct PositionData {
+}
+public struct RotationBundle {
+}
+public protocol VPSWrapper {
+  var positionPublisher: Combine.CurrentValueSubject<VSFoundation.PositionBundle?, ios_position_kit_sdk.VPSWrapperError> { get }
+  var directionPublisher: Combine.CurrentValueSubject<ios_position_kit_sdk.VPSDirectionBundle?, ios_position_kit_sdk.VPSWrapperError> { get }
+  var deviceOrientationPublisher: Combine.CurrentValueSubject<VSFoundation.DeviceOrientation?, ios_position_kit_sdk.VPSWrapperError> { get }
+  var illegalBehaviourPublisher: Combine.CurrentValueSubject<Swift.Void?, Swift.Never> { get }
+  var badStepLengthPublisher: Combine.CurrentValueSubject<Swift.Void?, Swift.Never> { get }
+  var sensorsInitiatedPublisher: Combine.CurrentValueSubject<Swift.Void?, Swift.Never> { get }
+  var reducingSensorDataPublisher: Combine.CurrentValueSubject<Swift.Void?, Swift.Never> { get }
+  var trolleyModePublisher: Combine.CurrentValueSubject<Swift.Int64?, Swift.Never> { get }
+  var rescueModePublisher: Combine.CurrentValueSubject<Swift.Int64?, Swift.Never> { get }
+  var changedFloorPublisher: Combine.CurrentValueSubject<Swift.Int?, Swift.Never> { get }
+  func start()
+  func stop()
+  func startNavigation(startPosition: CoreGraphics.CGPoint, startAngle: Swift.Double, uncertainAngle: Swift.Bool)
+  func initPositionSync()
+  func setPosition(point: CoreGraphics.CGPoint, direction: CoreGraphics.CGPoint, delayedAngle: Swift.Double, syncDirection: Swift.Bool, forceSyncPosition: Swift.Bool, uncertainAngle: Swift.Bool)
+  func startRecording(startPosition: VSFoundation.PositionBundle, currentDirection: Swift.Double)
+  func stopRecording()
+  func prepareAngle()
+}
+public enum VPSWrapperError : Swift.Error {
+  case noData
+  public static func == (a: ios_position_kit_sdk.VPSWrapperError, b: ios_position_kit_sdk.VPSWrapperError) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+public struct MapFenceData {
+}
+public struct Path {
+  public let head: [CoreGraphics.CGPoint]
+  public let body: [CoreGraphics.CGPoint]
+  public let tail: [CoreGraphics.CGPoint]
+}
+public protocol IDataCommunicator {
+  func onNewCoefficients(slope: Swift.Double, intercept: Swift.Double)
+  func onNewRegressionVectors(alpha: [Swift.Double], beta: [Swift.Double], y: [Swift.Double])
+  func getRegressionVectors() -> ios_position_kit_sdk.RegressionVectors?
+}
+public struct VPSDirectionBundle {
+  public var angle: Swift.Double
+}
+public protocol IFloorChangeDelegate {
+  func onDetectedFloorChange(floorDifference: Swift.Int, timestamp: Swift.Int)
+}
+final public class PositionManager {
+  final public var positionPublisher: Combine.CurrentValueSubject<VSFoundation.PositionBundle?, ios_position_kit_sdk.PositionKitError>
+  final public var directionPublisher: Combine.CurrentValueSubject<ios_position_kit_sdk.VPSDirectionBundle?, Swift.Error>
+  final public var locationHeadingPublisher: Combine.CurrentValueSubject<CoreLocation.CLHeading, Swift.Error>
+  final public var allPackagesAreInitiated: Combine.CurrentValueSubject<Swift.Bool?, ios_position_kit_sdk.PositionKitError>
+  final public var rtlsOption: VSFoundation.RtlsOptions?
+  public init()
+  final public func setupMapFence(with mapData: VSFoundation.MapFence, rtlsOption: VSFoundation.RtlsOptions)
+  final public func start() throws
+  final public func startNavigation(with direction: Swift.Double, xPosition: Swift.Double, yPosition: Swift.Double, uncertainAngle: Swift.Bool)
+  final public func syncPosition(position: VSFoundation.TT2PointWithOffset, syncRotation: Swift.Bool, forceSync: Swift.Bool, uncertainAngle: Swift.Bool)
+  final public func stop()
+  final public func setBackgroundAccess(isActive: Swift.Bool)
+  @objc deinit
+}
+public enum PositionKitError : Swift.Error {
+  case noPositions
+  case noDirection
+  case alreadyStarted
+  public static func == (a: ios_position_kit_sdk.PositionKitError, b: ios_position_kit_sdk.PositionKitError) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+extension ios_position_kit_sdk.PositionKitError : Foundation.LocalizedError {
+  public var errorDescription: Swift.String? {
+    get
+  }
+}
+public struct RegressionVectors {
+}
+public struct Goal {
+  public let id: Swift.String
+  public let position: CoreGraphics.CGPoint
+  public let data: Any?
+  public let type: ios_position_kit_sdk.Goal.GoalType
+  public enum GoalType {
+    case end, start, target
+    public static func == (a: ios_position_kit_sdk.Goal.GoalType, b: ios_position_kit_sdk.Goal.GoalType) -> Swift.Bool
+    public func hash(into hasher: inout Swift.Hasher)
+    public var hashValue: Swift.Int {
+      get
+    }
+  }
+  public init(id: Swift.String, position: CoreGraphics.CGPoint, data: Any?, type: ios_position_kit_sdk.Goal.GoalType)
+}
+final public class VPSManager : ios_position_kit_sdk.VPSWrapper {
+  final public var positionPublisher: Combine.CurrentValueSubject<VSFoundation.PositionBundle?, ios_position_kit_sdk.VPSWrapperError>
+  final public var directionPublisher: Combine.CurrentValueSubject<ios_position_kit_sdk.VPSDirectionBundle?, ios_position_kit_sdk.VPSWrapperError>
+  final public var deviceOrientationPublisher: Combine.CurrentValueSubject<VSFoundation.DeviceOrientation?, ios_position_kit_sdk.VPSWrapperError>
+  final public var illegalBehaviourPublisher: Combine.CurrentValueSubject<Swift.Void?, Swift.Never>
+  final public var badStepLengthPublisher: Combine.CurrentValueSubject<Swift.Void?, Swift.Never>
+  final public var sensorsInitiatedPublisher: Combine.CurrentValueSubject<Swift.Void?, Swift.Never>
+  final public var reducingSensorDataPublisher: Combine.CurrentValueSubject<Swift.Void?, Swift.Never>
+  final public var trolleyModePublisher: Combine.CurrentValueSubject<Swift.Int64?, Swift.Never>
+  final public var rescueModePublisher: Combine.CurrentValueSubject<Swift.Int64?, Swift.Never>
+  final public var changedFloorPublisher: Combine.CurrentValueSubject<Swift.Int?, Swift.Never>
+  final public var qpsRunning: Swift.Bool {
+    get
+  }
+  public init(size: CoreGraphics.CGSize, shouldRecord: Swift.Bool, floorHeightDiffInMeters: Swift.Double, trueNorthOffset: Swift.Double = 0.0, mapData: VSFoundation.MapFence)
+  final public func start()
+  final public func stop()
+  final public func startNavigation(startPosition: CoreGraphics.CGPoint, startAngle: Swift.Double, uncertainAngle: Swift.Bool)
+  final public func syncPosition(position: VSFoundation.TT2PointWithOffset, syncRotation: Swift.Bool, forceSync: Swift.Bool, uncertainAngle: Swift.Bool)
+  final public func initPositionSync()
+  final public func setPosition(point: CoreGraphics.CGPoint, direction: CoreGraphics.CGPoint, delayedAngle: Swift.Double, syncDirection: Swift.Bool, forceSyncPosition: Swift.Bool, uncertainAngle: Swift.Bool)
+  final public func startRecording(startPosition: VSFoundation.PositionBundle, currentDirection: Swift.Double)
+  final public func stopRecording()
+  final public func prepareAngle()
+  @objc deinit
+}
+extension ios_position_kit_sdk.VPSWrapperError : Swift.Equatable {}
+extension ios_position_kit_sdk.VPSWrapperError : Swift.Hashable {}
+extension ios_position_kit_sdk.PositionKitError : Swift.Equatable {}
+extension ios_position_kit_sdk.PositionKitError : Swift.Hashable {}
+extension ios_position_kit_sdk.Goal.GoalType : Swift.Equatable {}
+extension ios_position_kit_sdk.Goal.GoalType : Swift.Hashable {}

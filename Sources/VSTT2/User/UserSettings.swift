@@ -12,7 +12,8 @@ public class UserSettings: IUserSettings {
     @Inject var persistence: Persistence
 
     public func setUser(user: User) {
-        var object = user
+        var object = TT2User()
+        object.setup(id: user.id, userId: user.userId, userHeight: user.userHeight, name: user.name)
         do {
             try persistence.save(&object)
         } catch {
@@ -22,14 +23,16 @@ public class UserSettings: IUserSettings {
     }
     
     public func getUser(userId: String) -> User? {
-        let users = persistence.get(arrayOf: User.self)
-        let user = users.first(where: { $0.userId == userId })
+        let users = persistence.get(arrayOf: TT2User.self)
+        let tt2User = users.first(where: { $0.userId == userId })
         
+        let user = User(id: tt2User?.id, userId: tt2User?.userId, userHeight: tt2User?.userHeight, name: tt2User?.name, age: tt2User?.age, gender: tt2User?.gender)
+                        
         return user
     }
     
-    public func getLastUser() -> User? {
-        let users = persistence.get(arrayOf: User.self)
+    public func getLastUser() -> TT2User? {
+        let users = persistence.get(arrayOf: TT2User.self)
         
         return users.last ?? nil
     }
@@ -37,7 +40,7 @@ public class UserSettings: IUserSettings {
     public func clearAllUserSettings() { }
     
     public func clearUser(userId: String) {
-        let users = persistence.get(arrayOf: User.self)
+        let users = persistence.get(arrayOf: TT2User.self)
         guard let user = users.first(where: { $0.userId == userId }) else { return }
         
         do {
