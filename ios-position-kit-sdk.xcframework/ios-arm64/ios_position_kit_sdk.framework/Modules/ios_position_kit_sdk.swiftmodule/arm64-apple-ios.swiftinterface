@@ -78,7 +78,7 @@ final public class PositionManager {
   final public var locationHeadingPublisher: Combine.CurrentValueSubject<CoreLocation.CLHeading, Swift.Error>
   final public var allPackagesAreInitiated: Combine.CurrentValueSubject<Swift.Bool?, ios_position_kit_sdk.PositionKitError>
   final public var rtlsOption: VSFoundation.RtlsOptions?
-  public init(context: VSFoundation.Context = Context(PositionKitConfig()))
+  public init()
   final public func setupMapFence(with mapData: VSFoundation.MapFence, rtlsOption: VSFoundation.RtlsOptions)
   final public func start() throws
   final public func startNavigation(with direction: Swift.Double, xPosition: Swift.Double, yPosition: Swift.Double, uncertainAngle: Swift.Bool)

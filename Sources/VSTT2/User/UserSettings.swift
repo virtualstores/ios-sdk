@@ -12,9 +12,12 @@ public class UserSettings: IUserSettings {
     @Inject var persistence: Persistence
 
     public func setUser(user: User) {
-        var object = user
+        var object = TT2User()
+        object.gender = user.gender
+        object.age = user.age
+        object.id = user.id
         do {
-         //   try persistence.save(&object)
+            try persistence.save(&object)
         } catch {
             Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
                                                 message: "Save User Object SQLite error")
@@ -22,28 +25,28 @@ public class UserSettings: IUserSettings {
     }
     
     public func getUser(userId: String) -> User? {
-        return nil
-//        let users = persistence.get(arrayOf: User.self)
-//        let user = users.first(where: { $0.userId == userId })
-//
-//        return user
+        let users = persistence.get(arrayOf: TT2User.self)
+        let tt2User = users.first(where: { $0.userId == userId })
+        
+        let user = User(id: tt2User?.id, userId: tt2User?.userId, userHeight: tt2User?.userHeight, name: tt2User?.name, age: tt2User?.age, gender: tt2User?.gender)
+                        
+        return user
     }
     
-    public func getLastUser() -> User? {
-       // let users = persistence.get(arrayOf: User.self)
+    public func getLastUser() -> TT2User? {
+        let users = persistence.get(arrayOf: TT2User.self)
         
-        return nil
-       // return users.last ?? nil
+        return users.last ?? nil
     }
     
     public func clearAllUserSettings() { }
     
     public func clearUser(userId: String) {
-      //  let users = persistence.get(arrayOf: User.self)
-       // guard let user = users.first(where: { $0.userId == userId }) else { return }
+        let users = persistence.get(arrayOf: TT2User.self)
+        guard let user = users.first(where: { $0.userId == userId }) else { return }
         
         do {
-          //  try persistence.delete(user)
+            try persistence.delete(user)
         } catch {
             Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
                                                 message: "Remove User error")

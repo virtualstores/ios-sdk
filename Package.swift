@@ -18,29 +18,21 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         .package(url: "https://github.com/virtualstores/ios-foundation.git", .branch("sqliteRemove")),
-       // .package(url: "https://github.com/virtualstores/ios-position-kit.git", .exact("0.0.5")),
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", .exact("0.13.1")),
-
-
     ],
     targets: [
         .target(
             name: "VSTT2",
-            dependencies: [//"QPS",
-                
+            dependencies: [
                 "ios-position-kit-sdk",
                 .product(name: "SQLite", package: "SQLite.swift"),
                 .product(name: "VSFoundation", package: "ios-foundation"),
-               // .product(name: "VSPositionKit", package: "ios-position-kit"),
             ]),
         .testTarget(
             name: "VSTT2Tests",
-            dependencies: ["VSTT2",  "ios-position-kit-sdk"]),//"QPS",
+            dependencies: ["VSTT2",  "ios-position-kit-sdk"]),
         .binaryTarget(
             name: "ios-position-kit-sdk",
             path: "ios-position-kit-sdk.xcframework"),
-//        .binaryTarget(
-//            name: "QPS",
-//            path: "qps.xcframework"),
     ]
 )

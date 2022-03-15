@@ -14,7 +14,7 @@
 		</data>
 		<key>Frameworks/qps.framework/qps</key>
 		<data>
-		N9TZ/W2o5QMLkOLbmu2oNYzjMRk=
+		KnXe21Y5nvicRx9bVh7Xv//Q46Y=
 		</data>
 		<key>Headers/ios_position_kit_sdk-Swift.h</key>
 		<data>
@@ -34,11 +34,11 @@
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64-apple-ios.swiftinterface</key>
 		<data>
-		4T92WjOJ4bmGMG67u3Uh/WkHR0A=
+		HwP0meP82PlbmZgh3FXKwkjqyBQ=
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64-apple-ios.swiftmodule</key>
 		<data>
-		QKh4Qb3yBRHyBDzkXD1cUXPwxWQ=
+		EY9bkDBKtsx9hm5FCrZPoim2a3s=
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftdoc</key>
 		<data>
@@ -46,11 +46,11 @@
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftinterface</key>
 		<data>
-		4T92WjOJ4bmGMG67u3Uh/WkHR0A=
+		HwP0meP82PlbmZgh3FXKwkjqyBQ=
 		</data>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftmodule</key>
 		<data>
-		QKh4Qb3yBRHyBDzkXD1cUXPwxWQ=
+		EY9bkDBKtsx9hm5FCrZPoim2a3s=
 		</data>
 		<key>Modules/module.modulemap</key>
 		<data>
@@ -77,7 +77,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			9c9ZknTxnGvwa5vN1jFIQgnRU+kKZyHAu/ALZtcacAQ=
+			re76M1GCxH6Smd9Q+CLhETbUV/POhFhZI0p7Zqbv28U=
 			</data>
 		</dict>
 		<key>Headers/ios_position_kit_sdk-Swift.h</key>
@@ -105,14 +105,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			3F/1VurLqzMVfJCMndXlJjXCNic29oKnFTNP1CyeRnE=
+			vMbpTgr0TiUfNYdoa/zOt6DaQXtY8iyy9snYsinI1aU=
 			</data>
 		</dict>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64-apple-ios.swiftmodule</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			AhSOZVX0tVMfVVD5oktIeS5CAREFPoyUsKyIQ+XkmYc=
+			s5vpyU9DGRKS1RZgbTc+EsCZZQha/4LpZn3O7IqsPqo=
 			</data>
 		</dict>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftdoc</key>
@@ -126,14 +126,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			3F/1VurLqzMVfJCMndXlJjXCNic29oKnFTNP1CyeRnE=
+			vMbpTgr0TiUfNYdoa/zOt6DaQXtY8iyy9snYsinI1aU=
 			</data>
 		</dict>
 		<key>Modules/ios_position_kit_sdk.swiftmodule/arm64.swiftmodule</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			AhSOZVX0tVMfVVD5oktIeS5CAREFPoyUsKyIQ+XkmYc=
+			s5vpyU9DGRKS1RZgbTc+EsCZZQha/4LpZn3O7IqsPqo=
 			</data>
 		</dict>
 		<key>Modules/module.modulemap</key>
