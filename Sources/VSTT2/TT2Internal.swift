@@ -59,7 +59,7 @@ internal class TT2Internal {
                     break
                 case .failure(let error):
                     completion(error)
-                    Logger.init().log(message: "No available store")
+                    Logger(verbosity: .critical).log(message: "No available store")
                 }
             }, receiveValue: { (data) in
                 self.internalStores = data.stores

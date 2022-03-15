@@ -33,7 +33,12 @@ final public class Navigation: INavigation {
 
 public extension Navigation {
     func start(startPosition: CGPoint, startAngle: Double) throws {
-        guard !isActive else { throw PositionKitError.alreadyStarted }
+        guard !isActive else {
+            self.stop()
+            try self.start(startPosition: startPosition)
+            return
+        }
+
         try positionKitManager.start()
         
         positionKitManager.startNavigation(with: startAngle,
@@ -44,7 +49,6 @@ public extension Navigation {
     }
     
     func start(code: PositionedCode) throws {
-        guard !isActive else { throw PositionKitError.alreadyStarted } 
         try start(startPosition: code.point, startAngle: code.direction)
     }
     
@@ -57,7 +61,12 @@ public extension Navigation {
     }
     
     func start(startPosition: CGPoint) throws {
-        guard let heading = self.heading, !isActive else { throw PositionKitError.alreadyStarted }
+        guard let heading = self.heading, !isActive else {
+            self.stop()
+            try self.start(startPosition: startPosition)
+            return
+        }
+
         try positionKitManager.start()
 
         positionKitManager.startNavigation(with: heading.degrees,

@@ -10,6 +10,6 @@ import Foundation
 
 public extension Store {
     func toTT2Store() -> TT2Store {
-        return TT2Store(id: self.id, name: self.name, address: self.address, latitude: self.latitude, longitude: self.longitude, active: self.active, startScanLocations: self.startCodes, stopScanLocations: self.stopCodes)
+        return TT2Store(id: self.id, externalId: self.externalId, name: self.name, address: self.address, latitude: self.latitude, longitude: self.longitude, active: self.active, startScanLocations: self.startCodes, stopScanLocations: self.stopCodes)
     }
 }

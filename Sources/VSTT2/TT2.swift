@@ -75,8 +75,8 @@ final public class TT2: ITT2 {
         config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
 
         self.tt2Internal = TT2Internal(config: config)
-        self.tt2Internal?.getStores(with: clientId, completion: { stores in
-            completion(nil)
+        self.tt2Internal?.getStores(with: clientId, completion: { error in
+            completion(error)
         })
     }
     
@@ -109,7 +109,7 @@ final public class TT2: ITT2 {
         setupAnalytics(for: currentStore)
         tt2Internal?.getShelfGroups(for: store.id, activeFloor: self.rtlsOption) { [weak self] shelfGroups in
             guard let config = self?.config else { return }
-            self?.position.setup(with: shelfGroups, config: config, storeId: currentStore.id)
+            self?.position.setup(with: shelfGroups, config: config, store: currentStore)
         }
     }
     

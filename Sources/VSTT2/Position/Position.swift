@@ -15,13 +15,13 @@ public class Position: IPosition {
     private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
     private var shelfGroups: [ShelfGroup]?
     private var config: EnvironmentConfig?
-    private var storeId: Int64?
-    private var barcodePositions: [String : [BarcodePosition]] = [:]
+    private var store: Store?
+    private var barcodePositions: [Item] = []
     private var cancellable = Set<AnyCancellable>()
     
     public init() {}
     
-    func setup(with shelfGroups: [ShelfGroup], config: EnvironmentConfig, storeId: Int64) {
+    func setup(with shelfGroups: [ShelfGroup], config: EnvironmentConfig, store: Store) {
         self.shelfGroups = shelfGroups
         for group in shelfGroups {
             for shelf in group.shelves {
@@ -32,7 +32,7 @@ public class Position: IPosition {
         }
 
         self.config = config
-        self.storeId = storeId
+        self.store = store
     }
     
     public func getBy(shelfName: String, completion: @escaping (ItemPosition) -> ()) {
@@ -48,14 +48,14 @@ public class Position: IPosition {
         completion(itemPosition)
     }
 
-    public func getBy(barcode: String, completion: @escaping ([BarcodePosition]?) -> ()) {
-        guard let storeId = storeId else { return }
+    public func getBy(barcode: String, completion: @escaping (Item?) -> ()) {
+        guard let store = store else { return }
 
-        if let barcodePosition = barcodePositions[barcode] {
-            completion(barcodePosition)
+        if let item = barcodePositions.first(where: { $0.externalId == barcode }) {
+            completion(item)
         } else {
             itemPositionService
-                .call(with: ItemPositionParameters(storeId: storeId, barcode: barcode, config: config))
+                .call(with: ItemPositionParameters(storeId: store.id, barcode: barcode, config: config))
                 .sink { (subscriberCompletion) in
                     switch subscriberCompletion {
                     case .finished: break
@@ -64,20 +64,28 @@ public class Position: IPosition {
                         completion(nil)
                     }
                 } receiveValue: { [weak self] (data) in
-                  self?.barcodePositions[barcode] = data
-                  completion(data)
+                  var itemPositions: [ItemPosition] = []
+                  data.forEach { (position) in
+                    guard let point = position.itemPosition, let offset = position.itemPositionOffset, let floorLevel = store.rtlsOptions.first(where: { $0.id == (position.rtlsOptionsId ?? -1) })?.floorLevel else { return }
+                    itemPositions.append(ItemPosition(point: point, offset: offset, floorLevel: floorLevel))
+                  }
+                  let item = Item(name: "", externalId: barcode, itemPositions: itemPositions)
+                  self?.barcodePositions.append(item)
+                  completion(item)
                 }.store(in: &cancellable)
         }
     }
 
-    public func getBy(barcodes: [String], completion: @escaping ([String : [BarcodePosition]]) -> ()) {
+    public func getBy(barcodes: [String], completion: @escaping ([Item]) -> ()) {
         let group = DispatchGroup()
-        var positions: [String : [BarcodePosition]] = [:]
+        var positions: [Item] = []
 
         group.enter()
         barcodes.forEach { (barcode) in
             self.getBy(barcode: barcode) { data in
-                positions[barcode] = data
+                if let data = data {
+                    positions.append(data)
+                }
                 if let last = barcodes.last, barcode == last {
                     group.leave()
                 }

@@ -13,8 +13,8 @@ public protocol IPosition {
     func getBy(shelfName: String, completion: @escaping (ItemPosition) -> ())
     
     /// Method will return Item for barcode
-    func getBy(barcode: String, completion: @escaping ([BarcodePosition]?) -> ())
+    func getBy(barcode: String, completion: @escaping (Item?) -> ())
     
     /// Method will return Items for barcodes
-    func getBy(barcodes: [String], completion: @escaping ([String : [BarcodePosition]]) -> ())
+    func getBy(barcodes: [String], completion: @escaping ([Item]) -> ())
 }

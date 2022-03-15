@@ -13,9 +13,9 @@ public struct ItemPosition: Codable {
     public let yPosition: Double
     public let offsetX: Double
     public let offsetY: Double
-    public let floorLevel: Int64?
+    public let floorLevel: Int?
 
-    public init(xPosition: Double, yPosition: Double, offsetX: Double, offsetY: Double, floorLevel: Int64?) {
+    public init(xPosition: Double, yPosition: Double, offsetX: Double, offsetY: Double, floorLevel: Int?) {
         self.xPosition = xPosition
         self.yPosition = yPosition
         self.offsetX = offsetX
@@ -23,7 +23,7 @@ public struct ItemPosition: Codable {
         self.floorLevel = floorLevel
     }
 
-    public init(point: CGPoint, offset: CGVector, floorLevel: Int64?) {
+    public init(point: CGPoint, offset: CGVector, floorLevel: Int?) {
         self.xPosition = Double(point.x)
         self.yPosition = Double(point.y)
         self.offsetX = Double(offset.dx)

@@ -11,6 +11,7 @@ import VSFoundation
 
 public struct TT2Store {
     public let id: Int64
+    public let externalId: String?
     public let name: String
     public let address: Address
     public let latitude: Double
