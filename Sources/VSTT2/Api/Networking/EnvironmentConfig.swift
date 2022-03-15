@@ -34,7 +34,7 @@ public class EnvironmentConfig {
     }
      
     func initCentralServerConnection(with url: String, endPoint: EndPoints, apiKey: String) {
-        self._centralServerConnection = ServerConnection(apiKey: apiKey + endPoint.rawValue, serverAddress: url, mqttAddress: nil, storeId: nil)
+        self._centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue, mqttAddress: nil, storeId: nil)
     }
     
     func initAnalyticsServerConnection(with url: String, apiKey: String) {
