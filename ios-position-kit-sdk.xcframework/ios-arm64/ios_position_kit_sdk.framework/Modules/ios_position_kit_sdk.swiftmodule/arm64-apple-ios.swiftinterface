@@ -67,13 +67,14 @@ final public class PositionManager {
   final public var directionPublisher: Combine.CurrentValueSubject<ios_position_kit_sdk.VPSDirectionBundle?, Swift.Error>
   final public var locationHeadingPublisher: Combine.CurrentValueSubject<CoreLocation.CLHeading, Swift.Error>
   final public var allPackagesAreInitiated: Combine.CurrentValueSubject<Swift.Bool?, ios_position_kit_sdk.PositionKitError>
+  final public var changedFloorPublisher: Combine.CurrentValueSubject<Swift.Int?, Swift.Never>
   final public var rtlsOption: VSFoundation.RtlsOptions?
   public init()
-  final public func setupMapFence(with mapData: VSFoundation.MapFence, rtlsOption: VSFoundation.RtlsOptions)
+  final public func setupMapFence(with mapData: VSFoundation.MapFence, rtlsOption: VSFoundation.RtlsOptions, floorheight: Swift.Double = 3.0)
   final public func start() throws
   final public func startNavigation(with direction: Swift.Double, xPosition: Swift.Double, yPosition: Swift.Double, uncertainAngle: Swift.Bool)
   final public func syncPosition(position: VSFoundation.TT2PointWithOffset, syncRotation: Swift.Bool, forceSync: Swift.Bool, uncertainAngle: Swift.Bool)
-  final public func stop()
+  final public func stop(stopSensors: Swift.Bool = true)
   final public func setBackgroundAccess(isActive: Swift.Bool)
   @objc deinit
 }

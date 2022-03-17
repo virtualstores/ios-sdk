@@ -68,9 +68,12 @@ final public class TT2: ITT2 {
     // MARK: Private members
     private let config = EnvironmentConfig()
     private var tt2Internal: TT2Internal?
+    private var floorHeightDiff: Double?
+
+    private var switchFloorCancellable: AnyCancellable?
     
     public init() {}
-    
+
     public func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (Error?) -> ()) {
         config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
 
@@ -90,22 +93,33 @@ final public class TT2: ITT2 {
         
         self.activeStore = store
         self.floor.setupFloors(with: currentStore.rtlsOptions)
-        
-        for rtlsOption in currentStore.rtlsOptions {
-            if rtlsOption.isDefault {
-                self.setActiveFloor(rtls: rtlsOption) { (error) in
-                    completion(error)
-                }
-            }
-        }
 
-        if rtlsOption == nil {
-            guard let rtls = currentStore.rtlsOptions.first else { return }
-            self.setActiveFloor(rtls: rtls) { (error) in
-                completion(error)
+        tt2Internal?.getSwapLocations(for: currentStore.id, completion: { [weak self] (result) in
+            guard let self = self else { return }
+            switch result {
+            case .success(let swapLocations):
+              self.floorHeightDiff = self.getHighestHeightDiff(swapLocations: swapLocations)
+              for rtlsOption in currentStore.rtlsOptions {
+                  if rtlsOption.isDefault {
+                      self.setActiveFloor(rtls: rtlsOption) { (error) in
+                          completion(error)
+                      }
+                  }
+              }
+
+              if self.rtlsOption == nil {
+                  guard let rtls = currentStore.rtlsOptions.first else { return }
+                  self.setActiveFloor(rtls: rtls) { (error) in
+                      completion(error)
+                  }
+              }
+
+              self.floor.setup(swapLocations: swapLocations)
+              self.bindPublishers()
+            case .failure(let error): completion(error)
             }
-        }
-        
+        })
+
         setupAnalytics(for: currentStore)
         tt2Internal?.getShelfGroups(for: store.id, activeFloor: self.rtlsOption) { [weak self] shelfGroups in
             guard let config = self?.config else { return }
@@ -119,12 +133,42 @@ final public class TT2: ITT2 {
 }
 
 private extension TT2 {
+    private func bindPublishers() {
+        switchFloorCancellable = floor.switchFloorPublisher
+          .compactMap { $0 }
+          .sink(receiveValue: { (data) in
+              self.navigation.changeFloorStop()
+              self.setActiveFloor(rtls: data.rtlsOptions) { (error) in
+                  if let error = error {
+                      Logger(verbosity: .critical).log(message: "Floor change failed: \(error.localizedDescription)")
+                  } else {
+                      do {
+                          try self.navigation.changeFloorStart(startPosition: data.point)
+                      } catch {
+                          Logger(verbosity: .critical).log(message: "Starting on new floor failed")
+                      }
+                  }
+              }
+          })
+    }
+
+    private func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {
+        var diff: Double = 0.0
+        swapLocations.forEach { (swapLocation) in
+            swapLocation.paths.forEach { (path) in
+                diff = path.heightDiffInMeters > diff ? path.heightDiffInMeters : diff
+            }
+        }
+        return diff
+    }
+
     private func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
+        guard let floorHeightDiff = floorHeightDiff else { return }
         self.rtlsOption = rtls
         self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zones, points) in
             if let mapFence = mapFence {
                 self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
-                self?.setupMapfence(with: mapFence)
+                self?.setupMapfence(with: mapFence, floorHeightDiff: floorHeightDiff)
             }
 
             self?.setupAnalytics(for: zones, points: points)
@@ -132,7 +176,7 @@ private extension TT2 {
         }
     }
 
-    private func setupMapfence(with data: MapFence) {
+    private func setupMapfence(with data: MapFence, floorHeightDiff: Double) {
         guard let rtlsOption = self.rtlsOption, let name = self.activeStore?.name else { return }
         
         let converter = BaseCoordinateConverter(heightInPixels: data.properties.height, widthInPixels: data.properties.width, pixelPerMeter: rtlsOption.pixelsPerMeter, pixelPerLatitude: 1000.0)
@@ -141,7 +185,7 @@ private extension TT2 {
         
         self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, name: name, floorLevel: rtlsOption.floorLevel, converter: converter), converter: converter, currentFloorLevel: rtlsOption.floorLevel)
         
-        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption)
+        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff)
     }
     
     private func setupAnalytics(for store: Store) {
@@ -163,7 +207,8 @@ private extension TT2 {
         
         self.mapZonesTree?.print()
         guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevel: rtlsOption.floorLevel) else { return }
-        
+
+        analytics.update(rtlsOptionId: rtlsOption.id)
         analytics.zoneManager.setup(with: mapZones, rtlsOptions: rtlsOption)
         analytics.evenManager.setup(with: store.id, zones: mapZones, rtlsOptionsId: rtlsOption.id, config: config)
     }

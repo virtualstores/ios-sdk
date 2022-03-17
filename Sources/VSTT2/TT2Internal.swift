@@ -26,9 +26,9 @@ internal class TT2Internal {
     @Inject var shelfGroupService: ShelfGroupService
     
     private let config: EnvironmentConfig
-    private var swapLocations: [SwapLocation] = []
     private var cancellable = Set<AnyCancellable>()
     private var positionBundleCancellable: AnyCancellable?
+    private var changedFloorCancellable: AnyCancellable?
 
     internal var internalStores: [Store] = []
 
@@ -98,23 +98,31 @@ internal class TT2Internal {
                 Logger.init().log(message: "PositionKitError noData")
             } receiveValue: { [weak self] positionBundle in
                 self?.analytics.onNewPositionBundle(point: positionBundle.position)
+                self?.floorManager.onNewPostion(location: positionBundle.position)
+            }
+
+        changedFloorCancellable = navigation.positionKitManager.changedFloorPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (data) in
+                self?.floorManager.onNewFloor(floor: data)
             }
     }
     
-    private func getSwapLocations(for storeId: Int64) {
+    func getSwapLocations(for storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
         let swapLocationsParameters = SwapLocationsParameters(storeId: storeId, config: config)
         
         swapLocationsService
             .call(with: swapLocationsParameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
+            .sink(receiveCompletion: { (result) in
+                switch result {
                 case .finished:
                     break
                 case .failure(let error):
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)
+                    completion(.failure(error))
                 }
-            }, receiveValue: { [weak self] (swapLocations) in
-                self?.swapLocations = swapLocations
+            }, receiveValue: { (swapLocations) in
+                completion(.success(swapLocations))
             }).store(in: &cancellable)
     }
     
