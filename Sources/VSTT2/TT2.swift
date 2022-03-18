@@ -64,6 +64,9 @@ final public class TT2: ITT2 {
     public var map: Map?
     public var rtlsOption: RtlsOptions?
     public var mapZonesTree: Tree?
+
+    // Only for testing purpose of floorchange. Will be removed once green lighted
+    public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
     
     // MARK: Private members
     private let config = EnvironmentConfig()
@@ -144,6 +147,7 @@ private extension TT2 {
                   } else {
                       do {
                           try self.navigation.changeFloorStart(startPosition: data.point)
+                          self.floorChangePublisher.send(data.rtlsOptions.name)
                       } catch {
                           Logger(verbosity: .critical).log(message: "Starting on new floor failed")
                       }
@@ -205,7 +209,6 @@ private extension TT2 {
             mapZonesTree?.add(key, store.name, value, zonePoints)
         }
         
-        self.mapZonesTree?.print()
         guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevel: rtlsOption.floorLevel) else { return }
 
         analytics.update(rtlsOptionId: rtlsOption.id)
