@@ -86,8 +86,8 @@ final public class TT2: ITT2 {
         })
     }
     
-    public func setBackgroundAccess(isActive: Bool) {
-        navigation.positionKitManager.setBackgroundAccess(isActive: isActive)
+    public func setMap(map: IMapController) {
+        self.tt2Internal?.mapController = map
     }
     
     public func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ()) {
@@ -131,7 +131,7 @@ final public class TT2: ITT2 {
     }
     
     public func getMapData() -> MapData? {
-        mapData
+        return self.mapData
     }
 }
 
@@ -171,8 +171,8 @@ private extension TT2 {
         self.rtlsOption = rtls
         self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zones, points) in
             if let mapFence = mapFence {
-                self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
                 self?.setupMapfence(with: mapFence, floorHeightDiff: floorHeightDiff)
+                self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
             }
 
             self?.setupAnalytics(for: zones, points: points)
