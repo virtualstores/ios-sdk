@@ -9,7 +9,7 @@ import Foundation
 import CoreGraphics
 import Combine
 import VSFoundation
-import ios_position_kit_sdk
+import VSPositionKit
 
 ///ZoneManager is helping handle in-out events
 public class TT2ZoneManager: TT2Zone {

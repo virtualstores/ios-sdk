@@ -6,7 +6,7 @@
 // Copyright Virtual Stores - 2021
 
 import Foundation
-import ios_position_kit_sdk
+import VSPositionKit
 import Combine
 import VSFoundation
 import CoreGraphics

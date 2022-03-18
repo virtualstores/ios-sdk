@@ -119,7 +119,6 @@ internal class TT2Internal {
             .sink { error in
                 Logger.init().log(message: "DirectionPublisher noData")
             } receiveValue: { direction in
-                print(direction.angle)
                 self.mapController?.updateUserDirection(newDirection: direction.angle)
             }
 

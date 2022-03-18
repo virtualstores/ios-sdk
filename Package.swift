@@ -17,22 +17,20 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "https://github.com/virtualstores/ios-foundation.git", .branch("develop")),
+        .package(url: "https://github.com/virtualstores/ios-foundation.git", .upToNextMajor(from: "0.0.8")),
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", .exact("0.13.1")),
+        .package(url: "https://github.com/virtualstores/ios-position-kit.git", .exact("0.0.6")),
     ],
     targets: [
         .target(
             name: "VSTT2",
             dependencies: [
-                "VSPositionKit",
                 .product(name: "SQLite", package: "SQLite.swift"),
                 .product(name: "VSFoundation", package: "ios-foundation"),
+                .product(name: "VSPositionKit", package: "ios-position-kit"),
             ]),
         .testTarget(
             name: "VSTT2Tests",
-            dependencies: ["VSTT2",  "VSPositionKit"]),
-        .binaryTarget(
-            name: "VSPositionKit",
-            path: "ios-position-kit-sdk.xcframework"),
+            dependencies: ["VSTT2"]),
     ]
 )

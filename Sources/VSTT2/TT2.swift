@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 import VSFoundation
-import ios_position_kit_sdk
+import VSPositionKit
 import CoreGraphics
 import UIKit
 
