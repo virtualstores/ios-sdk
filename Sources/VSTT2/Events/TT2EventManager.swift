@@ -12,8 +12,8 @@ import CoreGraphics
 
 public class TT2EventManager: TT2Event {
     @Inject var messagesService: MessagesService
-    @Inject var zoneEventDetectore: ZoneEventDetector
-    @Inject var coordinateEventDetectore: CoordinateEventDetector
+    @Inject var zoneEventDetector: ZoneEventDetector
+    @Inject var coordinateEventDetector: CoordinateEventDetector
     
     public var messageEventPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
     public var pointOfInterestPublisher: CurrentValueSubject<PointOfInterest?, Never> = .init(nil)
@@ -37,15 +37,15 @@ public class TT2EventManager: TT2Event {
         self.rtlsOptionsId = rtlsOptionsId
         self.config = config
         
-        zoneEventDetectore.setup(with: zones)
+        zoneEventDetector.setup(with: zones)
         loadMessagesIfNeeded()
         bindPubloshers()
     }
     
     public func addEvent(event: TriggerEvent) {
         switch event.eventType {
-        case .zoneTrigger(_): zoneEventDetectore.add(event: event)
-        case .coordinateTrigger(_): coordinateEventDetectore.add(event: event)
+        case .zoneTrigger(_): zoneEventDetector.add(event: event)
+        case .coordinateTrigger(_): coordinateEventDetector.add(event: event)
         default: break
         }
     }
@@ -53,12 +53,12 @@ public class TT2EventManager: TT2Event {
     public func removeEvent(with id: String) { }
 
     public func onNewPosition(currentPosition: CGPoint) {
-        zoneEventDetectore.onNewPosition(currentPosition: currentPosition)
-        coordinateEventDetectore.onNewPosition(currentPosition: currentPosition)
+        zoneEventDetector.onNewPosition(currentPosition: currentPosition)
+        coordinateEventDetector.onNewPosition(currentPosition: currentPosition)
     }
     
     public func bindPubloshers() {
-        self.zoneEnterCancellable = zoneEventDetectore.eventPublisher
+        self.zoneEnterCancellable = zoneEventDetector.eventPublisher
             .compactMap { $0 }
             .sink { _ in
                 Logger.init().log(message: "zoneEnteredPublisher error")
@@ -66,7 +66,7 @@ public class TT2EventManager: TT2Event {
                 self?.messageEventPublisher.send(event)
             }
         
-        self.coordinateEnterCancellable = coordinateEventDetectore.eventPublisher
+        self.coordinateEnterCancellable = coordinateEventDetector.eventPublisher
             .compactMap { $0 }
             .sink { _ in
                 Logger.init().log(message: "zoneEnteredPublisher error")
@@ -119,17 +119,28 @@ public class TT2EventManager: TT2Event {
     
     private func createZoneEvents(for message: Message) {
         let trigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: message.zones.first!.name, groupId: "", type: .enter))
-        let type = message.cardType == .big ? "BIG" : "SMALL"
-        
-        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, description: message.description, eventType: trigger, tags:  ["messageShown": String(message.id)], metaData: ["Title": message.title, "Body": message.description, "Size": type])
-        
-        self.zoneEventDetectore.add(event: event)
+        let metaData = addMetaData(for: message)
+        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, description: message.description, eventType: trigger, metaData: metaData)
+        self.zoneEventDetector.add(event: event)
     }
     
     private func createCoordinatEvents(for message: Message) {
         let coordinateTrigger = TriggerEvent.EventType.coordinateTrigger(TriggerEvent.CoordinateTrigger(point: .zero, radius: message.radius))
-        
-        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, description: message.description, eventType: coordinateTrigger, tags: [:], metaData: [:])
-        self.coordinateEventDetectore.add(event: event)
+        let metaData = addMetaData(for: message)
+        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, description: message.description, eventType: coordinateTrigger, metaData: metaData)
+        self.coordinateEventDetector.add(event: event)
+    }
+
+    private func addMetaData(for message: Message) -> [String : String] {
+        let type: TriggerEvent.DefaultMetaData.MessageType = message.cardType == .big ? .large : .small
+        let defaultMetaData = TriggerEvent.DefaultMetaData()
+        let metaData = [
+            defaultMetaData.id : String(message.id),
+            defaultMetaData.title : message.title,
+            defaultMetaData.body : message.description,
+            defaultMetaData.imageUrl : message.image?.description ?? "",
+            defaultMetaData.type : type.rawValue
+        ]
+        return metaData
     }
 }

@@ -208,7 +208,7 @@ private extension TT2 {
 
             mapZonesTree?.add(key, store.name, value, zonePoints)
         }
-        
+
         guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevel: rtlsOption.floorLevel) else { return }
 
         analytics.update(rtlsOptionId: rtlsOption.id)
