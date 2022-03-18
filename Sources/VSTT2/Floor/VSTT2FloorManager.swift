@@ -8,12 +8,17 @@
 import Foundation
 import VSFoundation
 import Combine
+import CoreGraphics
 import ios_position_kit_sdk
 
 public class VSTT2FloorManager: VSTT2Floor {
     @Inject var downloadManager: DownloadManager
     @Inject var mapFenceDataService: MapFenceDataService
-    
+    @Inject var swapLocationsService: SwapLocationsService
+
+    private var floorPicker: FloorPicker?
+    private var switchFloorCancellable: AnyCancellable?
+
     public var activeFloor: RtlsOptions?
     public var floors: [RtlsOptions] = []
     public var pathFinder: VSPathFinder?
@@ -23,6 +28,8 @@ public class VSTT2FloorManager: VSTT2Floor {
     public var mapZonePoints: [Int : [MapZonePoint]] = [:]
     public var offsetZones: Data?
     public var navgraph: Data?
+
+    public var switchFloorPublisher: CurrentValueSubject<(rtlsOptions: RtlsOptions, point: CGPoint)?, Never> = .init(nil)
     
     public var startCodes: PositionedCode? {
         self.activeFloor?.scanLocations?.first(where: { $0.type == .start })
@@ -38,7 +45,19 @@ public class VSTT2FloorManager: VSTT2Floor {
     private var mapFence: MapFence?
 
     init() {}
-    
+
+    func setup(swapLocations: [SwapLocation]) {
+        if let activeFloor = activeFloor {
+            self.floorPicker = FloorPicker(rtlsOptionId: activeFloor.id, swapLocations: swapLocations)
+
+            switchFloorCancellable = self.floorPicker?.switchFloorPublisher
+                .sink(receiveValue: { [weak self] (data) in
+                    guard let rtlsOptions = self?.floors.first(where: { $0.id == data?.rtlsOptionsId }), let point = data?.point else { return }
+                    self?.switchFloorPublisher.send((rtlsOptions: rtlsOptions, point: point))
+                })
+        }
+    }
+
     public func setActiveFloor(with rtlsOptions: RtlsOptions) {
         self.setActiveFloor(with: rtlsOptions) { (mapFence, zones, points) in }
     }
@@ -59,6 +78,14 @@ public class VSTT2FloorManager: VSTT2Floor {
         getFloorData { (mapFence, zones, points) in
             completion((mapFence: mapFence, zones: zones, points: points))
         }
+    }
+  
+    func onNewPostion(location: CGPoint) {
+        self.floorPicker?.onNewPosition(location: location)
+    }
+
+    func onNewFloor(floor: Int) {
+        floorPicker?.changeFloorTo = floor
     }
 }
 

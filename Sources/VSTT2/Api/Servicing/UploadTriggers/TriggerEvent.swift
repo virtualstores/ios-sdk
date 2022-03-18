@@ -13,12 +13,12 @@ public class TriggerEvent {
     public let rtlsOptionsId: String
     public let name: String
     public let description: String
-    public var timestamp: Date
-    public var userPosition: CGPoint
+    public private(set) var timestamp: Date
+    public private(set) var userPosition: CGPoint
     public var eventType: EventType
-    public var tags: [String: String]
-    public var metaData: [String: String]
-    public var hasBeenTriggered: Bool
+    public private(set) var tags: [String: String]
+    public private(set) var metaData: [String: String]
+    public private(set) var hasBeenTriggered: Bool
     
     public init(
         rtlsOptionsId: String,
@@ -42,7 +42,7 @@ public class TriggerEvent {
         self.hasBeenTriggered = hasBeenTriggered
     }
     
-    public func updateEventData(for userPosition: CGPoint, timestamp: Date) {
+    func updateEventData(for userPosition: CGPoint, timestamp: Date) {
         guard self.userPosition == .zero else { return }
         
         self.userPosition = userPosition
@@ -73,6 +73,23 @@ public class TriggerEvent {
             }
             
             return (appTrigger: app, coordinateTrigger: coordinate, shelfTrigger: shelf, zoneTrigger: zone)
+        }
+    }
+
+    public struct DefaultTags {
+        public let messageShown: String = "messageShown"
+    }
+
+    public struct DefaultMetaData {
+        public let id: String = "@id"
+        public let title: String = "@title"
+        public let body: String = "@body"
+        public let imageUrl: String = "@imageUrl"
+        public let type: String = "@type"
+
+        public enum MessageType: String {
+            case small = "SMALL"
+            case large = "LARGE"
         }
     }
     
@@ -137,6 +154,31 @@ public class TriggerEvent {
             case enter = "ENTER"
             case exit = "EXIT"
         }
+    }
+}
+
+public extension TriggerEvent {
+    var toMessageShown: TriggerEvent? {
+        let defaultMetaData = DefaultMetaData()
+        guard let id = self.metaData[defaultMetaData.id] else { return nil }
+        let defaultTags = TriggerEvent.DefaultTags()
+      var tags: [String : String] = [:]
+        self.tags.forEach { (key, value) in
+            tags[key] = value
+        }
+        tags = [ defaultTags.messageShown : id ]
+        let event = TriggerEvent(
+            rtlsOptionsId: self.rtlsOptionsId,
+            name: self.name,
+            description: self.description,
+            timestamp: self.timestamp,
+            userPosition: self.userPosition,
+            eventType: .appTrigger(TriggerEvent.AppTrigger(event: self.name)),
+            tags: tags,
+            metaData: self.metaData,
+            hasBeenTriggered: self.hasBeenTriggered
+        )
+        return event
     }
 }
 

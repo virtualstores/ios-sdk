@@ -25,10 +25,14 @@ internal class TT2Internal {
     @Inject var itemPositionService: ItemPositionService
     @Inject var shelfGroupService: ShelfGroupService
     
+    var mapController: IMapController?
+    var map: Map?
+
     private let config: EnvironmentConfig
-    private var swapLocations: [SwapLocation] = []
     private var cancellable = Set<AnyCancellable>()
     private var positionBundleCancellable: AnyCancellable?
+    private var changedFloorCancellable: AnyCancellable?
+    private var directionCancellable: AnyCancellable?
 
     internal var internalStores: [Store] = []
 
@@ -41,6 +45,7 @@ internal class TT2Internal {
     func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence, coordinateConverter: ICoordinateConverter?) -> MapData? {
         guard let converter = coordinateConverter else { return nil }
         
+        //Send image from app
         let image = UIImage(named: "userMarker")
         let mapData = MapData(rtlsOptions: rtlsOptions, style: MapStyle(userMarkerImage: image), converter: converter)
         
@@ -80,12 +85,13 @@ internal class TT2Internal {
                     print(error)
                 }
             }, receiveValue: { (shelfData) in
-                // guard let activeFloor = activeFloor else { return }
+                 guard let activeFloor = activeFloor else { return }
                 
                 let shelfGroups = shelfData.map({ ShelfGroupDto.toShelfGroup($0) })
+                                
+                self.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetX), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
                 
                 completion(shelfGroups)
-                //  self?.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetY), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
                 
             }).store(in: &cancellable)
     }
@@ -97,24 +103,43 @@ internal class TT2Internal {
             .sink { error in
                 Logger.init().log(message: "PositionKitError noData")
             } receiveValue: { [weak self] positionBundle in
+                self?.floorManager.onNewPostion(location: positionBundle.position)
+                self?.mapController?.updateUserLocation(newLocation: positionBundle.position, std: positionBundle.std)
                 self?.analytics.onNewPositionBundle(point: positionBundle.position)
             }
+
+        changedFloorCancellable = navigation.positionKitManager.changedFloorPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (data) in
+                self?.floorManager.onNewFloor(floor: data)
+            }
+        
+        directionCancellable = navigation.positionKitManager.directionPublisher
+            .compactMap { $0 }
+            .sink { error in
+                Logger.init().log(message: "DirectionPublisher noData")
+            } receiveValue: { direction in
+                print(direction.angle)
+                self.mapController?.updateUserDirection(newDirection: direction.angle)
+            }
+
     }
     
-    private func getSwapLocations(for storeId: Int64) {
+    func getSwapLocations(for storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
         let swapLocationsParameters = SwapLocationsParameters(storeId: storeId, config: config)
         
         swapLocationsService
             .call(with: swapLocationsParameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
+            .sink(receiveCompletion: { (result) in
+                switch result {
                 case .finished:
                     break
                 case .failure(let error):
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)
+                    completion(.failure(error))
                 }
-            }, receiveValue: { [weak self] (swapLocations) in
-                self?.swapLocations = swapLocations
+            }, receiveValue: { (swapLocations) in
+                completion(.success(swapLocations))
             }).store(in: &cancellable)
     }
     

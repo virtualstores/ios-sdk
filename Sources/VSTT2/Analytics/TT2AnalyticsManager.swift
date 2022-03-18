@@ -92,12 +92,16 @@ final public class TT2AnalyticsManager: TT2Analytics {
         self.recordedPositionsCount = 0
     }
 
+    func update(rtlsOptionId: Int64) {
+        self.rtlsOptionId = rtlsOptionId
+    }
+
     internal func onNewPositionBundle(point: CGPoint) {
         guard Date().timeIntervalSince(latestRecordedPosition) > 0.2 else { return }
         self.latestRecordedPosition = Date()
 
-        if isRecording {
-            recordPosition(rtlsOptionId: self.rtlsOptionId ?? 0, point: point)
+        if let id = rtlsOptionId, isRecording {
+            recordPosition(rtlsOptionId: id, point: point)
             zoneManager.onNewPosition(currentPosition: point)
             evenManager.onNewPosition(currentPosition: point)
         }
