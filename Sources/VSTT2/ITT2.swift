@@ -45,8 +45,8 @@ public protocol ITT2 {
     /// Method for initiate selected Store data
     func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ())
     
-    /// Temporary setter for activating and deactivating background access in positionKit
-    func setBackgroundAccess(isActive: Bool)
+    /// Setup the Map
+    func setMap(map: IMapController)
     
     /// Methode for creating MapData for MapSdk
     func getMapData() -> MapData? 
