@@ -83,14 +83,11 @@ internal class TT2Internal {
                     print(error)
                 }
             }, receiveValue: { (shelfData) in
-                 guard let activeFloor = activeFloor else { return }
-                
                 let shelfGroups = shelfData.map({ ShelfGroupDto.toShelfGroup($0) })
-                                
-                self.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetX), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
-                
                 completion(shelfGroups)
-                
+                if let activeFloor = activeFloor {
+                    self.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetX), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
+                }
             }).store(in: &cancellable)
     }
     
