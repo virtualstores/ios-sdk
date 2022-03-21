@@ -119,9 +119,11 @@ internal class TT2Internal {
             .sink { error in
                 Logger.init().log(message: "DirectionPublisher noData")
             } receiveValue: { direction in
-                self.mapController?.updateUserDirection(newDirection: direction.angle)
+                let radians = (Double.pi/2 - (direction.angle)).remainder(dividingBy: Double.pi * 2.0)
+                let course = TT2Course(fromRadians: radians)
+                
+                self.mapController?.updateUserDirection(newDirection: course.degrees + 180)
             }
-
     }
     
     func getSwapLocations(for storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
