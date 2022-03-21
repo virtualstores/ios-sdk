@@ -45,9 +45,7 @@ internal class TT2Internal {
     func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence, coordinateConverter: ICoordinateConverter?) -> MapData? {
         guard let converter = coordinateConverter else { return nil }
         
-        //Send image from app
-        let image = UIImage(named: "userMarker")
-        let mapData = MapData(rtlsOptions: rtlsOptions, style: MapStyle(userMarkerImage: image), converter: converter)
+        let mapData = MapData(rtlsOptions: rtlsOptions, converter: converter)
         
         return mapData
     }

@@ -130,8 +130,19 @@ final public class TT2: ITT2 {
         }
     }
     
-    public func getMapData() -> MapData? {
+    public func getMapData(mapStyle: MapStyle) -> MapData? {
+        self.mapData?.style = mapStyle
         return self.mapData
+    }
+
+    public func startMap() {
+        tt2Internal?.mapController?.start()
+    }
+
+    public func stop() {
+        navigation.stop()
+        analytics.stopVisit()
+        tt2Internal?.mapController?.stop()
     }
 }
 

@@ -49,7 +49,11 @@ public protocol ITT2 {
     func setMap(map: IMapController)
     
     /// Methode for creating MapData for MapSdk
-    func getMapData() -> MapData? 
+    func getMapData(mapStyle: MapStyle) -> MapData?
+
+    func startMap()
+
+    func stop() 
 }
 
 public enum VSTT2Error: Error {
