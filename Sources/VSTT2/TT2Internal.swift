@@ -38,7 +38,7 @@ internal class TT2Internal {
     private var directionCancellable: AnyCancellable?
     private var realWorldOffsetCancellable: AnyCancellable?
     private var accuracyCancellable: AnyCancellable?
-    
+
     private var offset: Double
 
     var internalClients: [Client] = []

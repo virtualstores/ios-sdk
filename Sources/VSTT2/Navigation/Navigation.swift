@@ -67,6 +67,7 @@ public extension Navigation {
     func start(startPosition: CGPoint) throws {
         guard let heading = self.heading, !isActive else {
             self.stop()
+
             try self.start(startPosition: startPosition)
             return
         }
@@ -83,8 +84,11 @@ public extension Navigation {
 
     func syncPosition(position: ItemPosition) throws  {
         guard let heading = self.heading, isActive else { return }
-        
+
+        // Why has offset been added? We want to remove it
+        let offset = CGPoint(x: point.x + cos(heading.radians), y: point.y + sin(heading.radians))
         prepareAccuracy(offset: CGVector(dx: offset.x, dy: offset.y))
+
         positionKitManager.syncPosition(xPosition: position.point.x, yPosition: position.point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: true, uncertainAngle: true)
     }
 
