@@ -45,9 +45,7 @@ internal class TT2Internal {
     func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence, coordinateConverter: ICoordinateConverter?) -> MapData? {
         guard let converter = coordinateConverter else { return nil }
         
-        //Send image from app
-        let image = UIImage(named: "userMarker")
-        let mapData = MapData(rtlsOptions: rtlsOptions, style: MapStyle(userMarkerImage: image), converter: converter)
+        let mapData = MapData(rtlsOptions: rtlsOptions, converter: converter)
         
         return mapData
     }
@@ -85,14 +83,11 @@ internal class TT2Internal {
                     print(error)
                 }
             }, receiveValue: { (shelfData) in
-                 guard let activeFloor = activeFloor else { return }
-                
                 let shelfGroups = shelfData.map({ ShelfGroupDto.toShelfGroup($0) })
-                                
-                self.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetX), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
-                
                 completion(shelfGroups)
-                
+                if let activeFloor = activeFloor {
+                    self.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetX), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
+                }
             }).store(in: &cancellable)
     }
     
