@@ -117,17 +117,17 @@ internal class TT2Internal {
             .sink { error in
                 Logger.init().log(message: "DirectionPublisher noData")
             } receiveValue: { direction in
-                let heading = (vpsToMapboxAngle(angle: direction.angle + offset)).remainder(dividingBy: 360.0)
+                let heading = (self.vpsToMapboxAngle(angle: direction.angle + self.offset)).remainder(dividingBy: 360.0)
                 self.mapController?.updateUserDirection(newDirection: heading)
             }
 
         realWorldOffsetCancellable = navigation.positionKitManager.realWorldOffsetPublisher
-                .compactMap { $0 }
-                .sink { error in
-                    Logger.init().log(message: "RealWorldOffsetPublisher noData")
-                } receiveValue: { direction in
-                    offset = direction
-                }
+            .compactMap { $0 }
+            .sink { error in
+                Logger.init().log(message: "RealWorldOffsetPublisher noData")
+            } receiveValue: { direction in
+                self.offset = direction
+            }
     }
 
     private func vpsToMapboxAngle(angle: Double) -> Double{
