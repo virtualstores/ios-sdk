@@ -16,6 +16,8 @@ final public class Navigation: INavigation {
     public var positionKitManager: PositionManager
     public var isActive: Bool = false
 
+    var accuracyPublisher: CurrentValueSubject<(preScanLocation: CGPoint, scanLocation: CGPoint, offset: CGVector)?,Never> = .init(nil)
+
     private var heading: TT2Course? {
         let north = positionKitManager.rtlsOption?.north ?? 0.0
         let heading = positionKitManager.locationHeadingPublisher.value
@@ -56,6 +58,7 @@ public extension Navigation {
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
         guard isActive else { return }
 
+        prepareAccuracy(offset: position.offset)
         let angle = atan2(-position.offsetPoint.y, -position.offsetPoint.x)*180.0/Double.pi
 
         positionKitManager.syncPosition(xPosition: position.point.x, yPosition: position.point.y, startAngle: angle, syncPosition: true, syncAngle: true, uncertainAngle: false)
@@ -80,7 +83,8 @@ public extension Navigation {
 
     func syncPosition(position: ItemPosition) throws  {
         guard let heading = self.heading, isActive else { return }
-
+        
+        prepareAccuracy(offset: CGVector(dx: offset.x, dy: offset.y))
         positionKitManager.syncPosition(xPosition: position.point.x, yPosition: position.point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: true, uncertainAngle: true)
     }
 
@@ -106,5 +110,15 @@ extension Navigation {
 
     func changeFloorStop() {
         positionKitManager.stop(stopSensors: false)
+    }
+}
+
+private extension Navigation {
+    func prepareAccuracy(offset: CGVector) {
+        guard let preScanLocation = positionKitManager.positionPublisher.value?.position else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            guard let scanLocation = self.positionKitManager.positionPublisher.value?.position else { return }
+            self.accuracyPublisher.send((preScanLocation: preScanLocation, scanLocation: scanLocation, offset: offset))
+        }
     }
 }

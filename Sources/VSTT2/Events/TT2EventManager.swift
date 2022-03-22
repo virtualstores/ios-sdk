@@ -120,14 +120,14 @@ public class TT2EventManager: TT2Event {
     private func createZoneEvents(for message: Message) {
         let trigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: message.zones.first!.name, groupId: "", type: .enter))
         let metaData = addMetaData(for: message)
-        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, description: message.description, eventType: trigger, metaData: metaData)
+        let event = TriggerEvent(rtlsOptionsId: rtlsOptionsId, name: message.name, description: message.description, eventType: trigger, metaData: metaData)
         self.zoneEventDetector.add(event: event)
     }
     
     private func createCoordinatEvents(for message: Message) {
         let coordinateTrigger = TriggerEvent.EventType.coordinateTrigger(TriggerEvent.CoordinateTrigger(point: .zero, radius: message.radius))
         let metaData = addMetaData(for: message)
-        let event = TriggerEvent(rtlsOptionsId: String(rtlsOptionsId), name: message.name, description: message.description, eventType: coordinateTrigger, metaData: metaData)
+        let event = TriggerEvent(rtlsOptionsId: rtlsOptionsId, name: message.name, description: message.description, eventType: coordinateTrigger, metaData: metaData)
         self.coordinateEventDetector.add(event: event)
     }
 

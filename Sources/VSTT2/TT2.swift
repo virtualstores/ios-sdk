@@ -81,8 +81,14 @@ final public class TT2: ITT2 {
         config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
 
         self.tt2Internal = TT2Internal(config: config)
-        self.tt2Internal?.getStores(with: clientId, completion: { error in
-            completion(error)
+        self.tt2Internal?.getClients(completion: { (error) in
+            if let error = error {
+                completion(error)
+                return
+            }
+            self.tt2Internal?.getStores(with: clientId, completion: { error in
+                completion(error)
+            })
         })
     }
     
@@ -122,6 +128,9 @@ final public class TT2: ITT2 {
               self.tt2Internal?.getShelfGroups(for: store.id, activeFloor: self.rtlsOption) { [weak self] shelfGroups in
                   guard let config = self?.config else { return }
                   self?.position.setup(with: shelfGroups, config: config, store: currentStore)
+              }
+              if let client = self.tt2Internal?.internalClients.first(where: { $0.clientId == currentStore.clientId }) {
+                  self.tt2Internal?.accuracyUploader = AccuracyUploader(store: currentStore, connection: self.config.centralServerConnection, client: client)
               }
             case .failure(let error): completion(error)
             }
