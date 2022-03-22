@@ -33,12 +33,15 @@ internal class TT2Internal {
     private var positionBundleCancellable: AnyCancellable?
     private var changedFloorCancellable: AnyCancellable?
     private var directionCancellable: AnyCancellable?
+    private var realWorldOffsetCancellable: AnyCancellable?
+
+    private var offset: Double
 
     internal var internalStores: [Store] = []
 
     public init(config: EnvironmentConfig) {
         self.config = config
-        
+        offset = 0.0
         bindPublishers()
     }
     
@@ -114,11 +117,21 @@ internal class TT2Internal {
             .sink { error in
                 Logger.init().log(message: "DirectionPublisher noData")
             } receiveValue: { direction in
-                let radians = (Double.pi/2 - (direction.angle)).remainder(dividingBy: Double.pi * 2.0)
-                let course = TT2Course(fromRadians: radians)
-                
-                self.mapController?.updateUserDirection(newDirection: course.degrees + 180)
+                let heading = (vpsToMapboxAngle(angle: direction.angle + offset)).remainder(dividingBy: 360.0)
+                self.mapController?.updateUserDirection(newDirection: heading)
             }
+
+        realWorldOffsetCancellable = navigation.positionKitManager.realWorldOffsetPublisher
+                .compactMap { $0 }
+                .sink { error in
+                    Logger.init().log(message: "RealWorldOffsetPublisher noData")
+                } receiveValue: { direction in
+                    offset = direction
+                }
+    }
+
+    private func vpsToMapboxAngle(angle: Double) -> Double{
+        90.0 - angle
     }
     
     func getSwapLocations(for storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
