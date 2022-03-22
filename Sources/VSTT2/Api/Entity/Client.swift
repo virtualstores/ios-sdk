@@ -8,10 +8,10 @@
 import Foundation
 
 public struct Client: Codable {
-    public let clientId: String
+    public let clientId: Int64
     public let name: String?
 
-    public init(clientId: String, name: String?) {
+    public init(clientId: Int64, name: String?) {
         self.clientId = clientId
         self.name = name
     }
@@ -24,7 +24,7 @@ public struct Client: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        clientId = try String(container.decode(Int.self, forKey: .clientId))
+        clientId = try container.decode(Int64.self, forKey: .clientId)
         name = try container.decodeIfPresent(String.self, forKey: .name)
     }
 }

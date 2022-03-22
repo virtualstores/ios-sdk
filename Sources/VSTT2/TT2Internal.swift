@@ -11,7 +11,7 @@ import Combine
 import UIKit
 
 internal class TT2Internal {
-    /// Managers for helping VSTT to work with separate small modules
+    /// Managers for helping VSTT2 to work with separate small modules
     @Inject var navigation: Navigation
     @Inject var analytics: TT2AnalyticsManager
     @Inject var floorManager: VSTT2FloorManager
@@ -19,22 +19,27 @@ internal class TT2Internal {
     @Inject var user: UserSettings
     
     /// Services for getting the api data
+    @Inject var clientListService : ClientsListService
     @Inject var storesListService: StoresListService
     @Inject var swapLocationsService: SwapLocationsService
     @Inject var ordersService: OrdersService
     @Inject var itemPositionService: ItemPositionService
     @Inject var shelfGroupService: ShelfGroupService
-    
+
+    var accuracyUploader: AccuracyUploader?
     var mapController: IMapController?
     var map: Map?
 
     private let config: EnvironmentConfig
+    private var clientsCancellablle = Set<AnyCancellable>()
     private var cancellable = Set<AnyCancellable>()
     private var positionBundleCancellable: AnyCancellable?
     private var changedFloorCancellable: AnyCancellable?
     private var directionCancellable: AnyCancellable?
+    private var accuracyCancellable: AnyCancellable?
 
-    internal var internalStores: [Store] = []
+    var internalClients: [Client] = []
+    var internalStores: [Store] = []
 
     public init(config: EnvironmentConfig) {
         self.config = config
@@ -50,7 +55,23 @@ internal class TT2Internal {
         return mapData
     }
     
-    
+
+    func getClients(completion: @escaping (Error?) -> Void) {
+        let parameters = ClientsListParameters(config: config)
+
+        clientListService
+            .call(with: parameters)
+            .sink { (result) in
+              switch result {
+              case .finished: break
+              case .failure(let error): completion(error)
+              }
+            } receiveValue: { (data) in
+              self.internalClients = data.clients
+              completion(nil)
+            }.store(in: &clientsCancellablle)
+    }
+
     func getStores(with clientId: Int64, completion: @escaping (Error?) -> ()) {
         let parameters = StoresListParameters(clientId: clientId, config: config)
         
@@ -119,6 +140,15 @@ internal class TT2Internal {
                 
                 self.mapController?.updateUserDirection(newDirection: course.degrees + 180)
             }
+
+        accuracyCancellable = navigation.accuracyPublisher
+            .compactMap { $0 }
+            .sink(receiveValue: { [weak self] (preScanLocation, scanLocation, offset) in
+                guard let id = self?.analytics.visitId else { return }
+                self?.accuracyUploader?.upload(id: String(id), articleId: "", preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
+                    Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
+                })
+            })
     }
     
     func getSwapLocations(for storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> Void) {

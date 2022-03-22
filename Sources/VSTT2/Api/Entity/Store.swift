@@ -12,6 +12,7 @@ import VSFoundation
 public struct Store: Codable {
     public let id: Int64
     public let externalId: String?
+    public let clientId: Int64
     public let name: String
     public let address: Address
     public let latitude: Double
@@ -27,6 +28,7 @@ public struct Store: Codable {
     private enum CodingKeys: String, CodingKey {
         case id
         case externalId
+        case clientId
         case name
         case address
         case latitude
@@ -45,6 +47,7 @@ public struct Store: Codable {
 
         id = try container.decode(Int64.self, forKey: .id)
         externalId = try container.decodeIfPresent(String.self, forKey: .externalId)
+        clientId = try container.decode(Int64.self, forKey: .clientId)
         name = try container.decode(String.self, forKey: .name)
         address = try container.decode(Address.self, forKey: .address)
         latitude = try container.decode(Double.self, forKey: .latitude)
