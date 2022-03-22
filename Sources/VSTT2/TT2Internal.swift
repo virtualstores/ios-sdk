@@ -125,8 +125,8 @@ internal class TT2Internal {
             .compactMap { $0 }
             .sink { error in
                 Logger.init().log(message: "RealWorldOffsetPublisher noData")
-            } receiveValue: { direction in
-                self.offset = direction
+            } receiveValue: { angle in
+                self.offset = angle
             }
     }
 
