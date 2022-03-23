@@ -17,10 +17,10 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "https://github.com/virtualstores/ios-foundation.git", .upToNextMajor(from: "0.0.10")),
+        .package(url: "https://github.com/virtualstores/ios-foundation.git", .upToNextMajor(from: "0.0.8")),
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", .exact("0.13.1")),
-        .package(url: "https://github.com/virtualstores/ios-position-kit.git", .branch("paul-interface")),
-        
+        .package(url: "https://github.com/virtualstores/ios-position-kit.git", .exact("0.0.6")),
+        .package(url: "https://github.com/aws-amplify/aws-sdk-ios-spm.git", .upToNextMinor(from: "2.27.4")),
     ],
     targets: [
         .target(
@@ -29,6 +29,7 @@ let package = Package(
                 .product(name: "SQLite", package: "SQLite.swift"),
                 .product(name: "VSFoundation", package: "ios-foundation"),
                 .product(name: "VSPositionKit", package: "ios-position-kit"),
+                .product(name: "AWSS3", package: "aws-sdk-ios-spm")
             ]),
         .testTarget(
             name: "VSTT2Tests",
