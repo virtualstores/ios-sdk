@@ -208,8 +208,14 @@ private extension TT2 {
         self.coordinateConverter = converter
         
         self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, name: name, floorLevel: rtlsOption.floorLevel, converter: converter), converter: converter, currentFloorLevel: rtlsOption.floorLevel)
-        
-        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff)
+
+        #if DEBUG
+        let shouldRecord = true
+        #else
+        let shouldRecord = false
+        #endif
+
+        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, shouldRecord: shouldRecord)
     }
     
     private func setupAnalytics(for store: Store) {

@@ -15,7 +15,7 @@ public class Position: IPosition {
     private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
     private var shelfGroups: [ShelfGroup]?
     private var config: EnvironmentConfig?
-    private var store: Store?
+    var store: Store?
     private var barcodePositions: [Item] = []
     private var cancellable = Set<AnyCancellable>()
     
@@ -38,6 +38,9 @@ public class Position: IPosition {
     public func getBy(shelfName: String, completion: @escaping (ItemPosition) -> ()) {
         var position: ItemPosition?
         shelfGroups?.forEach { shelfGroup in
+          shelfGroup.shelves.forEach { (shelf) in
+            Logger(verbosity: .debug).log(message: "Shelf: \(shelf)")
+          }
             if let shelf = shelfGroup.shelves.first(where: { $0.name == shelfName }) {
                 position = shelf.itemPosition
             }
