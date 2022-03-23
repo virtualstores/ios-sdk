@@ -120,6 +120,10 @@ struct VSTT2Config: Config {
         injector.map(UserSettings.self) {
             UserSettings()
         }
+
+        injector.map(AWSS3UploadManager.self) {
+            AWSS3UploadManager()
+        }
     }
 
     private func configureHelpers(_ injector: Injector) {

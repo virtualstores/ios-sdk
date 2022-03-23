@@ -16,6 +16,8 @@ final public class Navigation: INavigation {
     public var positionKitManager: PositionManager
     public var isActive: Bool = false
 
+    var accuracyPublisher: CurrentValueSubject<(preScanLocation: CGPoint, scanLocation: CGPoint, offset: CGVector)?,Never> = .init(nil)
+
     private var heading: TT2Course? {
         let north = positionKitManager.rtlsOption?.north ?? 0.0
         let heading = positionKitManager.locationHeadingPublisher.value
@@ -55,8 +57,8 @@ public extension Navigation {
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
         guard isActive else { return }
 
+        prepareAccuracy(offset: position.offset)
         let pointWithOffset = TT2PointWithOffset(point: position.point, offset: position.offsetPoint)
-        
         positionKitManager.syncPosition(position: pointWithOffset, syncRotation: syncRotation, forceSync: forceSync, uncertainAngle: false)
     }
     
@@ -83,6 +85,7 @@ public extension Navigation {
         let point = position.point
         let offset = CGPoint(x: point.x + cos(heading.radians), y: point.y + sin(heading.radians))
         let pointWithOffset = TT2PointWithOffset(point: point, offset: offset)
+        prepareAccuracy(offset: CGVector(dx: offset.x, dy: offset.y))
         
         positionKitManager.syncPosition(position: pointWithOffset, syncRotation: true, forceSync: true, uncertainAngle: true)
     }
@@ -109,5 +112,15 @@ extension Navigation {
 
     func changeFloorStop() {
         positionKitManager.stop(stopSensors: false)
+    }
+}
+
+private extension Navigation {
+    func prepareAccuracy(offset: CGVector) {
+        guard let preScanLocation = positionKitManager.positionPublisher.value?.position else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            guard let scanLocation = self.positionKitManager.positionPublisher.value?.position else { return }
+            self.accuracyPublisher.send((preScanLocation: preScanLocation, scanLocation: scanLocation, offset: offset))
+        }
     }
 }

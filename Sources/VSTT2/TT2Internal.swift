@@ -11,30 +11,37 @@ import Combine
 import UIKit
 
 internal class TT2Internal {
-    /// Managers for helping VSTT to work with separate small modules
+    /// Managers for helping VSTT2 to work with separate small modules
     @Inject var navigation: Navigation
     @Inject var analytics: TT2AnalyticsManager
     @Inject var floorManager: VSTT2FloorManager
     @Inject var position: Position
     @Inject var user: UserSettings
+    @Inject var awsS3UploadManager: AWSS3UploadManager
     
     /// Services for getting the api data
+    @Inject var clientListService : ClientsListService
     @Inject var storesListService: StoresListService
     @Inject var swapLocationsService: SwapLocationsService
     @Inject var ordersService: OrdersService
     @Inject var itemPositionService: ItemPositionService
     @Inject var shelfGroupService: ShelfGroupService
-    
+
+    var accuracyUploader: AccuracyUploader?
     var mapController: IMapController?
     var map: Map?
 
     private let config: EnvironmentConfig
+    private var clientsCancellablle = Set<AnyCancellable>()
     private var cancellable = Set<AnyCancellable>()
     private var positionBundleCancellable: AnyCancellable?
     private var changedFloorCancellable: AnyCancellable?
     private var directionCancellable: AnyCancellable?
+    private var accuracyCancellable: AnyCancellable?
+    private var recordingCancellable: AnyCancellable?
 
-    internal var internalStores: [Store] = []
+    var internalClients: [Client] = []
+    var internalStores: [Store] = []
 
     public init(config: EnvironmentConfig) {
         self.config = config
@@ -50,7 +57,23 @@ internal class TT2Internal {
         return mapData
     }
     
-    
+
+    func getClients(completion: @escaping (Error?) -> Void) {
+        let parameters = ClientsListParameters(config: config)
+
+        clientListService
+            .call(with: parameters)
+            .sink { (result) in
+              switch result {
+              case .finished: break
+              case .failure(let error): completion(error)
+              }
+            } receiveValue: { (data) in
+              self.internalClients = data.clients
+              completion(nil)
+            }.store(in: &clientsCancellablle)
+    }
+
     func getStores(with clientId: Int64, completion: @escaping (Error?) -> ()) {
         let parameters = StoresListParameters(clientId: clientId, config: config)
         
@@ -119,6 +142,62 @@ internal class TT2Internal {
                 
                 self.mapController?.updateUserDirection(newDirection: course.degrees + 180)
             }
+
+        accuracyCancellable = navigation.accuracyPublisher
+            .compactMap { $0 }
+            .sink(receiveValue: { [weak self] (preScanLocation, scanLocation, offset) in
+                guard let id = self?.analytics.visitId else { return }
+                self?.accuracyUploader?.upload(id: String(id), articleId: "", preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
+                    Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
+                })
+            })
+
+      recordingCancellable = navigation.positionKitManager.recordingPublisher
+          .compactMap { $0 }
+          .sink(receiveValue: { (identifier ,data) in
+              self.createAWSData(identifier: identifier, data: data)
+          })
+    }
+
+    func createAWSData(identifier: String, data: String) {
+        guard let store = self.position.store else { return }
+        let date = Date()
+        let uploadTimeFormatter = DateFormatter()
+        let uploadDayFormatter = DateFormatter()
+        uploadTimeFormatter.dateFormat = "HHmmss"
+        uploadDayFormatter.dateFormat = "yyMMdd"
+        let stringDate = uploadDayFormatter.string(from: date)
+        let time = uploadTimeFormatter.string(from: date)
+        self.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
+        let csvData = self.createCSVData(date: stringDate, time: time, serverUrl: config.centralServerConnection.serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
+        let fileName = "keywords\(time).csv"
+        self.awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: csvData)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+          if let user = self.user.getLastUser() {
+            if let name = user.name, let route = user.route {
+              self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/\(name)/ios/\(route)/\(time)/")
+            } else if let name = user.name {
+              self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/\(name)/ios/undefinedRoute/\(time)/")
+            } else {
+              self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/undefined/ios/undefinedRoute/\(time)/")
+            }
+          } else {
+            self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/undefined/ios/undefinedRoute/\(time)/")
+          }
+        }
+    }
+
+    func createCSVData(date: String, time: String, serverUrl: String, clientId: String, storeid: String) -> String {
+        var csvData = "day,name,device,route,time,gender,age,comments,serverUrl,clientID,storeID,activity\n"
+        guard let user = user.getLastUser() else { return csvData + "\(date),,,ios,,\(time),,,,\(serverUrl), \(clientId), \(storeid),,\n" }
+        let name = user.name ?? ""
+        let route = user.route ?? ""
+        let gender = user.gender ?? ""
+        let age = user.age ?? ""
+        let comments = user.comments ?? ""
+        let activity = user.activity ?? ""
+        csvData = csvData + "\(date),\(name),ios,\(route),\(time),\(gender),\(age),\(comments),\(serverUrl),\(clientId),\(storeid),\(activity)\n"
+        return csvData
     }
     
     func getSwapLocations(for storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> Void) {

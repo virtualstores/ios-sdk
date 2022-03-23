@@ -35,6 +35,9 @@ final public class TT2User: IPersistenceModel {
     public var name: String?
     public var age: String?
     public var gender: String?
+    public var route: String?
+    public var comments: String?
+    public var activity: String?
     public var speedRegressionIntercept: Float?
     public var speedRegressionSlope: Float?
     public var alpha: [Float]?

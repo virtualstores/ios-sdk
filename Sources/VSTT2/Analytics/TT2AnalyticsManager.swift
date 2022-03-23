@@ -24,7 +24,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
     private var store: Store?
     private var uploadThreshold = 0
-    private var visitId: Int64?
+    var visitId: Int64?
     private var apiKey: String?
     private var cancellable = Set<AnyCancellable>()
     private var zoneEnterCancellable: AnyCancellable?
@@ -137,15 +137,18 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private func postTriggerEvent(for event: TriggerEvent) ->PostTriggerEventRequest {
         let eventType = event.eventType.getTrigger()
         let timestamp = DateFormatter.standardFormatter.string(from: event.timestamp)
-        return  PostTriggerEventRequest(rtlsOptionsId: event.rtlsOptionsId, name: event.name,
-                                        timeStamp: timestamp,
-                                        userPosition: event.userPosition,
-                                        appTrigger: eventType.appTrigger?.asPostTrigger,
-                                        coordinateTrigger: eventType.coordinateTrigger?.asPostTrigger,
-                                        shelfTrigger: eventType.shelfTrigger?.asPostTrigger,
-                                        zoneTrigger: eventType.zoneTrigger?.asPostTrigger,
-                                        tags: event.tags,
-                                        metaData: event.metaData)
+        return  PostTriggerEventRequest(
+            rtlsOptionsId: String(event.rtlsOptionsId),
+            name: event.name,
+            timeStamp: timestamp,
+            userPosition: event.userPosition,
+            appTrigger: eventType.appTrigger?.asPostTrigger,
+            coordinateTrigger: eventType.coordinateTrigger?.asPostTrigger,
+            shelfTrigger: eventType.shelfTrigger?.asPostTrigger,
+            zoneTrigger: eventType.zoneTrigger?.asPostTrigger,
+            tags: event.tags,
+            metaData: event.metaData
+        )
     }
 }
 

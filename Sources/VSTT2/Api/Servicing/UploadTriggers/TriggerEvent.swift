@@ -10,7 +10,7 @@ import CoreGraphics
 import VSFoundation
 
 public class TriggerEvent {
-    public let rtlsOptionsId: String
+    public let rtlsOptionsId: Int64
     public let name: String
     public let description: String
     public private(set) var timestamp: Date
@@ -21,7 +21,7 @@ public class TriggerEvent {
     public private(set) var hasBeenTriggered: Bool
     
     public init(
-        rtlsOptionsId: String,
+        rtlsOptionsId: Int64,
         name: String,
         description: String,
         timestamp: Date = Date(),

@@ -102,7 +102,7 @@ public class TT2ZoneManager: TT2Zone {
         insideZones[groupId] = zone.polygon
         
         let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: groupId, type: .enter))
-        return TriggerEvent(rtlsOptionsId: String(rtlsOptions.id), name: zone.name, description: "", timestamp: Date(),
+        return TriggerEvent(rtlsOptionsId: rtlsOptions.id, name: zone.name, description: "", timestamp: Date(),
                             userPosition: currentPosition, eventType: zoneTrigger)
     }
     
@@ -113,7 +113,7 @@ public class TT2ZoneManager: TT2Zone {
             
             let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: key, type: .exit))
             
-            let event = TriggerEvent(rtlsOptionsId: String(rtlsOptions.id),name: zone.name, description: "", timestamp: Date(),
+            let event = TriggerEvent(rtlsOptionsId: rtlsOptions.id,name: zone.name, description: "", timestamp: Date(),
                                      userPosition: currentPosition, eventType: zoneTrigger)
             
             zoneExitedPublisher.send(event)
