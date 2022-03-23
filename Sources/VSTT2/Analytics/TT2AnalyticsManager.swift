@@ -25,7 +25,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private var store: Store?
     private var uploadThreshold = 0
     var visitId: Int64?
-    private var apiKey: String?
     private var cancellable = Set<AnyCancellable>()
     private var zoneEnterCancellable: AnyCancellable?
     private var zoneExitCancellable: AnyCancellable?
@@ -207,7 +206,7 @@ private extension TT2AnalyticsManager {
 
     // MARK: Trigger Events
     private func uploadTriggerEvents(request: PostTriggerEventRequest) {
-        guard let visitId = visitId, let apiKey = apiKey else { return }
+        guard let visitId = visitId, let apiKey = config?.centralServerConnection.apiKey else { return }
 
         let parameters = UploadTriggersParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), request: request, config: config)
 
@@ -226,7 +225,7 @@ private extension TT2AnalyticsManager {
     }
 
     private func uploadScanEvents() {
-        guard let visitId = visitId, let apiKey = apiKey else { return }
+        guard let visitId = visitId, let apiKey = config?.centralServerConnection.apiKey else { return }
         // Receive all this data from app
         let parameters = UploadScanEventsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), barcode: "", shelfId: 1, point: CGPoint(), timeStamp: "", type: .shelf, config: config)
 
