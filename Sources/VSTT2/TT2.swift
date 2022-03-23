@@ -125,7 +125,7 @@ final public class TT2: ITT2 {
 
               self.floor.setup(swapLocations: swapLocations)
               self.bindPublishers()
-              self.tt2Internal?.getShelfGroups(for: store.id, activeFloor: self.rtlsOption) { [weak self] shelfGroups in
+              self.tt2Internal?.getShelfGroups(for: currentStore.id, activeFloor: self.rtlsOption) { [weak self] shelfGroups in
                   guard let config = self?.config else { return }
                   self?.position.setup(with: shelfGroups, config: config, store: currentStore)
               }

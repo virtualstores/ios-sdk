@@ -97,7 +97,8 @@ internal class TT2Internal {
     }
     
     func getShelfGroups(for storeId: Int64, activeFloor: RtlsOptions?, completion: @escaping ( [ShelfGroup]) -> ()) {
-        let shelfGroupParameters = ShelfGroupParameters(storeId: storeId, config: config)
+        guard let activeFloor = activeFloor else { return }
+        let shelfGroupParameters = ShelfGroupParameters(storeId: storeId, rtlsOptionsId: activeFloor.id, config: config)
         
         shelfGroupService
             .call(with: shelfGroupParameters)
@@ -111,9 +112,7 @@ internal class TT2Internal {
             }, receiveValue: { (shelfData) in
                 let shelfGroups = shelfData.map({ ShelfGroupDto.toShelfGroup($0) })
                 completion(shelfGroups)
-                if let activeFloor = activeFloor {
-                    self.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetX), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
-                }
+                self.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetX), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
             }).store(in: &cancellable)
     }
     

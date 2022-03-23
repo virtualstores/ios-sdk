@@ -11,10 +11,12 @@ import VSFoundation
 public struct ShelfGroupParameters {
     private let config: EnvironmentConfig
     private let storeId: Int64
+    private let rtlsOptionsId: Int64
 
-    public init(storeId: Int64, config: EnvironmentConfig) {
+    public init(storeId: Int64, rtlsOptionsId: Int64, config: EnvironmentConfig) {
         self.config = config
         self.storeId = storeId
+        self.rtlsOptionsId = rtlsOptionsId
     }
 }
 
@@ -24,7 +26,10 @@ extension ShelfGroupParameters: Routing {
     var path: String { "/shelfgroups" }
 
     var queryItems: [String: String]? {
-        let parameters = ["rtlsOptionsId": String(storeId)] as [String: String]
+        let parameters = [
+          "storeId" : String(storeId),
+          "rtlsOptionsId": String(rtlsOptionsId)
+        ] as [String: String]
 
         return parameters
     }
