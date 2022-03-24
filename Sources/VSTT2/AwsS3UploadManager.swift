@@ -56,14 +56,12 @@ public class AWSS3UploadManager {
 
     do {
       try persistence.save(&recording)
-      Logger(verbosity: .debug).log(message: "Saving data")
     } catch {
       Logger(verbosity: .critical).log(message: "Failed to save recordObject: \(error.localizedDescription)")
     }
   }
 
   func prepareDataToSend(identifier: String, data: String, date: Date) {
-    Logger(verbosity: .debug).log(message: "preparing data")
     let timeFormatter = DateFormatter()
     timeFormatter.dateFormat = "HHmmss"
     let timedIdentifier = identifier + timeFormatter.string(from: date)
@@ -178,7 +176,6 @@ public class AWSS3UploadManager {
     let fileContentTypeStr = "text/plain"
     getPreSignedURLRequest.contentType = fileContentTypeStr
     AWSS3PreSignedURLBuilder.default().getPreSignedURL(getPreSignedURLRequest).continueWith { (task:AWSTask<NSURL>) -> Any? in
-      Logger(verbosity: .debug).log(message: "Sending data")
       if let error = task.error as NSError? {
         Logger(verbosity: .critical).log(message: "Uploading error: \(error.localizedDescription)")
         self.updateRecordsAfter(uploadingFailed: true)

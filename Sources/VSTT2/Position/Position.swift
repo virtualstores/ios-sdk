@@ -38,9 +38,6 @@ public class Position: IPosition {
     public func getBy(shelfName: String, completion: @escaping (ItemPosition) -> ()) {
         var position: ItemPosition?
         shelfGroups?.forEach { shelfGroup in
-          shelfGroup.shelves.forEach { (shelf) in
-            Logger(verbosity: .debug).log(message: "Shelf: \(shelf)")
-          }
             if let shelf = shelfGroup.shelves.first(where: { $0.name == shelfName }) {
                 position = shelf.itemPosition
             }

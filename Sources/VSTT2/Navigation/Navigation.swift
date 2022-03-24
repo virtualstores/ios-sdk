@@ -16,6 +16,9 @@ final public class Navigation: INavigation {
     public var positionKitManager: PositionManager
     public var isActive: Bool = false
 
+    private var startCodes: [PositionedCode] = []
+    private var startedWithAngle: Bool = false
+
     var accuracyPublisher: CurrentValueSubject<(preScanLocation: CGPoint, scanLocation: CGPoint, offset: CGVector)?,Never> = .init(nil)
 
     private var heading: TT2Course? {
@@ -33,7 +36,6 @@ final public class Navigation: INavigation {
 }
 
 public extension Navigation {
-
     func start(startPosition: CGPoint, startAngle: Double) throws {
         guard !isActive else {
             self.stop()
@@ -58,10 +60,10 @@ public extension Navigation {
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
         guard isActive else { return }
 
-        prepareAccuracy(offset: position.offset)
+        prepareAccuracyUpload(offset: position.offset)
         let angle = atan2(-position.offsetPoint.y, -position.offsetPoint.x)*180.0/Double.pi
 
-        positionKitManager.syncPosition(xPosition: position.point.x, yPosition: position.point.y, startAngle: angle, syncPosition: true, syncAngle: true, uncertainAngle: false)
+        positionKitManager.syncPosition(xPosition: position.point.x, yPosition: position.point.y, startAngle: angle, syncPosition: forceSync, syncAngle: syncRotation, uncertainAngle: false)
     }
 
     func start(startPosition: CGPoint) throws {
@@ -72,12 +74,13 @@ public extension Navigation {
             return
         }
 
+        let startWithAngle = self.startWithAngle(startPosition: startPosition)
         try positionKitManager.start()
 
-        positionKitManager.startNavigation(with: heading.degrees,
+        positionKitManager.startNavigation(with: startWithAngle ?? heading.degrees,
                                            xPosition: startPosition.x,
                                            yPosition: startPosition.y,
-                                           uncertainAngle: true)
+                                           uncertainAngle: startWithAngle == nil)
         isActive = true
         userStartAngle = heading
     }
@@ -85,12 +88,10 @@ public extension Navigation {
     func syncPosition(position: ItemPosition) throws  {
         guard let heading = self.heading, isActive else { return }
 
-        // Why has offset been added? We want to remove it
-        let point = position.point
-        let offset = CGPoint(x: point.x + cos(heading.radians), y: point.y + sin(heading.radians))
-        prepareAccuracy(offset: CGVector(dx: offset.x, dy: offset.y))
+        let point = position.pointWithOffset
+        prepareAccuracyUpload(offset: position.offset)
 
-        positionKitManager.syncPosition(xPosition: position.point.x, yPosition: position.point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: true, uncertainAngle: true)
+        positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: !startedWithAngle, uncertainAngle: !startedWithAngle)
     }
 
     func stop() {
@@ -102,6 +103,10 @@ public extension Navigation {
 }
 
 extension Navigation {
+    func setup(startCodes: [PositionedCode]) {
+        self.startCodes = startCodes
+    }
+
     func changeFloorStart(startPosition: CGPoint) throws {
         guard isActive else { return }
 
@@ -119,11 +124,38 @@ extension Navigation {
 }
 
 private extension Navigation {
-    func prepareAccuracy(offset: CGVector) {
+    func prepareAccuracyUpload(offset: CGVector) {
         guard let preScanLocation = positionKitManager.positionPublisher.value?.position else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             guard let scanLocation = self.positionKitManager.positionPublisher.value?.position else { return }
             self.accuracyPublisher.send((preScanLocation: preScanLocation, scanLocation: scanLocation, offset: offset))
         }
+    }
+
+    func startWithAngle(startPosition: CGPoint) -> Double? {
+        Logger(verbosity: .debug).log(message: "StartPosition: \(startPosition)")
+        guard
+          let code = self.startCodes.first(where: { $0.code == "start/plasticbags" }),
+          Int(code.point.x) == Int(startPosition.x),
+          Int(code.point.y) == Int(startPosition.y)
+        else { return nil }
+        Logger(verbosity: .debug).log(message: "Code: \(code.point)")
+        Logger(verbosity: .debug).log(message: "Code: x:\(Int(code.point.x)), y: \(Int(code.point.y)), Start: x:\(Int(startPosition.x)), y:\(Int(startPosition.y))")
+        self.startedWithAngle = true
+        return code.direction
+    }
+
+    func doCompassStart(point: CGPoint) -> Bool {
+        guard let userPosition = positionKitManager.positionPublisher.value?.position else { return false }
+
+        let distance = point.distance(to: userPosition)
+
+        return distance > 7
+    }
+}
+
+extension CGPoint {
+    func distance(to point: CGPoint) -> CGFloat {
+        return sqrt(pow(self.x - point.x, 2) + pow(self.y - point.y, 2))
     }
 }
