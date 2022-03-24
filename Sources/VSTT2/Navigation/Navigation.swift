@@ -17,7 +17,7 @@ final public class Navigation: INavigation {
     public var isActive: Bool = false
 
     private var startCodes: [PositionedCode] = []
-    private var startedWithAngle: Bool = false
+    private var hasStartLocationAngle: Bool = false
 
     var accuracyPublisher: CurrentValueSubject<(preScanLocation: CGPoint, scanLocation: CGPoint, offset: CGVector)?,Never> = .init(nil)
 
@@ -69,7 +69,6 @@ public extension Navigation {
     func start(startPosition: CGPoint) throws {
         guard let heading = self.heading, !isActive else {
             self.stop()
-
             try self.start(startPosition: startPosition)
             return
         }
@@ -86,16 +85,25 @@ public extension Navigation {
     }
 
     func syncPosition(position: ItemPosition) throws  {
-        guard let heading = self.heading, isActive else { return }
+        guard let heading = self.heading, isActive else {
+            try self.start(startPosition: position.point)
+            return
+        }
 
         let point = position.pointWithOffset
         prepareAccuracyUpload(offset: position.offset)
-
-        positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: !startedWithAngle, uncertainAngle: !startedWithAngle)
+        if let startLocationAngle = self.startWithAngle(startPosition: position.point) {
+            positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: startLocationAngle, syncPosition: true, syncAngle: true, uncertainAngle: false)
+        } else {
+            let syncingWithCompass = doCompassStart(point: position.point) && !hasStartLocationAngle
+            print("Syncingwithcompass: \(syncingWithCompass)")
+            positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)
+        }
     }
 
     func stop() {
         positionKitManager.stop()
+        self.hasStartLocationAngle = false
         isActive = false
     }
 
@@ -133,15 +141,12 @@ private extension Navigation {
     }
 
     func startWithAngle(startPosition: CGPoint) -> Double? {
-        Logger(verbosity: .debug).log(message: "StartPosition: \(startPosition)")
         guard
           let code = self.startCodes.first(where: { $0.code == "start/plasticbags" }),
           Int(code.point.x) == Int(startPosition.x),
           Int(code.point.y) == Int(startPosition.y)
         else { return nil }
-        Logger(verbosity: .debug).log(message: "Code: \(code.point)")
-        Logger(verbosity: .debug).log(message: "Code: x:\(Int(code.point.x)), y: \(Int(code.point.y)), Start: x:\(Int(startPosition.x)), y:\(Int(startPosition.y))")
-        self.startedWithAngle = true
+        self.hasStartLocationAngle = true
         return code.direction
     }
 
