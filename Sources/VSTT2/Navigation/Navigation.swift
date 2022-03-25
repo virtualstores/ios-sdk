@@ -96,7 +96,6 @@ public extension Navigation {
             positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: startLocationAngle, syncPosition: true, syncAngle: true, uncertainAngle: false)
         } else {
             let syncingWithCompass = doCompassStart(point: position.point) && !hasStartLocationAngle
-            print("Syncingwithcompass: \(syncingWithCompass)")
             positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)
         }
     }
@@ -152,9 +151,7 @@ private extension Navigation {
 
     func doCompassStart(point: CGPoint) -> Bool {
         guard let userPosition = positionKitManager.positionPublisher.value?.position else { return false }
-
         let distance = point.distance(to: userPosition)
-
         return distance > 7
     }
 }

@@ -213,7 +213,7 @@ private extension TT2 {
         self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, name: name, floorLevel: rtlsOption.floorLevel, converter: converter), converter: converter, currentFloorLevel: rtlsOption.floorLevel)
 
         #if DEBUG
-        let shouldRecord = true
+        let shouldRecord = false
         #else
         let shouldRecord = false
         #endif
