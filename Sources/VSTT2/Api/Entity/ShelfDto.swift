@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreGraphics
+import VSFoundation
 
 public struct ShelfDto: Codable {
     public var shelfId: Int64?

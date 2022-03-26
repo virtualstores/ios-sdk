@@ -6,6 +6,7 @@
 // Copyright Virtual Stores - 2022
 
 import Foundation
+import VSFoundation
 
 public struct ShelfGroupDto: Codable {
     public var shelfGroupId: Int64?

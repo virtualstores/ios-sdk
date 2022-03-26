@@ -13,7 +13,7 @@ public class Position: IPosition {
     @Inject var itemPositionService: ItemPositionService
 
     private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
-    private var shelfGroups: [ShelfGroup]?
+    public var shelfGroups: [ShelfGroup]?
     private var config: EnvironmentConfig?
     var store: Store?
     private var barcodePositions: [Item] = []
@@ -35,7 +35,7 @@ public class Position: IPosition {
         self.store = store
     }
     
-    public func getBy(shelfName: String, completion: @escaping (ItemPosition) -> ()) {
+    public func getBy(shelfName: String, completion: @escaping (ItemPosition?) -> ()) {
         var position: ItemPosition?
         shelfGroups?.forEach { shelfGroup in
           shelfGroup.shelves.forEach { (shelf) in
@@ -46,9 +46,7 @@ public class Position: IPosition {
             }
         }
         
-        guard let itemPosition = position else { return }
-        
-        completion(itemPosition)
+        completion(position)
     }
 
     public func getBy(barcode: String, completion: @escaping (Item?) -> ()) {

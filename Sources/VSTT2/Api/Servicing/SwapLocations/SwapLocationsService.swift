@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import VSFoundation
 
 final class SwapLocationsService: DataFetchingManager {
     func call(with parameters: SwapLocationsParameters) -> AnyPublisher<[SwapLocation], Error> {
