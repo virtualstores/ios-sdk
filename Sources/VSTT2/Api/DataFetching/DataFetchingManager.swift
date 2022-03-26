@@ -11,17 +11,17 @@ import Combine
 class DataFetchingManager {
     /// DataHandler to fetch the data  from real api or mock data
     /// Based on what we have injected
-    private let dataHeandler: DataHandler
+    private let dataHandler: DataHandler
 
-    init(with dataHeandler: DataHandler) {
-        self.dataHeandler = dataHeandler
+    init(with dataHandler: DataHandler) {
+        self.dataHandler = dataHandler
     }
 
      func execute<T: Decodable, R: Routing, E: Error>(_ route: R, errorType: E.Type) -> AnyPublisher<T, Error> {
-        return dataHeandler.fetch(route)
+        return dataHandler.fetch(route)
     }
 
     func executeEmptyBody<R: Routing, E: Error>(_ route: R, errorType: E.Type) -> AnyPublisher<Void, Error> {
-       return dataHeandler.fetchEmptyBody(route)
+       return dataHandler.fetchEmptyBody(route)
    }
 }

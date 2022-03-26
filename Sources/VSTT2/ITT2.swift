@@ -49,7 +49,7 @@ public protocol ITT2 {
     func setMap(map: IMapController)
     
     /// Methode for creating MapData for MapSdk
-    func getMapData(options: MapOptions) -> MapData?
+    func getMapData() -> MapData?
 
     func startMap()
 

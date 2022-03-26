@@ -14,7 +14,8 @@ import UIKit
 
 
 final public class TT2AnalyticsManager: TT2Analytics {
-    @Inject var createVisitsService: CreateVisitsService
+    @Inject var createVisitService: CreateVisitService
+    @Inject var stopVisitService: StopVisitService
     @Inject var uploadPositionsService: UploadPositionsService
     @Inject var uploadTriggersService: UploadTriggersService
     @Inject var uploadScanEventsService: UploadScanEventsService
@@ -46,10 +47,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:], completion: @escaping (Error?) -> Void) {
-        guard let storeId = store?.statServerConnection.storeId else { return }
+        guard let storeId = store?.statServerConnection.storeId, visitId == nil else { return }
 
         let date = DateFormatter.standardFormatter.string(from: Date())
-        let parameters = CreateVisitsParameters(requestId: UUID().uuidString.uppercased(),
+        let parameters = CreateVisitParameters(requestId: UUID().uuidString.uppercased(),
                                                 storeId: storeId,
                                                 start: date,
                                                 stop: date,
@@ -57,7 +58,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
                                                 tags: tags,
                                                 metaData: metaData,
                                                 config: config)
-        createVisitsService
+        createVisitService
             .call(with: parameters)
             .sink(receiveCompletion: { (subscriberCompletion) in
                 switch subscriberCompletion {
@@ -85,10 +86,21 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func stopVisit() {
-        guard let points = positionUploadWorker.getAllPoints() else { return }
-        
-        self.uploadData(recordedPositions: points, recordingStoped: true)
-        self.recordedPositionsCount = 0
+        stopCollectingHeatMapData()
+        guard let visitId = visitId, let points = positionUploadWorker.getAllPoints() else { return }
+        let date = DateFormatter.standardFormatter.string(from: Date())
+        let parameters = StopVisitParameters(config: config, requestId: UUID().uuidString.uppercased(), visitId: visitId, stop: date, positionGrps: points)
+        stopVisitService
+            .call(with: parameters)
+            .sink { [weak self] (result) in
+                switch result {
+                case .finished: self?.positionUploadWorker.removeAllPoints()
+                case .failure(let error): Logger(verbosity: .debug).log(message: "StopVisitError: \(error.localizedDescription)")
+                }
+            } receiveValue: { (_) in
+                self.recordedPositionsCount = 0
+                self.visitId = nil
+            }.store(in: &cancellable)
     }
 
     func update(rtlsOptionId: Int64) {
@@ -179,7 +191,7 @@ private extension TT2AnalyticsManager {
     }
     
     ///Uploading Heatmap data, config: <#EnvironmentConfig#>
-    private func uploadData(recordedPositions: [String: [RecordedPosition]], recordingStoped: Bool = false) {
+    private func uploadData(recordedPositions: [String: [RecordedPosition]]) {
         guard let visitId = visitId else { return }
 
         let parameters = UploadPositionsParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions, config: config)
@@ -189,11 +201,7 @@ private extension TT2AnalyticsManager {
             .sink(receiveCompletion: { [weak self] (completion) in
                 switch completion {
                 case .finished:
-                    if recordingStoped {
-                        self?.positionUploadWorker.removeAllPoints()
-                    } else {
-                        self?.positionUploadWorker.removePoints()
-                    }
+                    self?.positionUploadWorker.removePoints()
                 case .failure(let error):
                     self?.positionUploadWorker.updatePointsAfter(uploadingFailed: true)
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)

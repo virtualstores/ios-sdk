@@ -142,7 +142,7 @@ final public class TT2: ITT2 {
         setupAnalytics(for: currentStore)
     }
     
-    public func getMapData(options: MapOptions) -> MapData? {
+    public func getMapData() -> MapData? {
         return self.mapData
     }
 

@@ -31,8 +31,12 @@ struct VSTT2Config: Config {
             UploadTriggersService(with: NetworkManager())
         }
 
-        injector.map(CreateVisitsService.self) {
-            CreateVisitsService(with: NetworkManager())
+        injector.map(CreateVisitService.self) {
+            CreateVisitService(with: NetworkManager())
+        }
+
+        injector.map(StopVisitService.self) {
+            StopVisitService(with: NetworkManager())
         }
 
         injector.map(ClientsListService.self) {
