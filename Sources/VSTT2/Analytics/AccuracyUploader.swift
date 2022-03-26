@@ -89,7 +89,7 @@ class AccuracyUploader {
       return
     }
 
-    print(url)
+    //print(url)
     let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
       DispatchQueue.main.async {
         if let response = response as? HTTPURLResponse {

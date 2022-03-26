@@ -56,14 +56,12 @@ public class AWSS3UploadManager {
 
     do {
       try persistence.save(&recording)
-      Logger(verbosity: .debug).log(message: "Saving data")
     } catch {
       Logger(verbosity: .critical).log(message: "Failed to save recordObject: \(error.localizedDescription)")
     }
   }
 
   func prepareDataToSend(identifier: String, data: String, date: Date) {
-    Logger(verbosity: .debug).log(message: "preparing data")
     let timeFormatter = DateFormatter()
     timeFormatter.dateFormat = "HHmmss"
     let timedIdentifier = identifier + timeFormatter.string(from: date)
@@ -75,11 +73,11 @@ public class AWSS3UploadManager {
     insert(identifier: fileName, data: data, date: date)
   }
 
-  func sendCollectedDataToS3(folderName: String) {
-    let arr = getAllRecordedObject().filter { $0.status == AWSRecordObject.Status.pending.rawValue }
+  func sendCollectedDataToS3(status: AWSRecordObject.Status = .pending, folderName: String = "") {
+    let arr = getAllRecordedObject().filter { $0.status == status.rawValue }
     arr.forEach { (object) in
       if let id = object.identifier, let convertedData = object.data?.data(using: .utf8) {
-        self.sendToS3(AWSS3Key: .dataAnalyze, key: folderName, identifier: id, data: convertedData)
+        self.sendToS3(AWSS3Key: .dataAnalyze, key: object.folderName ?? folderName, identifier: id, data: convertedData)
         object.folderName = folderName
         self.updateStatus(object: object, status: .inProgress)
       }
@@ -87,7 +85,7 @@ public class AWSS3UploadManager {
   }
 
   func retryFailed() {
-
+    sendCollectedDataToS3(status: .failed)
   }
 
   func retry(_ numberOfTimes: Int = 0) {
@@ -104,12 +102,12 @@ public class AWSS3UploadManager {
   }
 
   private func getWaitTimeExp(retryCount: Int) -> UInt32 {
-      if retryCount == 0 {
-          return 0
-      }
-      let waitTime = pow(2, retryCount)
+    if retryCount == 0 {
+      return 0
+    }
+    let waitTime = pow(2, retryCount)
 
-      return UInt32(truncating: waitTime as NSNumber)
+    return UInt32(truncating: waitTime as NSNumber)
   }
 
   private func getAllRecordedObject() -> [AWSRecordObject] {
@@ -137,7 +135,7 @@ public class AWSS3UploadManager {
     switch status {
     case .pending: break
     case .inProgress: break
-    case .failed: break
+    case .failed: self.retryFailed()
     case .succeded: self.removeRecordedObject()
     }
   }
@@ -178,13 +176,12 @@ public class AWSS3UploadManager {
     let fileContentTypeStr = "text/plain"
     getPreSignedURLRequest.contentType = fileContentTypeStr
     AWSS3PreSignedURLBuilder.default().getPreSignedURL(getPreSignedURLRequest).continueWith { (task:AWSTask<NSURL>) -> Any? in
-      Logger(verbosity: .debug).log(message: "Sending data")
       if let error = task.error as NSError? {
         Logger(verbosity: .critical).log(message: "Uploading error: \(error.localizedDescription)")
         self.updateRecordsAfter(uploadingFailed: true)
         return nil
       }
-
+      
       let presignedURL = task.result
       var request = URLRequest(url: presignedURL! as URL)
       request.cachePolicy = .reloadIgnoringLocalCacheData

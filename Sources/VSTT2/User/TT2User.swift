@@ -17,11 +17,13 @@ final public class TT2User: IPersistenceModel {
         self.y = []
     }
     
-    func setup(id: String?, userId: String?, userHeight: Float?, name: String?) {
+    func setup(id: String?, userId: String?, userHeight: Float?, name: String?, age: String?, gender: String?) {
         self.id = id
         self.userId = userId
         self.userHeight = userHeight
         self.name = name
+        self.age = age
+        self.gender = gender
     }
     
     convenience init(index: String) {
