@@ -110,7 +110,7 @@ internal class TT2Internal {
                     print(error)
                 }
             }, receiveValue: { (shelfData) in
-                let shelfGroups = shelfData.map({ ShelfGroupDto.toShelfGroup($0) })
+                let shelfGroups = ShelfGroupDto.add(floorLevelId: activeFloor.id, shelfData).map({ ShelfGroupDto.toShelfGroup($0) })
                 completion(shelfGroups)
                 self.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetX), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
             }).store(in: &cancellable)
