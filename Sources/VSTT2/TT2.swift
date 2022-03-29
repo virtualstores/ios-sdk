@@ -56,7 +56,7 @@ final public class TT2: ITT2 {
         
         return user
     }
-    
+
     public var activeStore: TT2Store?
     
     public var coordinateConverter: ICoordinateConverter?
@@ -94,6 +94,7 @@ final public class TT2: ITT2 {
     
     public func setMap(map: IMapController) {
         self.tt2Internal?.mapController = map
+        self.setupRestOfMap()
     }
     
     public func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ()) {
@@ -112,6 +113,7 @@ final public class TT2: ITT2 {
                   if rtlsOption.isDefault {
                       self.setActiveFloor(rtls: rtlsOption) { (error) in
                           completion(error)
+                          self.setupRestOfMap()
                       }
                   }
               }
@@ -120,6 +122,7 @@ final public class TT2: ITT2 {
                   guard let rtls = currentStore.rtlsOptions.first else { return }
                   self.setActiveFloor(rtls: rtls) { (error) in
                       completion(error)
+                      self.setupRestOfMap()
                   }
               }
 
@@ -135,6 +138,8 @@ final public class TT2: ITT2 {
               if let client = self.tt2Internal?.internalClients.first(where: { $0.clientId == currentStore.clientId }) {
                   self.tt2Internal?.accuracyUploader = AccuracyUploader(store: currentStore, connection: self.config.centralServerConnection, client: client)
               }
+
+
             case .failure(let error): completion(error)
             }
         })
@@ -176,6 +181,24 @@ private extension TT2 {
                   }
               }
           })
+    }
+
+    private func setupRestOfMap() {
+      guard
+        let rtls = rtlsOption,
+        let mapData = mapData,
+        let converter = coordinateConverter,
+        let navData = floor.navgraph,
+        let start = floor.startCode,
+        let stop = floor.stopCode
+      else {
+        return }
+
+      self.tt2Internal?.mapController?.loadMap(with: mapData)
+
+      let height = converter.convertFromMetersToPixels(input: rtls.heightInMeters)
+      let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
+      self.tt2Internal?.mapController?.setup(pathfinder: VPSPathfinderAdapter(converter: converter, height: rtls.heightInMeters, width: rtls.widthInMeters, pixelsPerMeter: Float(rtls.pixelsPerMeter), navGraph: navGraph, startPosition: start.point, stopPosition: stop.point))
     }
 
     private func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {

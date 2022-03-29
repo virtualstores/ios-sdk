@@ -9,6 +9,7 @@ import Foundation
 import Combine
 import Foundation
 import VSFoundation
+import CoreGraphics
 
 ///
 /// Interface for TT2 SDK.

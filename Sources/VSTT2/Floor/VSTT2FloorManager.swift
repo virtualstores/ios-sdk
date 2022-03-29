@@ -31,11 +31,11 @@ public class VSTT2FloorManager: VSTT2Floor {
 
     public var switchFloorPublisher: CurrentValueSubject<(rtlsOptions: RtlsOptions, point: CGPoint)?, Never> = .init(nil)
     
-    public var startCodes: PositionedCode? {
+    public var startCode: PositionedCode? {
         self.activeFloor?.scanLocations?.first(where: { $0.type == .start })
     }
     
-    public var stopCodes: PositionedCode? {
+    public var stopCode: PositionedCode? {
         self.activeFloor?.scanLocations?.first(where: { $0.type == .stop })
     }
 
@@ -155,4 +155,55 @@ private extension VSTT2FloorManager {
             }
         }
     }
+}
+
+class GraphLoader {
+  func getGraph(fromFile: String, pixelHeight: Double) -> TT2NavGraph {
+    return GraphDeserializer.deserialize(fromJsonFile: fromFile, pixelHeight: pixelHeight)
+  }
+
+  func getGraph(fromData: Data, pixelHeight: Double) -> TT2NavGraph {
+    return GraphDeserializer.deserialize(fromJsonData: fromData, pixelHeight: pixelHeight)
+  }
+}
+
+private typealias VertexMap = Dictionary<String, TT2NavGraph.Vertex>
+private typealias JsonData = Dictionary<String, AnyObject>
+private typealias NeighborData = Dictionary<String, Int>
+private typealias NeighborDataKotlin = Dictionary<String, Int32>
+
+class GraphDeserializer: NSObject {
+  static func deserialize(fromJsonFile: String, pixelHeight: Double) -> TT2NavGraph {
+    let filePath = Bundle.main.path(forResource: fromJsonFile, ofType: "json")!
+    let data = try! Data(referencing: NSData(contentsOfFile: filePath))
+    return deserialize(fromJsonData: data, pixelHeight: pixelHeight)
+  }
+
+  static func deserialize(fromJsonData data: Data, pixelHeight: Double) -> TT2NavGraph {
+    let json = try! JSONSerialization.jsonObject(with: data,
+                                                 options: JSONSerialization.ReadingOptions.allowFragments) as! JsonData
+    let numvertices = json["num_vertices"] as! Int
+    let spacing = json["spacing"] as! Double
+    var output = VertexMap()
+    let polygons = json["vertices"] as! [JsonData]
+    for object in polygons{
+      let id = object["id"] as! String
+      let x = object["x"] as! CGFloat
+      let y = object["y"] as! CGFloat
+      let cost = object["cost"] as! Int
+      let neighborCost = object["neighbors"] as! NeighborData
+
+      var neighborCostKotlin: NeighborDataKotlin = [:]
+      neighborCost.forEach { (key, value) in
+        neighborCostKotlin[key] = Int32(value)
+      }
+
+      let vertice = TT2NavGraph.Vertex(id: id, x: Float(x), y: Float(y), cost: Int32(cost), neighborCosts: neighborCostKotlin)
+      //let vertice = NavGraph.Vertex(id: id, x: Float(x), y: Float(CGFloat(pixelHeight) - y), cost: Int32(cost), neighborCosts: neighborCost)
+      output.updateValue(vertice, forKey: id)
+    }
+
+    return TT2NavGraph(spacing: spacing, numVertices: Int32(numvertices), vertices: output)
+    //return NavGraph(spacing: Int32(spacing), numVertices: Int32(numvertices), vertices: output)
+  }
 }
