@@ -198,7 +198,11 @@ private extension TT2 {
 
       let height = converter.convertFromMetersToPixels(input: rtls.heightInMeters)
       let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
-      self.tt2Internal?.mapController?.setup(pathfinder: VPSPathfinderAdapter(converter: converter, height: rtls.heightInMeters, width: rtls.widthInMeters, pixelsPerMeter: Float(rtls.pixelsPerMeter), navGraph: navGraph, startPosition: start.point, stopPosition: stop.point))
+
+      let convertedAndFlippedStart = start.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
+      let convertedAndFlippedStop = stop.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
+
+      self.tt2Internal?.mapController?.setup(pathfinder: VPSPathfinderAdapter(converter: converter, height: rtls.heightInMeters, width: rtls.widthInMeters, pixelsPerMeter: Float(rtls.pixelsPerMeter), navGraph: navGraph, startPosition: convertedAndFlippedStart, stopPosition: convertedAndFlippedStop))
     }
 
     private func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {
