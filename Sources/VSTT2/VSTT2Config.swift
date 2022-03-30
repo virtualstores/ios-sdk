@@ -8,6 +8,7 @@
 import Foundation
 import VSFoundation
 import VSPositionKit
+import VSPositionKitTargets
 
 struct VSTT2Config: Config {
     public init() { }
