@@ -94,4 +94,8 @@ public class Position: IPosition {
             completion(positions)
         }
     }
+    
+    deinit {
+        cancellable.removeAll()
+    }
 }

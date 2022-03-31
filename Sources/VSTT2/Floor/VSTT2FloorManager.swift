@@ -17,7 +17,6 @@ public class VSTT2FloorManager: VSTT2Floor {
     @Inject var swapLocationsService: SwapLocationsService
 
     private var floorPicker: FloorPicker?
-    private var switchFloorCancellable: AnyCancellable?
 
     public var activeFloor: RtlsOptions?
     public var floors: [RtlsOptions] = []
@@ -50,11 +49,11 @@ public class VSTT2FloorManager: VSTT2Floor {
         if let activeFloor = activeFloor {
             self.floorPicker = FloorPicker(rtlsOptionId: activeFloor.id, swapLocations: swapLocations)
 
-            switchFloorCancellable = self.floorPicker?.switchFloorPublisher
+            self.floorPicker?.switchFloorPublisher
                 .sink(receiveValue: { [weak self] (data) in
                     guard let rtlsOptions = self?.floors.first(where: { $0.id == data?.rtlsOptionsId }), let point = data?.point else { return }
                     self?.switchFloorPublisher.send((rtlsOptions: rtlsOptions, point: point))
-                })
+                }).store(in: &cancellable)
         }
     }
 
@@ -86,6 +85,10 @@ public class VSTT2FloorManager: VSTT2Floor {
 
     func onNewFloor(floor: Int) {
         floorPicker?.changeFloorTo = floor
+    }
+    
+    deinit {
+        cancellable.removeAll()
     }
 }
 

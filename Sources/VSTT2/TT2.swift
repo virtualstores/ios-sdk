@@ -160,6 +160,10 @@ final public class TT2: ITT2 {
         analytics.stopVisit()
         tt2Internal?.mapController?.stop()
     }
+    
+    deinit {
+        switchFloorCancellable?.cancel()
+    }
 }
 
 private extension TT2 {
