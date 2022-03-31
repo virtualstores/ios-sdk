@@ -26,26 +26,19 @@ internal class TT2Internal {
     @Inject var ordersService: OrdersService
     @Inject var itemPositionService: ItemPositionService
     @Inject var shelfGroupService: ShelfGroupService
-
+    
     var accuracyUploader: AccuracyUploader?
     var mapController: IMapController?
     var map: Map?
-
+    
     private let config: EnvironmentConfig
-    private var clientsCancellablle = Set<AnyCancellable>()
     private var cancellable = Set<AnyCancellable>()
-    private var positionBundleCancellable: AnyCancellable?
-    private var changedFloorCancellable: AnyCancellable?
-    private var directionCancellable: AnyCancellable?
-    private var realWorldOffsetCancellable: AnyCancellable?
-    private var accuracyCancellable: AnyCancellable?
-    private var recordingCancellable: AnyCancellable?
-
+    
     private var offset: Double
-
+    
     var internalClients: [Client] = []
     var internalStores: [Store] = []
-
+    
     public init(config: EnvironmentConfig) {
         self.config = config
         offset = 0.0
@@ -60,23 +53,23 @@ internal class TT2Internal {
         return mapData
     }
     
-
+    
     func getClients(completion: @escaping (Error?) -> Void) {
         let parameters = ClientsListParameters(config: config)
-
+        
         clientListService
             .call(with: parameters)
             .sink { (result) in
-              switch result {
-              case .finished: break
-              case .failure(let error): completion(error)
-              }
+                switch result {
+                case .finished: break
+                case .failure(let error): completion(error)
+                }
             } receiveValue: { (data) in
-              self.internalClients = data.clients
-              completion(nil)
-            }.store(in: &clientsCancellablle)
+                self.internalClients = data.clients
+                completion(nil)
+            }.store(in: &cancellable)
     }
-
+    
     func getStores(with clientId: Int64, completion: @escaping (Error?) -> ()) {
         let parameters = StoresListParameters(clientId: clientId, config: config)
         
@@ -118,7 +111,7 @@ internal class TT2Internal {
     
     
     private func bindPublishers() {
-        positionBundleCancellable = navigation.positionKitManager.positionPublisher
+        navigation.positionKitManager.positionPublisher
             .compactMap{ $0 }
             .sink { error in
                 Logger.init().log(message: "PositionKitError noData")
@@ -127,14 +120,16 @@ internal class TT2Internal {
                 self?.mapController?.updateUserLocation(newLocation: positionBundle.position, std: positionBundle.std)
                 self?.analytics.onNewPositionBundle(point: positionBundle.position)
             }
-
-        changedFloorCancellable = navigation.positionKitManager.changedFloorPublisher
+            .store(in: &cancellable)
+        
+        navigation.positionKitManager.changedFloorPublisher
             .compactMap { $0 }
             .sink { [weak self] (data) in
                 self?.floorManager.onNewFloor(floor: data)
             }
+            .store(in: &cancellable)
         
-        directionCancellable = navigation.positionKitManager.directionPublisher
+        navigation.positionKitManager.directionPublisher
             .compactMap { $0 }
             .sink { error in
                 Logger.init().log(message: "DirectionPublisher noData")
@@ -142,16 +137,18 @@ internal class TT2Internal {
                 let heading = (self.vpsToMapboxAngle(angle: direction.angle + self.offset)).remainder(dividingBy: 360.0)
                 self.mapController?.updateUserDirection(newDirection: heading)
             }
-
-        realWorldOffsetCancellable = navigation.positionKitManager.realWorldOffsetPublisher
+            .store(in: &cancellable)
+        
+        navigation.positionKitManager.realWorldOffsetPublisher
             .compactMap { $0 }
             .sink { error in
                 Logger.init().log(message: "RealWorldOffsetPublisher noData")
             } receiveValue: { direction in
                 self.offset = direction.angle
             }
-
-        accuracyCancellable = navigation.accuracyPublisher
+            .store(in: &cancellable)
+        
+        navigation.accuracyPublisher
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (preScanLocation, scanLocation, offset) in
                 guard let id = self?.analytics.visitId else { return }
@@ -159,14 +156,16 @@ internal class TT2Internal {
                     Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
                 })
             })
-
-      recordingCancellable = navigation.positionKitManager.recordingPublisher
-          .compactMap { $0 }
-          .sink(receiveValue: { (identifier ,data) in
-              self.createAWSData(identifier: identifier, data: data)
-          })
+            .store(in: &cancellable)
+        
+        navigation.positionKitManager.recordingPublisher
+            .compactMap { $0 }
+            .sink(receiveValue: { (identifier ,data) in
+                self.createAWSData(identifier: identifier, data: data)
+            })
+            .store(in: &cancellable)
     }
-
+    
     func createAWSData(identifier: String, data: String) {
         guard let store = self.position.store else { return }
         let date = Date()
@@ -181,20 +180,20 @@ internal class TT2Internal {
         let fileName = "keywords\(time).csv"
         self.awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: csvData)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-          if let user = self.user.getLastUser() {
-            if let name = user.name, let route = user.route {
-              self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/\(name)/ios/\(route)/\(time)/")
-            } else if let name = user.name {
-              self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/\(name)/ios/undefinedRoute/\(time)/")
+            if let user = self.user.getLastUser() {
+                if let name = user.name, let route = user.route {
+                    self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/\(name)/ios/\(route)/\(time)/")
+                } else if let name = user.name {
+                    self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/\(name)/ios/undefinedRoute/\(time)/")
+                } else {
+                    self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/undefined/ios/undefinedRoute/\(time)/")
+                }
             } else {
-              self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/undefined/ios/undefinedRoute/\(time)/")
+                self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/undefined/ios/undefinedRoute/\(time)/")
             }
-          } else {
-            self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/undefined/ios/undefinedRoute/\(time)/")
-          }
         }
     }
-
+    
     func createCSVData(date: String, time: String, serverUrl: String, clientId: String, storeid: String) -> String {
         var csvData = "day,name,device,route,time,gender,age,comments,serverUrl,clientID,storeID,activity\n"
         guard let user = user.getLastUser() else { return csvData + "\(date),,,ios,,\(time),,,,\(serverUrl), \(clientId), \(storeid),,\n" }
@@ -207,11 +206,11 @@ internal class TT2Internal {
         csvData = csvData + "\(date),\(name),ios,\(route),\(time),\(gender),\(age),\(comments),\(serverUrl),\(clientId),\(storeid),\(activity)\n"
         return csvData
     }
-
+    
     private func vpsToMapboxAngle(angle: Double) -> Double{
         90.0 - angle
     }
-
+    
     func getSwapLocations(for storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
         let swapLocationsParameters = SwapLocationsParameters(storeId: storeId, config: config)
         
@@ -265,5 +264,9 @@ internal class TT2Internal {
             }, receiveValue: { data in
                 print(data)
             }).store(in: &cancellable)
+    }
+    
+    deinit {
+        cancellable.removeAll()
     }
 }

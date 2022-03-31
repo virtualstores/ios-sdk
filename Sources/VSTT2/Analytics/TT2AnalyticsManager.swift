@@ -27,8 +27,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private var uploadThreshold = 0
     var visitId: Int64?
     private var cancellable = Set<AnyCancellable>()
-    private var zoneEnterCancellable: AnyCancellable?
-    private var zoneExitCancellable: AnyCancellable?
     private var isRecording: Bool = false
     private var rtlsOptionId: Int64?
     private var latestRecordedPosition = Date()
@@ -124,7 +122,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
     
     public func bindPublishers() {
-        self.zoneEnterCancellable = zoneManager.zoneEnteredPublisher
+       zoneManager.zoneEnteredPublisher
             .compactMap { $0 }
             .sink { _ in
                 Logger.init().log(message: "zoneEnteredPublisher error")
@@ -133,8 +131,9 @@ final public class TT2AnalyticsManager: TT2Analytics {
                 
                 self?.uploadTriggerEvents(request: event)
             }
+            .store(in: &cancellable)
         
-        self.zoneExitCancellable = zoneManager.zoneExitedPublisher
+         zoneManager.zoneExitedPublisher
             .compactMap { $0 }
             .sink { _ in
                 Logger.init().log(message: "zoneExitedPublisher error")
@@ -143,6 +142,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
                 
                 self?.uploadTriggerEvents(request: event)
             }
+            .store(in: &cancellable)
     }
     
     private func postTriggerEvent(for event: TriggerEvent) ->PostTriggerEventRequest {
@@ -160,6 +160,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
             tags: event.tags,
             metaData: event.metaData
         )
+    }
+    
+    deinit {
+        cancellable.removeAll()
     }
 }
 

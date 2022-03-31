@@ -20,15 +20,13 @@ public class TT2EventManager: TT2Event {
     
     private var activeStoreId: Int64?
     private var rtlsOptionsId: Int64 = 0
-
+    
     private var messages: [Message] = []
     private var latestMessageLoad: Date?
     private let reloadMessageInterval: TimeInterval = 3600.0
     private var zones: [Zone] = []
     
     private var cancellable = Set<AnyCancellable>()
-    private var zoneEnterCancellable: AnyCancellable?
-    private var coordinateEnterCancellable: AnyCancellable?
     private var config: EnvironmentConfig?
     
     internal func setup(with storeId: Int64, zones: [Zone], rtlsOptionsId: Int64, config: EnvironmentConfig?) {
@@ -49,30 +47,32 @@ public class TT2EventManager: TT2Event {
         default: break
         }
     }
-
+    
     public func removeEvent(with id: String) { }
-
+    
     public func onNewPosition(currentPosition: CGPoint) {
         zoneEventDetector.onNewPosition(currentPosition: currentPosition)
         coordinateEventDetector.onNewPosition(currentPosition: currentPosition)
     }
     
     public func bindPubloshers() {
-        self.zoneEnterCancellable = zoneEventDetector.eventPublisher
+        zoneEventDetector.eventPublisher
             .compactMap { $0 }
             .sink { _ in
                 Logger.init().log(message: "zoneEnteredPublisher error")
             } receiveValue: { [weak self] event in
                 self?.messageEventPublisher.send(event)
             }
+            .store(in: &cancellable)
         
-        self.coordinateEnterCancellable = coordinateEventDetector.eventPublisher
+        coordinateEventDetector.eventPublisher
             .compactMap { $0 }
             .sink { _ in
                 Logger.init().log(message: "zoneEnteredPublisher error")
             } receiveValue: { [weak self] event in
                 self?.messageEventPublisher.send(event)
             }
+            .store(in: &cancellable)
     }
     
     private func loadMessagesIfNeeded() {
@@ -84,10 +84,10 @@ public class TT2EventManager: TT2Event {
             loadMessages()
         }
     }
-
+    
     private func loadMessages() {
         guard let storeId = activeStoreId else { return }
-
+        
         let parameters = MessagesParameters(storeId: storeId, config: config)
         messagesService
             .call(with: parameters)
@@ -130,7 +130,7 @@ public class TT2EventManager: TT2Event {
         let event = TriggerEvent(rtlsOptionsId: rtlsOptionsId, name: message.name, description: message.description, eventType: coordinateTrigger, metaData: metaData)
         self.coordinateEventDetector.add(event: event)
     }
-
+    
     private func addMetaData(for message: Message) -> [String : String] {
         let type: TriggerEvent.DefaultMetaData.MessageType = message.cardType == .big ? .large : .small
         let defaultMetaData = TriggerEvent.DefaultMetaData()
@@ -142,5 +142,9 @@ public class TT2EventManager: TT2Event {
             defaultMetaData.type : type.rawValue
         ]
         return metaData
+    }
+    
+    deinit {
+        cancellable.removeAll()
     }
 }
