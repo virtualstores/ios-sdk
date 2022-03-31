@@ -172,6 +172,7 @@ private extension TT2 {
                   if let error = error {
                       Logger(verbosity: .critical).log(message: "Floor change failed: \(error.localizedDescription)")
                   } else {
+                      self.setupRestOfMap(changedFloor: true)
                       do {
                           try self.navigation.changeFloorStart(startPosition: data.point)
                           self.floorChangePublisher.send(data.rtlsOptions.name)
@@ -183,7 +184,7 @@ private extension TT2 {
           })
     }
 
-    private func setupRestOfMap() {
+    private func setupRestOfMap(changedFloor: Bool = false) {
       guard
         let rtls = rtlsOption,
         let mapData = mapData,
@@ -191,8 +192,7 @@ private extension TT2 {
         let navData = floor.navgraph,
         let start = floor.startCode,
         let stop = floor.stopCode
-      else {
-        return }
+      else { return }
 
       self.tt2Internal?.mapController?.loadMap(with: mapData)
 
@@ -202,7 +202,16 @@ private extension TT2 {
       let convertedAndFlippedStart = start.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
       let convertedAndFlippedStop = stop.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
 
-      self.tt2Internal?.mapController?.setup(pathfinder: VPSPathfinderAdapter(converter: converter, height: rtls.heightInMeters, width: rtls.widthInMeters, pixelsPerMeter: Float(rtls.pixelsPerMeter), navGraph: navGraph, startPosition: convertedAndFlippedStart, stopPosition: convertedAndFlippedStop))
+      let pathfinder = VPSPathfinderAdapter(
+        converter: converter,
+        height: rtls.heightInMeters,
+        width: rtls.widthInMeters,
+        pixelsPerMeter: Float(rtls.pixelsPerMeter),
+        navGraph: navGraph,
+        startPosition: convertedAndFlippedStart,
+        stopPosition: convertedAndFlippedStop
+      )
+      self.tt2Internal?.mapController?.setup(pathfinder: pathfinder, changedFloor: changedFloor)
     }
 
     private func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {
