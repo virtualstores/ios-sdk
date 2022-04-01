@@ -195,7 +195,8 @@ private extension TT2 {
         let converter = coordinateConverter,
         let navData = floor.navgraph,
         let start = floor.startCode,
-        let stop = floor.stopCode
+        let stop = floor.stopCode,
+        let zones = mapZonesTree?.getZonesFor(floorLevel: rtls.floorLevel)
       else { return }
 
       self.tt2Internal?.mapController?.loadMap(with: mapData)
@@ -215,7 +216,7 @@ private extension TT2 {
         startPosition: convertedAndFlippedStart,
         stopPosition: convertedAndFlippedStop
       )
-      self.tt2Internal?.mapController?.setup(pathfinder: pathfinder, changedFloor: changedFloor)
+      self.tt2Internal?.mapController?.setup(pathfinder: pathfinder, zones: zones, changedFloor: changedFloor)
     }
 
     private func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {
