@@ -57,13 +57,13 @@ final public class TT2: ITT2 {
         return user
     }
 
-    public var activeStore: TT2Store?
+    public private(set) var activeStore: TT2Store?
     
-    public var coordinateConverter: ICoordinateConverter?
-    public var mapData: MapData?
-    public var map: Map?
-    public var rtlsOption: RtlsOptions?
-    public var mapZonesTree: Tree?
+    public private(set) var coordinateConverter: ICoordinateConverter?
+    public private(set) var mapData: MapData?
+    public private(set) var map: Map?
+    public private(set) var rtlsOption: RtlsOptions?
+    public private(set) var mapZonesTree: Tree?
 
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
@@ -94,7 +94,7 @@ final public class TT2: ITT2 {
     
     public func setMap(map: IMapController) {
         self.tt2Internal?.mapController = map
-        self.setupRestOfMap()
+        self.setupMap()
     }
     
     public func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ()) {
@@ -109,11 +109,14 @@ final public class TT2: ITT2 {
             switch result {
             case .success(let swapLocations):
               self.floorHeightDiff = self.getHighestHeightDiff(swapLocations: swapLocations)
+
+              let group = DispatchGroup()
+              group.enter()
               for rtlsOption in currentStore.rtlsOptions {
                   if rtlsOption.isDefault {
                       self.setActiveFloor(rtls: rtlsOption) { (error) in
                           completion(error)
-                          self.setupRestOfMap()
+                          group.leave()
                       }
                   }
               }
@@ -122,7 +125,7 @@ final public class TT2: ITT2 {
                   guard let rtls = currentStore.rtlsOptions.first else { return }
                   self.setActiveFloor(rtls: rtls) { (error) in
                       completion(error)
-                      self.setupRestOfMap()
+                      group.leave()
                   }
               }
 
@@ -131,15 +134,20 @@ final public class TT2: ITT2 {
                 self.navigation.setup(startCodes: startPositions)
               }
               self.bindPublishers()
+
+              group.enter()
               self.tt2Internal?.getShelfGroups(for: currentStore.id, activeFloor: self.rtlsOption) { [weak self] shelfGroups in
                   guard let config = self?.config else { return }
                   self?.position.setup(with: shelfGroups, config: config, store: currentStore)
+                  group.leave()
               }
               if let client = self.tt2Internal?.internalClients.first(where: { $0.clientId == currentStore.clientId }) {
                   self.tt2Internal?.accuracyUploader = AccuracyUploader(store: currentStore, connection: self.config.centralServerConnection, client: client)
               }
 
-
+              group.notify(queue: .main) {
+                  self.setupMap()
+              }
             case .failure(let error): completion(error)
             }
         })
@@ -176,7 +184,7 @@ private extension TT2 {
                   if let error = error {
                       Logger(verbosity: .critical).log(message: "Floor change failed: \(error.localizedDescription)")
                   } else {
-                      self.setupRestOfMap(changedFloor: true)
+                      self.setupMap(changedFloor: true)
                       do {
                           try self.navigation.changeFloorStart(startPosition: data.point)
                           self.floorChangePublisher.send(data.rtlsOptions.name)
@@ -188,7 +196,7 @@ private extension TT2 {
           })
     }
 
-    private func setupRestOfMap(changedFloor: Bool = false) {
+    private func setupMap(changedFloor: Bool = false) {
       guard
         let rtls = rtlsOption,
         let mapData = mapData,
@@ -198,8 +206,6 @@ private extension TT2 {
         let stop = floor.stopCode,
         let zones = mapZonesTree?.getZonesFor(floorLevel: rtls.floorLevel)
       else { return }
-
-      self.tt2Internal?.mapController?.loadMap(with: mapData)
 
       let height = converter.convertFromMetersToPixels(input: rtls.heightInMeters)
       let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
@@ -217,6 +223,8 @@ private extension TT2 {
         stopPosition: convertedAndFlippedStop
       )
       self.tt2Internal?.mapController?.setup(pathfinder: pathfinder, zones: zones, changedFloor: changedFloor)
+
+      self.tt2Internal?.mapController?.loadMap(with: mapData)
     }
 
     private func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {
