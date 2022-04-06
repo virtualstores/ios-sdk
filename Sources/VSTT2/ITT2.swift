@@ -27,6 +27,9 @@ public protocol ITT2 {
     
     /// Position manager
     var position: Position { get }
+
+    /// Event Manager
+    var events: TT2EventManager { get }
     
     /// User Settings manager
     var userSettings: UserSettings { get }
