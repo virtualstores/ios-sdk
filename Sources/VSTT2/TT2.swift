@@ -50,6 +50,10 @@ final public class TT2: ITT2 {
         
         return position
     }
+
+    public var events: TT2EventManager {
+        analytics.eventManager
+    }
     
     public var userSettings: UserSettings {
         guard let user = tt2Internal?.user else { fatalError("tt2Internal is not initialized") }
@@ -222,7 +226,8 @@ private extension TT2 {
         startPosition: convertedAndFlippedStart,
         stopPosition: convertedAndFlippedStop
       )
-      self.tt2Internal?.mapController?.setup(pathfinder: pathfinder, zones: zones, changedFloor: changedFloor)
+      let sharedProperties = floor.zoneData[rtls.floorLevel]?.sharedProperties
+      self.tt2Internal?.mapController?.setup(pathfinder: pathfinder, zones: zones, sharedProperties: sharedProperties, changedFloor: changedFloor)
 
       self.tt2Internal?.mapController?.loadMap(with: mapData)
     }
@@ -240,13 +245,13 @@ private extension TT2 {
     private func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
         guard let floorHeightDiff = floorHeightDiff else { return }
         self.rtlsOption = rtls
-        self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zones, points) in
+        self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zoneData) in
             if let mapFence = mapFence {
                 self?.setupMapfence(with: mapFence, floorHeightDiff: floorHeightDiff)
                 self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
             }
 
-            self?.setupAnalytics(for: zones, points: points)
+            self?.setupAnalytics(with: zoneData)
             completion(nil)
         }
     }
@@ -257,8 +262,9 @@ private extension TT2 {
         let converter = BaseCoordinateConverter(heightInPixels: data.properties.height, widthInPixels: data.properties.width, pixelPerMeter: rtlsOption.pixelsPerMeter, pixelPerLatitude: 1000.0)
         
         self.coordinateConverter = converter
-        
-        self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, name: name, floorLevel: rtlsOption.floorLevel, converter: converter), converter: converter, currentFloorLevel: rtlsOption.floorLevel)
+
+        let properties = ZoneProperties(description: nil, id: name, name: name, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
+        self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevel: rtlsOption.floorLevel, converter: converter), converter: converter, currentFloorLevel: rtlsOption.floorLevel)
 
         #if DEBUG
         let shouldRecord = false
@@ -277,19 +283,19 @@ private extension TT2 {
         analytics.setup(with: store, rtlsOptionId: self.rtlsOption?.id, config: analyticsConfig)
     }
     
-    private func setupAnalytics(for zones: [Int: [MapZone]]?, points: [Int: [MapZonePoint]]?) {
-        guard let rtlsOption = rtlsOption, let store = activeStore, let zones = zones else { return }
+    private func setupAnalytics(with zoneData: [Int: ZoneData]?) {
+        guard let rtlsOption = rtlsOption, let store = activeStore, let zoneData = zoneData else { return }
 
-        zones.forEach { (key, value) in
-            guard let zonePoints = points?[key] else { return }
-
-            mapZonesTree?.add(key, store.name, value, zonePoints)
+        zoneData.forEach { (key, value) in
+            guard let rtls = floor.floors.first(where: { $0.floorLevel == key }) else { return }
+            mapZonesTree?.add(rtls, value.mapZones, value.mapZonesPoints)
         }
 
+        mapZonesTree?.print()
         guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevel: rtlsOption.floorLevel) else { return }
 
         analytics.update(rtlsOptionId: rtlsOption.id)
         analytics.zoneManager.setup(with: mapZones, rtlsOptions: rtlsOption)
-        analytics.evenManager.setup(with: store.id, zones: mapZones, rtlsOptionsId: rtlsOption.id, config: config)
+        analytics.eventManager.setup(with: store.id, zones: mapZones, rtlsOptionsId: rtlsOption.id, config: config)
     }
 }

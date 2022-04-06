@@ -12,7 +12,7 @@ import VSFoundation
 private typealias PolygonJson = Dictionary<String, AnyObject>
 
 public class MapZoneParser: NSObject {
-    public static func getMapZonesData(fromJsonData data: Data) -> (mapzones: [MapZone], mapPoints: [MapZonePoint]) {
+    public static func getMapZonesData(fromJsonData data: Data) -> (ZoneData) {
         let json = try! JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions.allowFragments) as! PolygonJson
         var mapZones: [MapZone] = []
         var mapZonePoints: [MapZonePoint] = []
@@ -31,10 +31,19 @@ public class MapZoneParser: NSObject {
                         let points: [CGPoint] = cordinates[0].map { (coords) -> CGPoint in
                             return CGPoint(x: coords[0], y: coords[1])
                         }
-                        let name = properties["name"] ?? ""
-                        let parentId = properties["parentId"] as? String
-                        let description = properties["description"] as? String
-                        mapZones.append(MapZone(id: id, name: name as! String, zone: points, parentId: parentId, description: description))
+
+                        let zoneProperties = ZoneProperties(
+                            description: properties["description"] as? String,
+                            id: properties["id"] as? String ?? "",
+                            name: properties["name"] as? String ?? "",
+                            names: properties["names"] as? [String] ?? [],
+                            parentId: properties["parentId"] as? String,
+                            fillColor: (properties["fillColor"] as? String),
+                            fillColorSelected: (properties["fillColorSelected"] as? String),
+                            lineColor: (properties["lineColor"] as? String),
+                            lineColorSelected: (properties["lineColorSelected"] as? String)
+                        )
+                        mapZones.append(MapZone(id: id, zone: points, properties: zoneProperties))
                     case "Point":
                         let description = properties["description"] as! String
                         let geometry = feature["geometry"] as! NSDictionary
@@ -47,7 +56,18 @@ public class MapZoneParser: NSObject {
                 }
             }
         }
-        return (mapZones, mapZonePoints)
+        var sharedProperties: SharedZoneProperties?
+        if let properties = store["properties"] as? NSDictionary {
+          sharedProperties = SharedZoneProperties(
+            fillColor: properties["fillColor"] as? String,
+            fillColorSelected: properties["fillColorSelected"] as? String,
+            lineColor: properties["lineColor"] as? String,
+            lineColorSelected: properties["lineColorSelected"] as? String,
+            textColor: properties["textColor"] as? String,
+            textColorSelected: properties["textColorSelected"] as? String
+          )
+        }
+        return ZoneData(mapZones: mapZones, mapZonesPoints: mapZonePoints, sharedProperties: sharedProperties)
     }
     
     enum MapZoneParserError: Error {
@@ -82,7 +102,7 @@ public class MapZoneParser: NSObject {
                 let name = properties["name"] as? String ?? ""
                 let parentId = properties["parentId"] as? String
                 let description = properties["description"] as? String
-                output.append(MapZone(id: String(id), name: name, zone: points, parentId: parentId, description: description))
+//                output.append(MapZone(id: String(id), name: name, zone: points, parentId: parentId, description: description))
             }
         } catch {
             print(error.localizedDescription)

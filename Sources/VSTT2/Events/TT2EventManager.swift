@@ -118,7 +118,7 @@ public class TT2EventManager: TT2Event {
     }
     
     private func createZoneEvents(for message: Message) {
-        let trigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: message.zones.first!.name, groupId: "", type: .enter))
+        let trigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: message.zones.first!.properties.name, groupId: "", type: .enter))
         let metaData = addMetaData(for: message)
         let event = TriggerEvent(rtlsOptionsId: rtlsOptionsId, name: message.name, description: message.description, eventType: trigger, metaData: metaData)
         self.zoneEventDetector.add(event: event)

@@ -21,7 +21,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var uploadScanEventsService: UploadScanEventsService
     @Inject var positionUploadWorker: PositionUploadWorker
     @Inject var zoneManager: TT2ZoneManager
-    @Inject public var evenManager: TT2EventManager
+    @Inject var eventManager: TT2EventManager
 
     private var store: Store?
     private var uploadThreshold = 0
@@ -112,7 +112,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         if let id = rtlsOptionId, isRecording {
             recordPosition(rtlsOptionId: id, point: point)
             zoneManager.onNewPosition(currentPosition: point)
-            evenManager.onNewPosition(currentPosition: point)
+            eventManager.onNewPosition(currentPosition: point)
         }
     }
     

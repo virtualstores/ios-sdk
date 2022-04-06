@@ -93,7 +93,7 @@ internal struct MessageDto: Codable {
             return nil
         }
 
-        let zones = self.exposureDefinition.zones?.map { MapZone(id: String($0.rtlsOptionsId), name: $0.id, zone: $0.coordinates[0].map { CGPoint(x: $0[0], y: $0[1]) }, parentId: nil, description: nil)} ?? []
+        let zones = self.exposureDefinition.zones?.map { MapZone(id: String($0.rtlsOptionsId), zone: $0.coordinates[0].map { CGPoint(x: $0[0], y: $0[1]) }, properties: ZoneProperties(description: nil, id: $0.id, name: $0.id, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil))} ?? []
         
         return Message(
             id: self.id,

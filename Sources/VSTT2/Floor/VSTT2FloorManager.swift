@@ -23,8 +23,7 @@ public class VSTT2FloorManager: VSTT2Floor {
     public var pathFinder: VSPathFinder?
     public var zones: Data?
     public var messages: [Message]?
-    public var mapZones: [Int : [MapZone]] = [:]
-    public var mapZonePoints: [Int : [MapZonePoint]] = [:]
+    public var zoneData: [Int : ZoneData] = [:]
     public var offsetZones: Data?
     public var navgraph: Data?
 
@@ -58,7 +57,7 @@ public class VSTT2FloorManager: VSTT2Floor {
     }
 
     public func setActiveFloor(with rtlsOptions: RtlsOptions) {
-        self.setActiveFloor(with: rtlsOptions) { (mapFence, zones, points) in }
+        self.setActiveFloor(with: rtlsOptions) { (mapFence, zoneData) in }
     }
     
     public func setActiveFloor(with floorLevel: Int) { }
@@ -69,13 +68,13 @@ public class VSTT2FloorManager: VSTT2Floor {
         self.floors = rtlsOptions
     }
     
-    internal func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence?, zones: [Int: [MapZone]]?, points: [Int: [MapZonePoint]]?)) -> ()) {
+    internal func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence?, zoneData: [Int: ZoneData]?)) -> ()) {
         guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
                 
         self.activeFloor = rtlsOptions
         
-        getFloorData { (mapFence, zones, points) in
-            completion((mapFence: mapFence, zones: zones, points: points))
+        getFloorData { (mapFence, zoneData) in
+            completion((mapFence: mapFence, zoneData: zoneData))
         }
     }
   
@@ -93,14 +92,14 @@ public class VSTT2FloorManager: VSTT2Floor {
 }
 
 private extension VSTT2FloorManager {
-    private func getFloorData(completion: @escaping ((mapFence: MapFence?, zones: [Int: [MapZone]]?, points: [Int: [MapZonePoint]]?)) -> ()) {
+    private func getFloorData(completion: @escaping ((mapFence: MapFence?, zoneData: [Int: ZoneData]?)) -> ()) {
         getMapFenceData()
         getMapZones()
         getNavGraph()
         
         dispatchGroup.notify(queue: .main) {
             if let mapFance = self.mapFence {
-                completion((mapFence: mapFance, zones: self.mapZones, points: self.mapZonePoints))
+                completion((mapFence: mapFance, zoneData: self.zoneData))
             }
         }
     }
@@ -126,7 +125,10 @@ private extension VSTT2FloorManager {
     
     private func getMapZones() {
         floors.forEach { rtls in
-          guard let mapZonesUrl = rtls.mapZonesUrl, let url = URL(string: mapZonesUrl) else { return }
+          guard
+            let mapZonesUrl = rtls.mapZonesUrl?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+            let url = URL(string: mapZonesUrl)
+          else { return }
           dispatchGroup.enter()
 
           downloadManager.loadData(from: url) { result in
@@ -134,11 +136,10 @@ private extension VSTT2FloorManager {
               case .success(let data):
                   let mapData = MapZoneParser.getMapZonesData(fromJsonData: data)
 
-                  self.mapZones[rtls.floorLevel] = mapData.mapzones
-                  self.mapZonePoints[rtls.floorLevel] = mapData.mapPoints
+                  self.zoneData[rtls.floorLevel] = mapData
                   self.dispatchGroup.leave()
               case .failure(let error):
-                  Logger.init().log(message: error.localizedDescription)
+                  Logger(verbosity: .debug).log(message: error.localizedDescription)
               }
           }
         }

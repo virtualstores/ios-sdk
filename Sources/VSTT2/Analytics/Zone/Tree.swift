@@ -7,13 +7,13 @@
 
 import Foundation
 import VSFoundation
+import CoreGraphics
 
 public class Tree {
     public let root: Zone
     public private(set) var activeZones: [Zone] = []
-    public private(set) var floorLevels: [Int: String] = [:]
     public internal(set) var currentFloorLevel: Int
-    
+
     private let converter: BaseCoordinateConverter
     
     init(root: Zone, converter: BaseCoordinateConverter, currentFloorLevel: Int = 0) {
@@ -27,20 +27,28 @@ public class Tree {
     }
 
     var zonesToAdd: [Zone] = []
-    public func add(_ floorLevel: Int, _ floorLevelName: String, _ mapZone: MapZone, _ mapZonePoint: MapZonePoint? = nil) {
-        if !floorLevels.keys.contains(floorLevel) {
-            floorLevels[floorLevel] = floorLevelName
+    public func add(_ rtls: RtlsOptions, _ mapZone: MapZone, _ mapZonePoint: MapZonePoint? = nil) {
+        let floorLevel = rtls.floorLevel
+        let floorLevelName = rtls.name ?? "Floor level name missing"
+        if getZoneWith(id: floorLevelName) == nil {
+          let width = converter.convertFromMetersToMapCoordinate(input: rtls.widthInMeters)
+          let height = converter.convertFromMetersToMapCoordinate(input: rtls.heightInMeters)
+          let polygon = [CGPoint(x: 0.0, y: 0.0), CGPoint(x: 0.0, y: height), CGPoint(x: width, y: height), CGPoint(x: width, y: 0.0)]
+          let properties = ZoneProperties(description: nil, id: floorLevelName, name: floorLevelName, names: [], parentId: root.id, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
+          self.root.addChild(child: Zone(id: floorLevelName, properties: properties, polygon: polygon, floorLevel: floorLevel, converter: converter))
         }
-        let splicedSearch = self.searchDelimiter(string: mapZone.name)
-        if let id = mapZone.parentId, let zone = self.getZoneWith(id: id) {
-            zone.addChild(child: Zone(id: mapZone.id, name: splicedSearch[0], polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, parent: zone, searchTerms: splicedSearch, floorLevel: floorLevel, converter: converter))
-        } else if mapZone.parentId != nil {
-            self.zonesToAdd.append(Zone(id: mapZone.id, name: splicedSearch[0], polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, parent: nil, searchTerms: splicedSearch, floorLevel: floorLevel, converter: converter))
+
+        let root: Zone = getZoneWith(id: floorLevelName) ?? self.root
+        let parentId = mapZone.properties.parentId
+        if let id = parentId, let zone = self.getZoneWith(id: id) {
+          zone.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, parent: zone, floorLevel: floorLevel, converter: converter))
+        } else if parentId != nil {
+            self.zonesToAdd.append(Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, floorLevel: floorLevel, converter: converter))
         } else {
-            self.root.addChild(child: Zone(id: mapZone.id, name: splicedSearch[0], polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, parent: nil, searchTerms: splicedSearch, floorLevel: floorLevel, converter: converter))
+            root.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, floorLevel: floorLevel, converter: converter))
         }
         self.zonesToAdd.forEach { zone in
-            if let id = mapZone.parentId, let parentZone = self.getZoneWith(id: id) {
+            if let id = parentId, let parentZone = self.getZoneWith(id: id) {
                 zone.parent = parentZone
                 parentZone.addChild(child: zone)
                 self.zonesToAdd.removeAll(where: { $0 == zone})
@@ -48,16 +56,10 @@ public class Tree {
         }
     }
     
-    public func add(_ floorLevel: Int, _ floorLevelName: String, _ mapZones: [MapZone], _ mapZonesPoints: [MapZonePoint]) {
+    public func add(_ rtls: RtlsOptions, _ mapZones: [MapZone], _ mapZonesPoints: [MapZonePoint]) {
         for mapZone in mapZones {
-            let splicedSearch = self.searchDelimiter(string: mapZone.name)
-            let spliced = self.zoneDelimiter(string: splicedSearch[0])
-            guard let mapZonePoint = mapZonesPoints.first(where: { $0.name.lowercased() == spliced[0].lowercased() }) else {
-                self.add(floorLevel, floorLevelName, mapZone)
-                continue
-            }
-            
-            self.add(floorLevel, floorLevelName, mapZone, mapZonePoint)
+            let mapZonePoint = mapZonesPoints.first(where: { $0.parentId == mapZone.id }) ?? mapZonesPoints.first(where: { $0.name.lowercased() == mapZone.properties.name.lowercased() })
+            self.add(rtls, mapZone, mapZonePoint)
         }
     }
     
@@ -88,14 +90,20 @@ public class Tree {
       return zones.first(where: { $0.id == id })
     }
 
-    public func getZoneWith(name: String) -> [Zone]? {
+    public func getZonesWith(name: String) -> [Zone]? {
         let zones = self.getAllZones()?.all(where: { $0.name == name && $0.floorLevel == currentFloorLevel })
         
         return zones
     }
     
-    public func getZonesFor(floorLevel: Int) -> [Zone]? {
-        let zones = self.getAllZones()?.all(where: { $0.floorLevel == floorLevel })
+    public func getZonesFor(floorLevel: Int, includeParent: Bool = false) -> [Zone]? {
+        var zones = self.getAllZones()?.all(where: { $0.floorLevel == floorLevel })
+        if !includeParent {
+            let names = root.children.values.map { $0.name }
+            names.forEach { name in
+              zones?.removeAll(where: { $0.name == name })
+            }
+        }
         return zones
     }
 
