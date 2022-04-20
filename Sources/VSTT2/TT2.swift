@@ -62,11 +62,11 @@ final public class TT2: ITT2 {
     }
 
     public private(set) var activeStore: TT2Store?
+    public private(set) var activeFloor: RtlsOptions?
     
     public private(set) var coordinateConverter: ICoordinateConverter?
     public private(set) var mapData: MapData?
     public private(set) var map: Map?
-    public private(set) var rtlsOption: RtlsOptions?
     public private(set) var mapZonesTree: Tree?
 
     // Only for testing purpose of floorchange. Will be removed once green lighted
@@ -120,27 +120,29 @@ final public class TT2: ITT2 {
                   if rtlsOption.isDefault {
                       self.setActiveFloor(rtls: rtlsOption) { (error) in
                           completion(error)
+                          self.mapData?.swapLocations = swapLocations
                           group.leave()
                       }
                   }
               }
 
-              if self.rtlsOption == nil {
+              if self.activeFloor == nil {
                   guard let rtls = currentStore.rtlsOptions.first else { return }
                   self.setActiveFloor(rtls: rtls) { (error) in
                       completion(error)
+                      self.mapData?.swapLocations = swapLocations
                       group.leave()
                   }
               }
 
               self.floor.setup(swapLocations: swapLocations)
-              if let startPositions = self.rtlsOption?.scanLocations?.filter({ $0.type == .start }) {
+              if let startPositions = self.activeFloor?.scanLocations?.filter({ $0.type == .start }) {
                 self.navigation.setup(startCodes: startPositions)
               }
               self.bindPublishers()
 
               group.enter()
-              self.tt2Internal?.getShelfGroups(for: currentStore.id, activeFloor: self.rtlsOption) { [weak self] shelfGroups in
+              self.tt2Internal?.getShelfGroups(for: currentStore.id, activeFloor: self.activeFloor) { [weak self] shelfGroups in
                   guard let config = self?.config else { return }
                   self?.position.setup(with: shelfGroups, config: config, store: currentStore)
                   group.leave()
@@ -202,13 +204,13 @@ private extension TT2 {
 
     private func setupMap(changedFloor: Bool = false) {
       guard
-        let rtls = rtlsOption,
+        let rtls = activeFloor,
         let mapData = mapData,
         let converter = coordinateConverter,
         let navData = floor.navgraph,
         let start = floor.startCode,
         let stop = floor.stopCode,
-        let zones = mapZonesTree?.getZonesFor(floorLevel: rtls.floorLevel)
+        let zones = mapZonesTree?.getZonesFor(floorLevelId: rtls.id)
       else { return }
 
       let height = converter.convertFromMetersToPixels(input: rtls.heightInMeters)
@@ -244,10 +246,10 @@ private extension TT2 {
 
     private func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
         guard let floorHeightDiff = floorHeightDiff else { return }
-        self.rtlsOption = rtls
+        self.activeFloor = rtls
         self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zoneData) in
             if let mapFence = mapFence {
-                self?.setupMapfence(with: mapFence, floorHeightDiff: floorHeightDiff)
+              self?.setupMapfence(with: mapFence, floorHeightDiff: 0.5/*floorHeightDiff*/)
                 self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
             }
 
@@ -257,14 +259,14 @@ private extension TT2 {
     }
 
     private func setupMapfence(with data: MapFence, floorHeightDiff: Double) {
-        guard let rtlsOption = self.rtlsOption, let name = self.activeStore?.name else { return }
+        guard let rtlsOption = self.activeFloor, let name = self.activeStore?.name else { return }
         
         let converter = BaseCoordinateConverter(heightInPixels: data.properties.height, widthInPixels: data.properties.width, pixelPerMeter: rtlsOption.pixelsPerMeter, pixelPerLatitude: 1000.0)
         
         self.coordinateConverter = converter
 
         let properties = ZoneProperties(description: nil, id: name, name: name, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
-        self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevel: rtlsOption.floorLevel, converter: converter), converter: converter, currentFloorLevel: rtlsOption.floorLevel)
+        self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevelId: rtlsOption.id, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
 
         #if DEBUG
         let shouldRecord = false
@@ -280,11 +282,11 @@ private extension TT2 {
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
         
         analyticsConfig.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
-        analytics.setup(with: store, rtlsOptionId: self.rtlsOption?.id, config: analyticsConfig)
+        analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id, config: analyticsConfig)
     }
     
     private func setupAnalytics(with zoneData: [Int: ZoneData]?) {
-        guard let rtlsOption = rtlsOption, let store = activeStore, let zoneData = zoneData else { return }
+        guard let rtlsOption = activeFloor, let store = activeStore, let zoneData = zoneData else { return }
 
         zoneData.forEach { (key, value) in
             guard let rtls = floor.floors.first(where: { $0.floorLevel == key }) else { return }
@@ -292,7 +294,7 @@ private extension TT2 {
         }
 
         mapZonesTree?.print()
-        guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevel: rtlsOption.floorLevel) else { return }
+        guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevelId: rtlsOption.id) else { return }
 
         analytics.update(rtlsOptionId: rtlsOption.id)
         analytics.zoneManager.setup(with: mapZones, rtlsOptions: rtlsOption)

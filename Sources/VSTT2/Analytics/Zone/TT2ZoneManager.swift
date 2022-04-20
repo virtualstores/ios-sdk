@@ -37,7 +37,7 @@ public class TT2ZoneManager: TT2Zone {
         zonesPoint.forEach { polygon in
             if isPointInside(point: currentPosition, coordinates: polygon) {
                 if !self.activeInside.contains(polygon) {
-                    if let event = createZoomEnteredEvent(for: currentPosition, polygon: polygon) {
+                    if let event = createZoneEnteredEvent(for: currentPosition, polygon: polygon) {
                         self.activeInside.append(polygon)
                         self.zoneEnteredPublisher.send(event)
                     }
@@ -95,7 +95,7 @@ public class TT2ZoneManager: TT2Zone {
     }
     
     
-    private func createZoomEnteredEvent(for currentPosition: CGPoint, polygon: [CGPoint]) -> TriggerEvent? {
+    private func createZoneEnteredEvent(for currentPosition: CGPoint, polygon: [CGPoint]) -> TriggerEvent? {
         guard let zone = zones.first(where: { $0.points == polygon }), let rtlsOptions = self.rtlsOptions else { return nil }
         
         let groupId = UUID().uuidString.uppercased()
@@ -106,7 +106,7 @@ public class TT2ZoneManager: TT2Zone {
                             userPosition: currentPosition, eventType: zoneTrigger)
     }
     
-    private func exitZone(for currentPosition: CGPoint, polygon: [CGPoint]){
+    private func exitZone(for currentPosition: CGPoint, polygon: [CGPoint]) {
         guard let zone = zones.first(where: { $0.points == polygon }), let rtlsOptions = self.rtlsOptions else { return }
         insideZones.forEach { (key, value) in
             guard value == zone.polygon else { return }

@@ -71,6 +71,10 @@ struct VSTT2Config: Config {
         injector.map(MessagesService.self) {
             MessagesService(with: NetworkManager())
         }
+
+        injector.map(TriggerEventsService.self) {
+            TriggerEventsService(with: NetworkManager())
+        }
     }
 
     private func configureManagers(_ injector: Injector) {

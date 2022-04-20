@@ -22,7 +22,7 @@ public class VSTT2FloorManager: VSTT2Floor {
     public var floors: [RtlsOptions] = []
     public var pathFinder: VSPathFinder?
     public var zones: Data?
-    public var messages: [Message]?
+    public var triggerEvents: [TriggerEvent]?
     public var zoneData: [Int : ZoneData] = [:]
     public var offsetZones: Data?
     public var navgraph: Data?
@@ -34,7 +34,7 @@ public class VSTT2FloorManager: VSTT2Floor {
     }
     
     public var stopCode: PositionedCode? {
-        self.activeFloor?.scanLocations?.first(where: { $0.type == .stop })
+        self.activeFloor?.scanLocations?.first(where: { $0.type == .stop }) ?? startCode
     }
 
     private var cancellable = Set<AnyCancellable>()

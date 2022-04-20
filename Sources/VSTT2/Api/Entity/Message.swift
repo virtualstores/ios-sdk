@@ -10,7 +10,7 @@ import CoreGraphics
 import UIKit
 import VSFoundation
 
-public struct Message: Equatable, Hashable {
+struct Message: Equatable, Hashable {
     public struct Product {
         public let storeId: Int64?
         public let barcode: String

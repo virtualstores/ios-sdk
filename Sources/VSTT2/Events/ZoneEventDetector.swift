@@ -72,7 +72,7 @@ extension ZoneEventDetector: InAndOutZoneDelegate {
     }
 
     func onExit(trigger: InAndOutZone.Trigger, position: CGPoint) {
-      guard let tuple = triggersAndEvents[trigger.id], tuple.triggerType.type == .exit else { return }
-      self.postEvent(event: tuple.event, position: position)
+        guard let tuple = triggersAndEvents[trigger.id], tuple.triggerType.type == .exit else { return }
+        self.postEvent(event: tuple.event, position: position)
     }
 }

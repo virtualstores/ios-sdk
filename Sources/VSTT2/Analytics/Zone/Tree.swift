@@ -12,14 +12,14 @@ import CoreGraphics
 public class Tree {
     public let root: Zone
     public private(set) var activeZones: [Zone] = []
-    public internal(set) var currentFloorLevel: Int
+    public internal(set) var currentFloorLevelId: Int64
 
     private let converter: BaseCoordinateConverter
     
-    init(root: Zone, converter: BaseCoordinateConverter, currentFloorLevel: Int = 0) {
+    init(root: Zone, converter: BaseCoordinateConverter, currentFloorLevelId: Int64 = 0) {
         self.root = root
         self.converter = converter
-        self.currentFloorLevel = currentFloorLevel
+        self.currentFloorLevelId = currentFloorLevelId
     }
     
     public func print() {
@@ -28,24 +28,24 @@ public class Tree {
 
     var zonesToAdd: [Zone] = []
     public func add(_ rtls: RtlsOptions, _ mapZone: MapZone, _ mapZonePoint: MapZonePoint? = nil) {
-        let floorLevel = rtls.floorLevel
+        let floorLevelId = rtls.id
         let floorLevelName = rtls.name ?? "Floor level name missing"
         if getZoneWith(id: floorLevelName) == nil {
           let width = converter.convertFromMetersToMapCoordinate(input: rtls.widthInMeters)
           let height = converter.convertFromMetersToMapCoordinate(input: rtls.heightInMeters)
           let polygon = [CGPoint(x: 0.0, y: 0.0), CGPoint(x: 0.0, y: height), CGPoint(x: width, y: height), CGPoint(x: width, y: 0.0)]
           let properties = ZoneProperties(description: nil, id: floorLevelName, name: floorLevelName, names: [], parentId: root.id, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
-          self.root.addChild(child: Zone(id: floorLevelName, properties: properties, polygon: polygon, floorLevel: floorLevel, converter: converter))
+          self.root.addChild(child: Zone(id: floorLevelName, properties: properties, polygon: polygon, floorLevelId: floorLevelId, converter: converter))
         }
 
         let root: Zone = getZoneWith(id: floorLevelName) ?? self.root
         let parentId = mapZone.properties.parentId
         if let id = parentId, let zone = self.getZoneWith(id: id) {
-          zone.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, parent: zone, floorLevel: floorLevel, converter: converter))
+          zone.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, parent: zone, floorLevelId: floorLevelId, converter: converter))
         } else if parentId != nil {
-            self.zonesToAdd.append(Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, floorLevel: floorLevel, converter: converter))
+            self.zonesToAdd.append(Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, floorLevelId: floorLevelId, converter: converter))
         } else {
-            root.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, floorLevel: floorLevel, converter: converter))
+            root.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, floorLevelId: floorLevelId, converter: converter))
         }
         self.zonesToAdd.forEach { zone in
             if let id = parentId, let parentZone = self.getZoneWith(id: id) {
@@ -91,13 +91,13 @@ public class Tree {
     }
 
     public func getZonesWith(name: String) -> [Zone]? {
-        let zones = self.getAllZones()?.all(where: { $0.name == name && $0.floorLevel == currentFloorLevel })
+        let zones = self.getAllZones()?.all(where: { $0.name == name && $0.floorLevelId == currentFloorLevelId })
         
         return zones
     }
     
-    public func getZonesFor(floorLevel: Int, includeParent: Bool = false) -> [Zone]? {
-        var zones = self.getAllZones()?.all(where: { $0.floorLevel == floorLevel })
+    public func getZonesFor(floorLevelId: Int64, includeParent: Bool = false) -> [Zone]? {
+        var zones = self.getAllZones()?.all(where: { $0.floorLevelId == floorLevelId })
         if !includeParent {
             let names = root.children.values.map { $0.name }
             names.forEach { name in

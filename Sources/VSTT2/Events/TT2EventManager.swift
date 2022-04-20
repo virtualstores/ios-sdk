@@ -11,7 +11,9 @@ import Combine
 import CoreGraphics
 
 public class TT2EventManager: TT2Event {
+    @Inject var floorManager: VSTT2FloorManager
     @Inject var messagesService: MessagesService
+    @Inject var triggerEventsService: TriggerEventsService
     @Inject var zoneEventDetector: ZoneEventDetector
     @Inject var coordinateEventDetector: CoordinateEventDetector
     
@@ -21,7 +23,8 @@ public class TT2EventManager: TT2Event {
     private var activeStoreId: Int64?
     private var rtlsOptionsId: Int64 = 0
     
-    private var messages: [Message] = []
+//    private var messages: [Message] = []
+    public var triggerEvents: [TriggerEvent] = []
     private var latestMessageLoad: Date?
     private let reloadMessageInterval: TimeInterval = 3600.0
     private var zones: [Zone] = []
@@ -37,7 +40,7 @@ public class TT2EventManager: TT2Event {
         
         zoneEventDetector.setup(with: zones)
         loadMessagesIfNeeded()
-        bindPubloshers()
+        bindPublishers()
     }
     
     public func addEvent(event: TriggerEvent) {
@@ -55,7 +58,7 @@ public class TT2EventManager: TT2Event {
         coordinateEventDetector.onNewPosition(currentPosition: currentPosition)
     }
     
-    public func bindPubloshers() {
+    public func bindPublishers() {
         zoneEventDetector.eventPublisher
             .compactMap { $0 }
             .sink { _ in
@@ -88,33 +91,58 @@ public class TT2EventManager: TT2Event {
     private func loadMessages() {
         guard let storeId = activeStoreId else { return }
         
-        let parameters = MessagesParameters(storeId: storeId, config: config)
-        messagesService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    Logger.init(verbosity: .debug).log(tag: Logger.createTag(fileName: #file, functionName: #function),
-                                                       message: error.localizedDescription)
-                }
-            }, receiveValue: { [weak self] (messageDto) in
-                self?.messages = messageDto.compactMap { $0.toMessage() }
-                
-                guard let messages = self?.messages else { return }
-                
-                for (_, message) in messages.enumerated() {
-                    switch message.exposureType {
-                    case .zones:
-                        self?.createZoneEvents(for: message)
-                    case .products:
-                        self?.createCoordinatEvents(for: message)
-                    default: break
-                    }
-                }
-                self?.latestMessageLoad = .init()
-            }).store(in: &cancellable)
+//        let parameters = MessagesParameters(storeId: storeId, config: config)
+//        messagesService
+//            .call(with: parameters)
+//            .sink(receiveCompletion: { (completion) in
+//                switch completion {
+//                case .finished:
+//                    break
+//                case .failure(let error):
+//                    Logger.init(verbosity: .debug).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+//                                                       message: error.localizedDescription)
+//                }
+//            }, receiveValue: { [weak self] (messageDto) in
+//                self?.messages = messageDto.compactMap { $0.toMessage() }
+//
+//                guard let messages = self?.messages else { return }
+//
+//                for (_, message) in messages.enumerated() {
+//                    switch message.exposureType {
+//                    case .zones:
+//                        self?.createZoneEvents(for: message)
+//                    case .products:
+//                        self?.createCoordinatEvents(for: message)
+//                    default: break
+//                    }
+//                }
+//                self?.latestMessageLoad = .init()
+//            }).store(in: &cancellable)
+
+      let parameters = TriggerEventsParameters(storeId: storeId, config: config)
+      triggerEventsService
+        .call(with: parameters)
+        .sink { (result) in
+          switch result {
+          case .finished: break
+          case .failure(let error): Logger.init(verbosity: .debug).log(tag: Logger.createTag(fileName: #file, functionName: #function), message: error.localizedDescription)
+          }
+        } receiveValue: { [weak self] (events) in
+          self?.triggerEvents = events.map { $0.toTriggerEvent(mapZones: self?.zones ?? []) }.flatMap { $0 }
+
+          guard let triggerEvents = self?.triggerEvents else { return }
+
+          triggerEvents.forEach { event in
+              let type = event.eventType.getTrigger()
+              event.convertMetaDataToDefaultMessage()
+              if type.coordinateTrigger != nil {
+                  self?.coordinateEventDetector.add(event: event)
+              } else if type.zoneTrigger != nil {
+                  self?.zoneEventDetector.add(event: event)
+              }
+          }
+          self?.latestMessageLoad = .init()
+        }.store(in: &cancellable)
     }
     
     private func createZoneEvents(for message: Message) {
@@ -125,21 +153,21 @@ public class TT2EventManager: TT2Event {
     }
     
     private func createCoordinatEvents(for message: Message) {
-        let coordinateTrigger = TriggerEvent.EventType.coordinateTrigger(TriggerEvent.CoordinateTrigger(point: .zero, radius: message.radius))
+        let coordinateTrigger = TriggerEvent.EventType.coordinateTrigger(TriggerEvent.CoordinateTrigger(point: .zero, radius: message.radius, type: .enter))
         let metaData = addMetaData(for: message)
         let event = TriggerEvent(rtlsOptionsId: rtlsOptionsId, name: message.name, description: message.description, eventType: coordinateTrigger, metaData: metaData)
         self.coordinateEventDetector.add(event: event)
     }
     
     private func addMetaData(for message: Message) -> [String : String] {
-        let type: TriggerEvent.DefaultMetaData.MessageType = message.cardType == .big ? .large : .small
-        let defaultMetaData = TriggerEvent.DefaultMetaData()
+        let size: TriggerEvent.DefaultMetaData.MessageSize = message.cardType == .big ? .large : .small
+        let defaultMetaData = TriggerEvent.DefaultMetaData.self
         let metaData = [
-            defaultMetaData.id : String(message.id),
+//            defaultMetaData.id : String(message.id),
             defaultMetaData.title : message.title,
             defaultMetaData.body : message.description,
             defaultMetaData.imageUrl : message.image?.description ?? "",
-            defaultMetaData.type : type.rawValue
+            defaultMetaData.size : size.rawValue
         ]
         return metaData
     }
