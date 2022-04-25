@@ -134,7 +134,6 @@ public class TT2EventManager: TT2Event {
 
           triggerEvents.forEach { event in
               let type = event.eventType.getTrigger()
-              event.convertMetaDataToDefaultMessage()
               if type.coordinateTrigger != nil {
                   self?.coordinateEventDetector.add(event: event)
               } else if type.zoneTrigger != nil {

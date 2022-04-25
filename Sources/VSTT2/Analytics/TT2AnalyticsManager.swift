@@ -145,7 +145,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
             .store(in: &cancellable)
     }
     
-    private func postTriggerEvent(for event: TriggerEvent) ->PostTriggerEventRequest {
+    private func postTriggerEvent(for event: TriggerEvent) -> PostTriggerEventRequest {
         let eventType = event.eventType.getTrigger()
         let timestamp = DateFormatter.standardFormatter.string(from: event.timestamp)
         return  PostTriggerEventRequest(
@@ -232,7 +232,7 @@ private extension TT2AnalyticsManager {
                     Logger.init(verbosity: .debug).log(message: error.localizedDescription)
                 }
             }, receiveValue: { (_) in
-                Logger.init(verbosity: .debug).log(message: "uploadTriggerEvents success")
+                Logger(verbosity: .debug).log(message: "\(request.name), uploadTriggerEvents success")
             }).store(in: &cancellable)
     }
 

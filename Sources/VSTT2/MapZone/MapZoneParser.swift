@@ -40,10 +40,20 @@ public class MapZoneParser: NSObject {
                         name: properties["name"] as? String ?? "",
                         names: properties["names"] as? [String] ?? [],
                         parentId: properties["parentId"] as? String,
-                        fillColor: (properties["fillColor"] as? String),
-                        fillColorSelected: (properties["fillColorSelected"] as? String),
-                        lineColor: (properties["lineColor"] as? String),
-                        lineColorSelected: (properties["lineColorSelected"] as? String)
+                        fillColor: properties["fillColor"] as? String,
+                        fillColorSelected: properties["fillColorSelected"] as? String,
+                        fillAlpha: properties["fillAlpha"] as? Double,
+                        lineColor: properties["lineColor"] as? String,
+                        lineColorSelected: properties["lineColorSelected"] as? String,
+                        lineOpacity: properties["lineOpacity"] as? Double,
+                        lineWidth: properties["lineWidth"] as? Double,
+                        textColor: properties["textColor"] as? String,
+                        textColorSelected: properties["textColorSelected"] as? String,
+                        textSize: properties["textSize"] as? Double,
+                        textOpacity: properties["textOpacity"] as? Double,
+                        textAllowOverLap: properties["textAllowOverLap"] as? Bool,
+                        textAnchor: properties["textAnchor"] as? String,
+                        textIgnorePlacement: properties["textIgnorePlacement"] as? Bool
                     )
                     mapZones.append(MapZone(id: id, zone: points, properties: zoneProperties))
                 case "Point":
@@ -62,10 +72,18 @@ public class MapZoneParser: NSObject {
           sharedProperties = SharedZoneProperties(
             fillColor: properties["fillColor"] as? String,
             fillColorSelected: properties["fillColorSelected"] as? String,
+            fillAlpha: properties["fillAlpha"] as? Double,
             lineColor: properties["lineColor"] as? String,
             lineColorSelected: properties["lineColorSelected"] as? String,
+            lineOpacity: properties["lineOpacity"] as? Double,
+            lineWidth: properties["lineWidth"] as? Double,
             textColor: properties["textColor"] as? String,
-            textColorSelected: properties["textColorSelected"] as? String
+            textColorSelected: properties["textColorSelected"] as? String,
+            textSize: properties["textSize"] as? Double,
+            textOpacity: properties["textOpacity"] as? Double,
+            textAllowOverLap: properties["textAllowOverLap"] as? Bool,
+            textAnchor: properties["textAnchor"] as? String,
+            textIgnorePlacement: properties["textIgnorePlacement"] as? Bool
           )
         }
         return ZoneData(mapZones: mapZones, mapZonesPoints: mapZonePoints, sharedProperties: sharedProperties)

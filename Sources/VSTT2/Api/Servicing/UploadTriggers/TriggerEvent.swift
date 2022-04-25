@@ -218,10 +218,25 @@ public class TriggerEvent {
         public let type: DefaultMetaData.MessageType
         public let size: DefaultMetaData.MessageSize?
 
+        public init(title: String, body: String?, imageUrl: String?, poll: Poll?, type: DefaultMetaData.MessageType, size: DefaultMetaData.MessageSize?) {
+            self.title = title
+            self.body = body
+            self.imageUrl = imageUrl
+            self.poll = poll
+            self.type = type
+            self.size = size
+        }
+
         public struct Poll {
             public let question: String
             public let type: PollType
             public let options: [Option]
+
+            public init(question: String, type: PollType, options: [Option]) {
+                self.question = question
+                self.type = type
+                self.options = options
+            }
 
             public enum PollType: String {
                 case checkbox = "checkbox"
@@ -234,6 +249,12 @@ public class TriggerEvent {
                 public let description: String
                 public let imageUrl: String?
                 public let positionInList: Int
+
+                public init(description: String, imageUrl: String?, positionInList: Int) {
+                    self.description = description
+                    self.imageUrl = imageUrl
+                    self.positionInList = positionInList
+                }
             }
         }
     }
@@ -261,7 +282,7 @@ public extension TriggerEvent {
         return event
     }
 
-    func toPollResponse(option: Message.Poll.Option) -> TriggerEvent? {
+    func toPollResponse(option: Message.Poll.Option) -> TriggerEvent {
         var tags: [String : String] = [:]
         self.tags.forEach { (key, value) in
             tags[key] = value
