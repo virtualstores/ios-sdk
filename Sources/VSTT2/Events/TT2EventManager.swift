@@ -43,22 +43,37 @@ public class TT2EventManager: TT2Event {
         bindPublishers()
     }
     
-    public func addEvent(event: TriggerEvent) {
+    public func add(event: TriggerEvent) {
         switch event.eventType {
-        case .zoneTrigger(_): zoneEventDetector.add(event: event)
         case .coordinateTrigger(_): coordinateEventDetector.add(event: event)
-        default: break
+        case .zoneTrigger(_): zoneEventDetector.add(event: event)
+        case .appTrigger(_), .shelfTrigger(_): break
         }
     }
     
-    public func removeEvent(with id: String) { }
+    public func remove(event: TriggerEvent) {
+        switch event.eventType {
+        case .coordinateTrigger(_): coordinateEventDetector.remove(event: event)
+        case .zoneTrigger(_): zoneEventDetector.remove(event: event)
+        case .appTrigger(_), .shelfTrigger(_): break
+        }
+    }
+
+    public func remove(event id: String) {
+        if let event = coordinateEventDetector.events.first(where: { $0.name == id }) {
+            self.remove(event: event)
+        }
+        if let event = zoneEventDetector.events.first(where: { $0.name == id }) {
+            self.remove(event: event)
+        }
+    }
     
     public func onNewPosition(currentPosition: CGPoint) {
         zoneEventDetector.onNewPosition(currentPosition: currentPosition)
         coordinateEventDetector.onNewPosition(currentPosition: currentPosition)
     }
     
-    public func bindPublishers() {
+    private func bindPublishers() {
         zoneEventDetector.eventPublisher
             .compactMap { $0 }
             .sink { _ in

@@ -47,4 +47,3 @@ final public class TT2User: IPersistenceModel {
     public var y: [Float]?
     public var noScanML: String?
 }
-

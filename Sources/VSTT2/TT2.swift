@@ -244,12 +244,22 @@ private extension TT2 {
         return diff
     }
 
+    private func getLowestHeightDiff(swapLocations: [SwapLocation]) -> Double {
+        var diff: Double = .greatestFiniteMagnitude
+        swapLocations.forEach { (swapLocation) in
+            swapLocation.paths.forEach { (path) in
+                diff = path.heightDiffInMeters < diff ? path.heightDiffInMeters : diff
+            }
+        }
+        return diff
+    }
+
     private func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
         guard let floorHeightDiff = floorHeightDiff else { return }
         self.activeFloor = rtls
         self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zoneData) in
             if let mapFence = mapFence {
-              self?.setupMapfence(with: mapFence, floorHeightDiff: 0.5/*floorHeightDiff*/)
+                self?.setupMapfence(with: mapFence, floorHeightDiff: floorHeightDiff)
                 self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
             }
 

@@ -52,7 +52,7 @@ extension Routing {
     var headers: [String: String]? {
         guard let apiKey = environmentConfig?.centralServerConnection.apiKey else { fatalError("apiKey is not exist") }
 
-       return  ["apiKey" : apiKey]
+        return  ["apiKey" : apiKey]
     }
 
     var urlRequest: URLRequest? {
