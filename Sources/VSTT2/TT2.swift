@@ -229,7 +229,7 @@ private extension TT2 {
         stopPosition: convertedAndFlippedStop
       )
       let sharedProperties = floor.zoneData[rtls.floorLevel]?.sharedProperties
-      self.tt2Internal?.mapController?.setup(pathfinder: pathfinder, zones: zones, sharedProperties: sharedProperties, changedFloor: changedFloor)
+      self.tt2Internal?.mapController?.setup(pathfinder: pathfinder, zones: zones, sharedProperties: sharedProperties, shelves: position.shelfGroups ?? [], changedFloor: changedFloor)
 
       self.tt2Internal?.mapController?.loadMap(with: mapData)
     }
