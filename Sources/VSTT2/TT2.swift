@@ -14,7 +14,9 @@ import UIKit
 
 final public class TT2: ITT2 {
     private let context = Context(VSTT2Config())
-    
+
+    public var initialized: Bool { tt2Internal != nil }
+  
     public var stores: [TT2Store] {
         guard let stores = tt2Internal?.internalStores else { fatalError("tt2Internal is not initialized")}
         

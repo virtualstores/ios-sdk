@@ -40,7 +40,7 @@ public extension Navigation {
     func start(startPosition: CGPoint, startAngle: Double) throws {
         guard !isActive else {
             self.stop()
-            try self.start(startPosition: startPosition)
+            try self.start(startPosition: startPosition, startAngle: startAngle)
             return
         }
 

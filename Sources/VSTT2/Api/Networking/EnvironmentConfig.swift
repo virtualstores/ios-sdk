@@ -12,8 +12,8 @@ public class EnvironmentConfig {
     private var _centralServerConnection: ServerConnection?
 
     enum EndPoints: String {
-        case v1 = "/api/v1"
-        case v2 = "/api/v2"
+        case v1 = "api/v1"
+        case v2 = "api/v2"
     }
 
     public var centralServerConnection: ServerConnection {
@@ -34,7 +34,11 @@ public class EnvironmentConfig {
     }
      
     func initCentralServerConnection(with url: String, endPoint: EndPoints, apiKey: String) {
+      if url.last == "/" {
         self._centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+      } else {
+        self._centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + "/" + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+      }
     }
     
     func initAnalyticsServerConnection(with url: String, apiKey: String) {
