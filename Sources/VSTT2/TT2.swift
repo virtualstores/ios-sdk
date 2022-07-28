@@ -64,7 +64,7 @@ final public class TT2: ITT2 {
     }
 
     public private(set) var activeStore: TT2Store?
-    public private(set) var activeFloor: RtlsOptions?
+    public var activeFloor: RtlsOptions? { floor.activeFloor }
     
     public private(set) var coordinateConverter: ICoordinateConverter?
     public private(set) var mapData: MapData?
@@ -118,17 +118,13 @@ final public class TT2: ITT2 {
 
               let group = DispatchGroup()
               group.enter()
-              for rtlsOption in currentStore.rtlsOptions {
-                  if rtlsOption.isDefault {
-                      self.setActiveFloor(rtls: rtlsOption) { (error) in
-                          completion(error)
-                          self.mapData?.swapLocations = swapLocations
-                          group.leave()
-                      }
+              if let rtls = currentStore.rtlsOptions.first(where: { $0.isDefault }) {
+                  self.setActiveFloor(rtls: rtls) { (error) in
+                      completion(error)
+                      self.mapData?.swapLocations = swapLocations
+                      group.leave()
                   }
-              }
-
-              if self.activeFloor == nil {
+              } else {
                   guard let rtls = currentStore.rtlsOptions.first else { return }
                   self.setActiveFloor(rtls: rtls) { (error) in
                       completion(error)
@@ -151,6 +147,7 @@ final public class TT2: ITT2 {
               }
               if let client = self.tt2Internal?.internalClients.first(where: { $0.clientId == currentStore.clientId }) {
                   self.tt2Internal?.accuracyUploader = AccuracyUploader(store: currentStore, connection: self.config.centralServerConnection, client: client)
+                  self.tt2Internal?.deviceOrientationUploader = DeviceOrientationUploader(store: currentStore, connection: self.config.centralServerConnection, client: client)
               }
 
               group.notify(queue: .main) {
@@ -176,6 +173,19 @@ final public class TT2: ITT2 {
         analytics.stopVisit()
         tt2Internal?.mapController?.stop()
     }
+
+    public func setActiveFloor(rtls: RtlsOptions) {
+        self.setActiveFloor(rtls: rtls) { (error) in
+            if let error = error {
+                Logger(verbosity: .critical).log(message: "Floor change failed: \(error.localizedDescription)")
+            } else {
+                self.setupMap(changedFloor: true)
+                if let shelfGroups = self.tt2Internal?.shelfGroups[rtls.id] {
+                    self.position.shelfGroups = shelfGroups
+                }
+            }
+        }
+    }
     
     deinit {
         switchFloorCancellable?.cancel()
@@ -193,6 +203,9 @@ private extension TT2 {
                       Logger(verbosity: .critical).log(message: "Floor change failed: \(error.localizedDescription)")
                   } else {
                       self.setupMap(changedFloor: true)
+                      if let shelfGroups = self.tt2Internal?.shelfGroups[data.rtlsOptions.id] {
+                          self.position.shelfGroups = shelfGroups
+                      }
                       do {
                           try self.navigation.changeFloorStart(startPosition: data.point)
                           self.floorChangePublisher.send(data.rtlsOptions.name)
@@ -230,10 +243,9 @@ private extension TT2 {
         startPosition: convertedAndFlippedStart,
         stopPosition: convertedAndFlippedStop
       )
+      self.tt2Internal?.mapController?.loadMap(with: mapData)
       let sharedProperties = floor.zoneData[rtls.floorLevel]?.sharedProperties
       self.tt2Internal?.mapController?.setup(pathfinder: pathfinder, zones: zones, sharedProperties: sharedProperties, shelves: position.shelfGroups ?? [], changedFloor: changedFloor)
-
-      self.tt2Internal?.mapController?.loadMap(with: mapData)
     }
 
     private func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {
@@ -258,7 +270,6 @@ private extension TT2 {
 
     private func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
         guard let floorHeightDiff = floorHeightDiff else { return }
-        self.activeFloor = rtls
         self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zoneData) in
             if let mapFence = mapFence {
                 self?.setupMapfence(with: mapFence, floorHeightDiff: floorHeightDiff)
@@ -305,7 +316,6 @@ private extension TT2 {
             mapZonesTree?.add(rtls, value.mapZones, value.mapZonesPoints)
         }
 
-        mapZonesTree?.print()
         guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevelId: rtlsOption.id) else { return }
 
         analytics.update(rtlsOptionId: rtlsOption.id)

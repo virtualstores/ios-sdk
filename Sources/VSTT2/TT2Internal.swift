@@ -28,8 +28,8 @@ internal class TT2Internal {
     @Inject var shelfGroupService: ShelfGroupService
     
     var accuracyUploader: AccuracyUploader?
+    var deviceOrientationUploader: DeviceOrientationUploader?
     var mapController: IMapController?
-    var map: Map?
     
     private let config: EnvironmentConfig
     private var cancellable = Set<AnyCancellable>()
@@ -38,6 +38,7 @@ internal class TT2Internal {
     
     var internalClients: [Client] = []
     var internalStores: [Store] = []
+    var shelfGroups: [Int64: [ShelfGroup]] = [:]
     
     public init(config: EnvironmentConfig) {
         self.config = config
@@ -91,22 +92,28 @@ internal class TT2Internal {
     
     func getShelfGroups(for storeId: Int64, activeFloor: RtlsOptions?, completion: @escaping ( [ShelfGroup]) -> ()) {
         guard let activeFloor = activeFloor else { return }
-        let shelfGroupParameters = ShelfGroupParameters(storeId: storeId, rtlsOptionsId: activeFloor.id, config: config)
-        
-        shelfGroupService
-            .call(with: shelfGroupParameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    print(error)
-                }
-            }, receiveValue: { (shelfData) in
-                let shelfGroups = ShelfGroupDto.add(floorLevelId: activeFloor.id, shelfData).map({ ShelfGroupDto.toShelfGroup($0) })
-                completion(shelfGroups)
-                self.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetX), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
-            }).store(in: &cancellable)
+        let group = DispatchGroup()
+        floorManager.floors.forEach { (rtlsOption) in
+            group.enter()
+            let shelfGroupParameters = ShelfGroupParameters(storeId: storeId, rtlsOptionsId: rtlsOption.id, config: config)
+            shelfGroupService
+                .call(with: shelfGroupParameters)
+                .sink(receiveCompletion: { (completion) in
+                    switch completion {
+                    case .finished: break
+                    case .failure(let error): print(error)
+                    }
+                }, receiveValue: { (shelfData) in
+                    let shelfGroups = ShelfGroupDto.add(floorLevelId: rtlsOption.id, shelfData).map({ ShelfGroupDto.toShelfGroup($0) })
+                    self.shelfGroups[rtlsOption.id] = shelfGroups
+                    group.leave()
+                }).store(in: &cancellable)
+        }
+
+        group.notify(queue: .main) {
+            guard let shelfGroups = self.shelfGroups[activeFloor.id] else { return }
+            completion(shelfGroups)
+        }
     }
     
     
@@ -157,6 +164,22 @@ internal class TT2Internal {
                 })
             })
             .store(in: &cancellable)
+
+        navigation.positionKitManager.deviceOrientationPublisher
+            .compactMap { $0 }
+            .sink { (error) in
+              Logger(verbosity: .info).log(message: "DeviceOrientationError: \(error)")
+            } receiveValue: { [weak self] (orientation) in
+                guard
+                    let id = self?.analytics.visitId,
+                    let position = self?.navigation.positionKitManager.positionPublisher.value?.position,
+                    let direction = self?.navigation.positionKitManager.directionPublisher.value?.angle
+                else { return }
+                self?.deviceOrientationUploader?.upload(id: "", visitId: id, deviceOrientation: orientation.rawValue, currentLocation: position, direction: direction, errorHandler: { (error) in
+                    Logger(verbosity: .info).log(message: "DeviceOrientationUploaderError: \(error.localizedDescription)")
+                })
+            }.store(in: &cancellable)
+
         
         navigation.positionKitManager.recordingPublisher
             .compactMap { $0 }

@@ -8,6 +8,7 @@
 import Foundation
 import CoreGraphics
 import VSFoundation
+import CoreLocation
 
 private typealias PolygonJson = Dictionary<String, AnyObject>
 
@@ -20,7 +21,7 @@ public class MapZoneParser: NSObject {
             let features = data["features"] as? [AnyObject]
         else { return nil }
         var mapZones: [MapZone] = []
-        var mapZonePoints: [MapZonePoint] = []
+        var mapZonePoints: [MapZoneCoordinate] = []
 
         for feature in features {
             let properties = feature["properties"] as! NSDictionary
@@ -62,7 +63,7 @@ public class MapZoneParser: NSObject {
                     let coordinates = geometry["coordinates"] as! [Double]
                     let parentId = properties["parentId"] as? String
 
-                    mapZonePoints.append(MapZonePoint(name: description, point: CGPoint(x: coordinates[0], y: coordinates[1]), parentId: parentId))
+                    mapZonePoints.append(MapZoneCoordinate(name: description, coordinate: CLLocationCoordinate2D(latitude: coordinates[1], longitude: coordinates[0]), parentId: parentId))
                 default: continue
                 }
             }

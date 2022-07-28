@@ -27,7 +27,7 @@ extension ShelfGroupParameters: Routing {
 
     var queryItems: [String: String]? {
         let parameters = [
-          "storeId" : String(storeId),
+//          "storeId" : String(storeId),
           "rtlsOptionsId": String(rtlsOptionsId)
         ] as [String: String]
 

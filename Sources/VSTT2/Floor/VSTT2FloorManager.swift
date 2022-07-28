@@ -83,7 +83,8 @@ public class VSTT2FloorManager: VSTT2Floor {
     }
 
     func onNewFloor(floor: Int) {
-        floorPicker?.changeFloorTo = floor
+//        floorPicker?.changeFloorTo = floor
+        floorPicker?.changeOfFloor(floor: floor)
     }
     
     deinit {

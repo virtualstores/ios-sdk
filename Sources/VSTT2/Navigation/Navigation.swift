@@ -14,8 +14,8 @@ import CoreGraphics
 import UIKit
 
 final public class Navigation: INavigation {
-    public var positionKitManager: PositionManager
-    public var isActive: Bool = false
+    public private(set) var positionKitManager: PositionManager
+    public private(set) var isActive: Bool = false
 
     private var startCodes: [PositionedCode] = []
     private var hasStartLocationAngle: Bool = false
@@ -40,7 +40,13 @@ public extension Navigation {
     func start(startPosition: CGPoint, startAngle: Double) throws {
         guard !isActive else {
             self.stop()
-            try self.start(startPosition: startPosition, startAngle: startAngle)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+              do {
+                try self.start(startPosition: startPosition, startAngle: startAngle)
+              } catch {
+                print(error)
+              }
+            }
             return
         }
 
@@ -70,7 +76,13 @@ public extension Navigation {
     func start(startPosition: CGPoint) throws {
         guard let heading = self.heading, !isActive else {
             self.stop()
-            try self.start(startPosition: startPosition)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+              do {
+                try self.start(startPosition: startPosition)
+              } catch {
+                print(error)
+              }
+            }
             return
         }
 

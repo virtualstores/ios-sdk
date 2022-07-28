@@ -13,7 +13,7 @@ public class Position: IPosition {
     @Inject var itemPositionService: ItemPositionService
 
     private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
-    public var shelfGroups: [ShelfGroup]?
+    public internal(set) var shelfGroups: [ShelfGroup]?
     private var config: EnvironmentConfig?
     var store: Store?
     private var barcodePositions: [Item] = []

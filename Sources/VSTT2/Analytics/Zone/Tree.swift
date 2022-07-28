@@ -27,25 +27,26 @@ public class Tree {
     }
 
     var zonesToAdd: [Zone] = []
-    public func add(_ rtls: RtlsOptions, _ mapZone: MapZone, _ mapZonePoint: MapZonePoint? = nil) {
+    public func add(_ rtls: RtlsOptions, _ mapZone: MapZone, _ mapZonePoint: MapZoneCoordinate? = nil) {
         let floorLevelId = rtls.id
         let floorLevelName = rtls.name ?? "Floor level name missing"
         if getZoneWith(id: floorLevelName) == nil {
-          let width = converter.convertFromMetersToMapCoordinate(input: rtls.widthInMeters)
-          let height = converter.convertFromMetersToMapCoordinate(input: rtls.heightInMeters)
-          let polygon = [CGPoint(x: 0.0, y: 0.0), CGPoint(x: 0.0, y: height), CGPoint(x: width, y: height), CGPoint(x: width, y: 0.0)]
-          let properties = ZoneProperties(description: nil, id: floorLevelName, name: floorLevelName, names: [], parentId: root.id, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
-          self.root.addChild(child: Zone(id: floorLevelName, properties: properties, polygon: polygon, floorLevelId: floorLevelId, converter: converter))
+            let width = converter.convertFromMetersToMapCoordinate(input: rtls.widthInMeters)
+            let height = converter.convertFromMetersToMapCoordinate(input: rtls.heightInMeters)
+            let polygon = [CGPoint(x: 0.0, y: 0.0), CGPoint(x: 0.0, y: height), CGPoint(x: width, y: height), CGPoint(x: width, y: 0.0)]
+            let properties = ZoneProperties(description: nil, id: floorLevelName, name: floorLevelName, names: [], parentId: root.id, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
+            self.root.addChild(child: Zone(id: floorLevelName, properties: properties, polygon: polygon, floorLevelId: floorLevelId, converter: converter))
         }
 
         let root: Zone = getZoneWith(id: floorLevelName) ?? self.root
         let parentId = mapZone.properties.parentId
+        let navigationPoint = mapZonePoint?.coordinate.fromLatLngToMeter(converter: converter)
         if let id = parentId, let zone = self.getZoneWith(id: id) {
-          zone.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, parent: zone, floorLevelId: floorLevelId, converter: converter))
+            zone.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: navigationPoint, parent: zone, floorLevelId: floorLevelId, converter: converter))
         } else if parentId != nil {
-            self.zonesToAdd.append(Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, floorLevelId: floorLevelId, converter: converter))
+            self.zonesToAdd.append(Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: navigationPoint, floorLevelId: floorLevelId, converter: converter))
         } else {
-            root.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: mapZonePoint?.point, floorLevelId: floorLevelId, converter: converter))
+            root.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoint: navigationPoint, floorLevelId: floorLevelId, converter: converter))
         }
         self.zonesToAdd.forEach { zone in
             if let id = parentId, let parentZone = self.getZoneWith(id: id) {
@@ -56,7 +57,7 @@ public class Tree {
         }
     }
     
-    public func add(_ rtls: RtlsOptions, _ mapZones: [MapZone], _ mapZonesPoints: [MapZonePoint]) {
+    public func add(_ rtls: RtlsOptions, _ mapZones: [MapZone], _ mapZonesPoints: [MapZoneCoordinate]) {
         for mapZone in mapZones {
             let mapZonePoint = mapZonesPoints.first(where: { $0.parentId == mapZone.id }) ?? mapZonesPoints.first(where: { $0.name.lowercased() == mapZone.properties.name.lowercased() })
             self.add(rtls, mapZone, mapZonePoint)
@@ -90,7 +91,7 @@ public class Tree {
       return zones.first(where: { $0.id == id })
     }
 
-    public func getZonesWith(name: String) -> [Zone]? {
+    public func getZoneWith(name: String) -> [Zone]? {
         let zones = self.getAllZones()?.all(where: { $0.name == name && $0.floorLevelId == currentFloorLevelId })
         
         return zones

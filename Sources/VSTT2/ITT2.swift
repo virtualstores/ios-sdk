@@ -57,7 +57,9 @@ public protocol ITT2 {
 
     func startMap()
 
-    func stop() 
+    func stop()
+
+    func setActiveFloor(rtls: RtlsOptions)
 }
 
 public enum VSTT2Error: Error {
