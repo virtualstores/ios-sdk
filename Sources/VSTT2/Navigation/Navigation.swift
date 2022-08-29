@@ -14,7 +14,7 @@ import CoreGraphics
 import UIKit
 
 final public class Navigation: INavigation {
-    public private(set) var positionKitManager: PositionManager
+    private(set) var positionKitManager: PositionManager
     public private(set) var isActive: Bool = false
 
     private var startCodes: [PositionedCode] = []
@@ -140,6 +140,14 @@ extension Navigation {
 
     func changeFloorStop() {
         positionKitManager.stop(stopSensors: false)
+    }
+
+    func startRecording() {
+        positionKitManager.startRecording()
+    }
+
+    func stopRecording() {
+        positionKitManager.stopRecording()
     }
 }
 

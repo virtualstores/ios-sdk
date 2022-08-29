@@ -133,6 +133,10 @@ struct VSTT2Config: Config {
         injector.map(AWSS3UploadManager.self) {
             AWSS3UploadManager()
         }
+
+        injector.map(Recording.self) {
+            Recording()
+        }
     }
 
     private func configureHelpers(_ injector: Injector) {

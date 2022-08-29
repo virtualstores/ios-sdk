@@ -33,6 +33,9 @@ public protocol ITT2 {
     
     /// User Settings manager
     var userSettings: UserSettings { get }
+
+    /// Recording manager
+    var recording: IRecording { get }
     
     /// Active store
     var activeStore: TT2Store? { get }

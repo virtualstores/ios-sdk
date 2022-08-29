@@ -14,7 +14,7 @@
 ## Requirements
 
 - **Xcode 12+**
-- **If using M1:** ```gem install --user-install ffi -- --enable-libffi-alloc
+- **If using M1:** `gem install --user-install ffi -- --enable-libffi-alloc`
 ```
 - **Jazzy** ```[sudo] gem install jazzy```
 - **Brew** ```/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"```
@@ -35,10 +35,10 @@ Following our style guide should:
 *Note that brevity is not a primary goal.*
 
 [Official Style Guide] (https://github.com/virtualstores/ios-style-guide)
-
+```
 ## Installation
 
-####Using as a dependency
+#### Using as a dependency
 
 ``` swift
 // swift-tools-version:5.5

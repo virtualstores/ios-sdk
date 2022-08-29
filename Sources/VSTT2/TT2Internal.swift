@@ -17,6 +17,7 @@ internal class TT2Internal {
     @Inject var floorManager: VSTT2FloorManager
     @Inject var position: Position
     @Inject var user: UserSettings
+    @Inject var recording: Recording
     @Inject var awsS3UploadManager: AWSS3UploadManager
     
     /// Services for getting the api data
@@ -187,10 +188,43 @@ internal class TT2Internal {
                 self.createAWSData(identifier: identifier, data: data)
             })
             .store(in: &cancellable)
+
+        recording.sendDataPublisher
+            .sink { (_) in
+                self.sendAWSData()
+            }.store(in: &cancellable)
     }
-    
+
+    func sendAWSData() {
+        guard let stringDate = recordingStringDate, let time = recordingStringTime else {
+//            if recording.recorded {
+//                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.sendAWSData() }
+//            }
+            return
+        }
+
+        let folderName: String
+        if let user = self.user.getLastUser() {
+            let deviceName = user.deviceName ?? UIDevice.current.name
+            if let name = user.name ?? user.userId, let route = user.route {
+              folderName = "\(stringDate)/\(name)_\(deviceName)/ios/\(route)/\(time)/"
+            } else if let name = user.name ?? user.userId {
+              folderName = "\(stringDate)/\(name)_\(deviceName)/ios/undefinedRoute/\(time)/"
+            } else {
+              folderName = "\(stringDate)/undefined/ios/undefinedRoute/\(time)/"
+            }
+        } else {
+            folderName = "\(stringDate)/undefined/ios/undefinedRoute/\(time)/"
+        }
+        awsS3UploadManager.sendCollectedDataToS3(folderName: folderName)
+        recordingStringDate = nil
+        recordingStringTime = nil
+    }
+
+    var recordingStringDate: String?
+    var recordingStringTime: String?
     func createAWSData(identifier: String, data: String) {
-        guard let store = self.position.store else { return }
+        guard let store = position.store else { return }
         let date = Date()
         let uploadTimeFormatter = DateFormatter()
         let uploadDayFormatter = DateFormatter()
@@ -198,29 +232,18 @@ internal class TT2Internal {
         uploadDayFormatter.dateFormat = "yyMMdd"
         let stringDate = uploadDayFormatter.string(from: date)
         let time = uploadTimeFormatter.string(from: date)
-        self.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
-        let csvData = self.createCSVData(date: stringDate, time: time, serverUrl: config.centralServerConnection.serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
+        awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
+        let csvData = createCSVData(date: stringDate, time: time, serverUrl: config.centralServerConnection.serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
         let fileName = "keywords\(time).csv"
-        self.awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: csvData)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            if let user = self.user.getLastUser() {
-                if let name = user.name, let route = user.route {
-                    self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/\(name)/ios/\(route)/\(time)/")
-                } else if let name = user.name {
-                    self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/\(name)/ios/undefinedRoute/\(time)/")
-                } else {
-                    self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/undefined/ios/undefinedRoute/\(time)/")
-                }
-            } else {
-                self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/undefined/ios/undefinedRoute/\(time)/")
-            }
-        }
+        awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: csvData)
+        recordingStringDate = stringDate
+        recordingStringTime = time
     }
     
     func createCSVData(date: String, time: String, serverUrl: String, clientId: String, storeid: String) -> String {
         var csvData = "day,name,device,route,time,gender,age,comments,serverUrl,clientID,storeID,activity\n"
-        guard let user = user.getLastUser() else { return csvData + "\(date),,,ios,,\(time),,,,\(serverUrl), \(clientId), \(storeid),,\n" }
-        let name = user.name ?? ""
+        guard let user = user.getLastUser() else { return csvData + "\(date),,,ios,,\(time),,,,\(serverUrl),\(clientId),\(storeid),,\n" }
+        let name = user.name ?? user.userId ?? ""
         let route = user.route ?? ""
         let gender = user.gender ?? ""
         let age = user.age ?? ""
@@ -230,7 +253,7 @@ internal class TT2Internal {
         return csvData
     }
     
-    private func vpsToMapboxAngle(angle: Double) -> Double{
+    private func vpsToMapboxAngle(angle: Double) -> Double {
         90.0 - angle
     }
     

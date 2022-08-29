@@ -9,6 +9,7 @@
 import Foundation
 import AWSS3
 import VSFoundation
+import Combine
 
 public enum AWSS3Keys: String {
   case dataAnalyze = "data-analyze/"
@@ -46,6 +47,8 @@ final class AWSRecordObject: IPersistenceModel {
 public class AWSS3UploadManager {
   @Inject var persistence: Persistence
 
+  var dataUploadedPublisher: CurrentValueSubject<Bool, Never> = .init(false)
+
   private static let MAX_TRIES = 20
 
   private func insert(identifier: String, data: String, date: String) {
@@ -74,7 +77,7 @@ public class AWSS3UploadManager {
   }
 
   func sendCollectedDataToS3(status: AWSRecordObject.Status = .pending, folderName: String = "") {
-    let arr = getAllRecordedObject().filter { $0.status == status.rawValue }
+    let arr = getAllRecordedObject().filter { $0.status == status.rawValue } + getAllRecordedObject().filter { $0.status == AWSRecordObject.Status.inProgress.rawValue }
     arr.forEach { (object) in
       if let id = object.identifier, let convertedData = object.data?.data(using: .utf8) {
         self.sendToS3(AWSS3Key: .dataAnalyze, key: object.folderName ?? folderName, identifier: id, data: convertedData)
@@ -114,10 +117,10 @@ public class AWSS3UploadManager {
     persistence.get(arrayOf: AWSRecordObject.self)
   }
 
-  private func updateRecordsAfter(uploadingFailed: Bool) {
-    let arr = getAllRecordedObject()
-    let filteredArr = arr.filter { $0.status == AWSRecordObject.Status.inProgress.rawValue }
-    self.updateStatus(objects: filteredArr, status: uploadingFailed ? .failed : .succeded)
+  private func updateRecordsAfter(uploadingFailed: Bool, identifier: String, key: String) {
+    guard let object = getAllRecordedObject().filter({ $0.status == AWSRecordObject.Status.inProgress.rawValue }).first(where: { $0.identifier == identifier && key.contains($0.folderName ?? "") }) else { return }
+//    self.updateStatus(objects: filteredArr, status: uploadingFailed ? .failed : .succeded)
+    updateStatus(object: object, status: uploadingFailed ? .failed : .succeded)
   }
 
   private func updateStatus(object: AWSRecordObject, status: AWSRecordObject.Status? = nil) {
@@ -178,7 +181,7 @@ public class AWSS3UploadManager {
     AWSS3PreSignedURLBuilder.default().getPreSignedURL(getPreSignedURLRequest).continueWith { (task:AWSTask<NSURL>) -> Any? in
       if let error = task.error as NSError? {
         Logger(verbosity: .critical).log(message: "Uploading error: \(error.localizedDescription)")
-        self.updateRecordsAfter(uploadingFailed: true)
+        self.updateRecordsAfter(uploadingFailed: true, identifier: identifier, key: key)
         return nil
       }
       
@@ -190,10 +193,13 @@ public class AWSS3UploadManager {
       URLSession.shared.uploadTask(with: request, from: data) { (responseData, response, error) in
         if let error = error {
           Logger(verbosity: .critical).log(message: "Failed to upload \(identifier), trying again: \(error.localizedDescription)")
-          self.updateRecordsAfter(uploadingFailed: true)
+          self.updateRecordsAfter(uploadingFailed: true, identifier: identifier, key: key)
         } else {
           Logger(verbosity: .info).log(message: "Successfully uploaded \(identifier) to S3")
-          self.updateRecordsAfter(uploadingFailed: false)
+          self.updateRecordsAfter(uploadingFailed: false, identifier: identifier, key: key)
+          if self.getAllRecordedObject().count == 0 {
+            DispatchQueue.main.async { self.dataUploadedPublisher.send(true) }
+          }
         }
       }.resume()
       return nil

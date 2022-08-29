@@ -12,8 +12,11 @@ public class UserSettings: IUserSettings {
     @Inject var persistence: Persistence
 
     public func setUser(user: User) {
-        var object = TT2User()
-        object.setup(id: user.id, userId: user.userId, userHeight: user.userHeight, name: user.name, age: user.age, gender: user.gender)
+        setUser(user: user.asTT2User)
+    }
+
+    public func setUser(user: TT2User) {
+        var object = user
         do {
             try persistence.save(&object)
         } catch {
@@ -26,7 +29,7 @@ public class UserSettings: IUserSettings {
         let users = persistence.get(arrayOf: TT2User.self)
         let tt2User = users.first(where: { $0.userId == userId })
         
-        let user = User(id: tt2User?.id, userId: tt2User?.userId, userHeight: tt2User?.userHeight, name: tt2User?.name, age: tt2User?.age, gender: tt2User?.gender)
+        let user = User(id: tt2User?.id, userId: tt2User?.userId, height: tt2User?.height, name: tt2User?.name, age: tt2User?.age, gender: tt2User?.gender)
                         
         return user
     }
@@ -50,4 +53,12 @@ public class UserSettings: IUserSettings {
                                                 message: "Remove User error")
         }
     }
+}
+
+public extension User {
+  var asTT2User: TT2User {
+    let user = TT2User()
+    user.setup(id: id, userId: userId, height: height, name: name, age: age, gender: gender)
+    return user
+  }
 }

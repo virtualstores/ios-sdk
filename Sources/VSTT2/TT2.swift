@@ -63,6 +63,12 @@ final public class TT2: ITT2 {
         return user
     }
 
+    public var recording: IRecording {
+        guard let recording = tt2Internal?.recording else { fatalError("tt2Internal is not initialized") }
+
+        return recording
+    }
+
     public private(set) var activeStore: TT2Store?
     public var activeFloor: RtlsOptions? { floor.activeFloor }
     
