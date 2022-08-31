@@ -170,7 +170,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
 private extension TT2AnalyticsManager {
     // MARK: Heatmap data
     func recordPosition(rtlsOptionId: Int64, point: CGPoint) {
-    
         let id = String(rtlsOptionId)
 
         recordedPositionsCount += 1

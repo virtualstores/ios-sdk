@@ -115,7 +115,7 @@ public extension Navigation {
 
     func stop() {
         positionKitManager.stop()
-        self.hasStartLocationAngle = false
+        hasStartLocationAngle = false
         isActive = false
     }
 
@@ -166,7 +166,7 @@ private extension Navigation {
           Int(code.point.x) == Int(startPosition.x),
           Int(code.point.y) == Int(startPosition.y)
         else { return nil }
-        self.hasStartLocationAngle = true
+        hasStartLocationAngle = true
         return code.direction
     }
 
