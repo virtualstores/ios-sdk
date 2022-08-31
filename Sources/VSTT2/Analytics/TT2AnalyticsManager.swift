@@ -85,9 +85,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
     public func stopVisit() {
         stopCollectingHeatMapData()
-        guard let visitId = visitId, let points = positionUploadWorker.getAllPoints() else { return }
+        guard let visitId = visitId, let points = positionUploadWorker.getPoints() else { return }
+        uploadData(recordedPositions: points)
         let date = DateFormatter.standardFormatter.string(from: Date())
-        let parameters = StopVisitParameters(config: config, requestId: UUID().uuidString.uppercased(), visitId: visitId, stop: date, positionGrps: points)
+        let parameters = StopVisitParameters(config: config, requestId: UUID().uuidString.uppercased(), visitId: visitId, stop: date)
         stopVisitService
             .call(with: parameters)
             .sink { [weak self] (result) in
@@ -177,15 +178,15 @@ private extension TT2AnalyticsManager {
         positionUploadWorker.insert(id: id, xPosition: Double(point.x), yPosition: Double(point.y), time: time, uploadStatus: .pending)
 
         if self.checkIfPartialUpload() {
-            do {
-                guard let points = try positionUploadWorker.getPoints() else { return }
+//            do {
+                guard let points = positionUploadWorker.getPoints() else { return }
 
                 self.uploadData(recordedPositions: points)
                 self.recordedPositionsCount = 0
-            } catch {
-                Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
-                                                    message: "GetPoints from SQLite error")
-            }
+//            } catch {
+//                Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+//                                                    message: "GetPoints from SQLite error")
+//            }
         }
     }
 

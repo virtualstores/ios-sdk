@@ -12,14 +12,12 @@ public struct StopVisitParameters {
   private let requestId: String
   private let visitId: Int64
   private let stop: String
-  private let positionGrps: [String: [RecordedPosition]]
 
-  init(config: EnvironmentConfig?, requestId: String, visitId: Int64, stop: String, positionGrps: [String: [RecordedPosition]]) {
+  init(config: EnvironmentConfig?, requestId: String, visitId: Int64, stop: String) {
     self.config = config
     self.requestId = requestId
     self.visitId = visitId
     self.stop = stop
-    self.positionGrps = positionGrps
   }
 }
 
@@ -39,9 +37,4 @@ extension StopVisitParameters: Routing {
   var method: RequestType { .PUT }
 
   var path: String { "/visits/stop" }
-
-  var parameters: [String : Any]? {
-    let parameters: [String : Any] = [ "positionGrps": positionGrps.asDictionary() ]
-    return parameters
-  }
 }

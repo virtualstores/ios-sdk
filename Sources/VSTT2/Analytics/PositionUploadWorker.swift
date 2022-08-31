@@ -30,7 +30,7 @@ final class PositionUploadWorker {
     }
 
     /// Will return filtered points
-    func getPoints() throws -> [String: [RecordedPosition]]? {
+    func getPoints() -> [String: [RecordedPosition]]? {
         var pointsList: [String: [RecordedPosition]] = [:]
         let positions = persistence.get(arrayOf: PositionObject.self)
         let filteredPositions = positions.filter { $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
