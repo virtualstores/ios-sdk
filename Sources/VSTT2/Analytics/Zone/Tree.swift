@@ -101,6 +101,10 @@ public class Tree {
         return zones
     }
 
+    public func getZonesForCurrentFloorLevel() -> [Zone]? {
+        getZonesFor(floorLevelId: currentFloorLevelId)
+    }
+
     private func zoneDelimiter(string: String) -> [String] {
         let delimiter = ";"
         return string.components(separatedBy: delimiter)

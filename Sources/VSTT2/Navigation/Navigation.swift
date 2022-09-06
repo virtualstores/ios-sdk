@@ -17,10 +17,12 @@ final public class Navigation: INavigation {
     private(set) var positionKitManager: PositionManager
     public private(set) var isActive: Bool = false
 
+    var accuracyPublisher: CurrentValueSubject<(preScanLocation: CGPoint, scanLocation: CGPoint, offset: CGVector, articleId: String)?,Never> = .init(nil)
+
+    var currentAccessPointPosition: CGPoint = .zero
+
     private var startCodes: [PositionedCode] = []
     private var hasStartLocationAngle: Bool = false
-
-    var accuracyPublisher: CurrentValueSubject<(preScanLocation: CGPoint, scanLocation: CGPoint, offset: CGVector)?,Never> = .init(nil)
 
     private var heading: TT2Course? {
         let north = positionKitManager.rtlsOption?.north ?? 0.0
@@ -67,7 +69,7 @@ public extension Navigation {
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
         guard isActive else { return }
 
-        prepareAccuracyUpload(offset: position.offset)
+        prepareAccuracyUpload(position: position)
         let angle = atan2(-position.offsetPoint.y, -position.offsetPoint.x)*180.0/Double.pi
 
         positionKitManager.syncPosition(xPosition: position.point.x, yPosition: position.point.y, startAngle: angle, syncPosition: forceSync, syncAngle: syncRotation, uncertainAngle: false)
@@ -104,13 +106,17 @@ public extension Navigation {
         }
 
         let point = position.pointWithOffset
-        prepareAccuracyUpload(offset: position.offset)
+        prepareAccuracyUpload(position: position)
         if let startLocationAngle = self.startWithAngle(startPosition: position.point) {
             positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: startLocationAngle, syncPosition: true, syncAngle: true, uncertainAngle: false)
         } else {
             let syncingWithCompass = doCompassStart(point: position.point) && !hasStartLocationAngle
             positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)
         }
+    }
+
+    func syncPositionToNearestAccessPoint() throws {
+        try start(startPosition: currentAccessPointPosition)
     }
 
     func stop() {
@@ -152,11 +158,17 @@ extension Navigation {
 }
 
 private extension Navigation {
-    func prepareAccuracyUpload(offset: CGVector) {
+    func prepareAccuracyUpload(position: ItemPosition) {
         guard let preScanLocation = positionKitManager.positionPublisher.value?.position else { return }
+        let shelfId: String
+        if let id = position.shelfId {
+            shelfId = String(id)
+        } else {
+            shelfId = "undefined"
+        }
+        let shelfName = position.shelfName ?? "undefined"
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            guard let scanLocation = self.positionKitManager.positionPublisher.value?.position else { return }
-            self.accuracyPublisher.send((preScanLocation: preScanLocation, scanLocation: scanLocation, offset: offset))
+            self.accuracyPublisher.send((preScanLocation: preScanLocation, scanLocation: position.point, offset: position.offset, articleId: "ShelfID: \(shelfId), ShelfName: \(shelfName)"))
         }
     }
 

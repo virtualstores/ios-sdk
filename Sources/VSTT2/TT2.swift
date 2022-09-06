@@ -85,7 +85,8 @@ final public class TT2: ITT2 {
     private var tt2Internal: TT2Internal?
     private var floorHeightDiff: Double?
 
-    private var switchFloorCancellable: AnyCancellable?
+    private var cancellable = Set<AnyCancellable>()
+    private var wifiCancellable = Set<AnyCancellable>()
     
     public init() {}
 
@@ -104,9 +105,14 @@ final public class TT2: ITT2 {
         })
     }
     
-    public func setMap(map: IMapController) {
-        self.tt2Internal?.mapController = map
-        self.setupMap()
+    public func set(map: IMapController) {
+        tt2Internal?.mapController = map
+        setupMap()
+    }
+
+    public func set(wifi: IWiFiController) {
+        tt2Internal?.wifiController = wifi
+        bindWiFiPublishers()
     }
     
     public func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ()) {
@@ -194,13 +200,14 @@ final public class TT2: ITT2 {
     }
     
     deinit {
-        switchFloorCancellable?.cancel()
+        cancellable.removeAll()
+        wifiCancellable.removeAll()
     }
 }
 
 private extension TT2 {
     private func bindPublishers() {
-        switchFloorCancellable = floor.switchFloorPublisher
+        floor.switchFloorPublisher
           .compactMap { $0 }
           .sink(receiveValue: { (data) in
               self.navigation.changeFloorStop()
@@ -220,7 +227,27 @@ private extension TT2 {
                       }
                   }
               }
-          })
+          }).store(in: &cancellable)
+    }
+
+    private func bindWiFiPublishers() {
+      wifiCancellable.removeAll()
+      tt2Internal?.wifiController?.wifiInfoPublisher
+        .compactMap { $0 }
+        .sink(receiveCompletion: { (result) in
+          switch result {
+          case .finished: break
+          case .failure(let error): Logger(verbosity: .info).log(message: "WiFi Error: \(error)")
+          }
+        }, receiveValue: { [weak self] (info) in
+          guard
+            let zones = self?.mapZonesTree?.getZonesForCurrentFloorLevel(),
+            let zone = zones.first(where: { $0.navigationPoints[info.bssid] != nil }),
+            let point = zone.navigationPoints.first(where: { $0.key == info.bssid })?.value
+          else { return }
+
+          self?.navigation.currentAccessPointPosition = point
+        }).store(in: &wifiCancellable)
     }
 
     private func setupMap(changedFloor: Bool = false) {

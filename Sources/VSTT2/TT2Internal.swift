@@ -31,6 +31,7 @@ internal class TT2Internal {
     var accuracyUploader: AccuracyUploader?
     var deviceOrientationUploader: DeviceOrientationUploader?
     var mapController: IMapController?
+    var wifiController: IWiFiController?
     
     private let config: EnvironmentConfig
     private var cancellable = Set<AnyCancellable>()
@@ -158,9 +159,9 @@ internal class TT2Internal {
         
         navigation.accuracyPublisher
             .compactMap { $0 }
-            .sink(receiveValue: { [weak self] (preScanLocation, scanLocation, offset) in
-                guard let id = self?.analytics.visitId else { return }
-                self?.accuracyUploader?.upload(id: String(id), articleId: "", preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
+            .sink(receiveValue: { [weak self] (preScanLocation, scanLocation, offset, articleId) in
+              guard let id = self?.analytics.visitId, let user = self?.user.getLastUser(), let name = user.name ?? user.userId else { return }
+                self?.accuracyUploader?.upload(id: String(id) + "_\(name)", articleId: articleId, preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
                     Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
                 })
             })

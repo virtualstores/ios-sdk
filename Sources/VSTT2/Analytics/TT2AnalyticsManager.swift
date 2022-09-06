@@ -72,15 +72,12 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func startCollectingHeatMapData() throws {
-        guard visitId != nil else {
-            throw TT2AnalyticsError.visitNotStarted
-        }
-
-        self.isRecording = true
+        guard visitId != nil else { throw TT2AnalyticsError.visitNotStarted }
+        isRecording = true
     }
 
     public func stopCollectingHeatMapData() {
-        self.isRecording = false
+        isRecording = false
     }
 
     public func stopVisit() {

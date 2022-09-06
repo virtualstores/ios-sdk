@@ -53,7 +53,10 @@ public protocol ITT2 {
     func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ())
     
     /// Setup the Map
-    func setMap(map: IMapController)
+    func set(map: IMapController)
+
+    /// Setup the WiFi
+    func set(wifi: IWiFiController)
     
     /// Methode for creating MapData for MapSdk
     func getMapData() -> MapData?
