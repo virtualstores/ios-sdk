@@ -8,7 +8,7 @@
 import Foundation
 import VSFoundation
 
-public class UserSettings: IUserSettings {
+private class UserSettings: IUserSettings {
     @Inject var persistence: Persistence
 
     public func setUser(user: User) {
