@@ -11,8 +11,6 @@ import Combine
 import CoreGraphics
 import UIKit
 
-
-
 final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var createVisitService: CreateVisitService
     @Inject var stopVisitService: StopVisitService
@@ -33,7 +31,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     /// now we are uploading positions each time when they are 100
     private var recordedPositionsCount = 0
     private var config: EnvironmentConfig?
-    
+
     public init() {}
 
     public func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int = 100, config: EnvironmentConfig?) {

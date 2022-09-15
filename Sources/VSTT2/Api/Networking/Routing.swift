@@ -47,7 +47,7 @@ extension Routing {
 
     var queryItems: [String: String]? { nil }
 
-    var encoding: ParameterEncoding { ParameterEncoding.json }
+    var encoding: ParameterEncoding { .json }
 
     var headers: [String: String]? {
         guard let apiKey = environmentConfig?.centralServerConnection.apiKey else { fatalError("apiKey is not exist") }
@@ -101,7 +101,7 @@ extension Routing {
                 #endif
             }
         }
-
+        print("urlRequest", urlRequest)
         return urlRequest
     }
 }

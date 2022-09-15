@@ -8,7 +8,6 @@
 import Foundation
 import Combine
 import VSFoundation
-import VSPositionKit
 import VSPositionKitTargets
 import CoreGraphics
 import UIKit

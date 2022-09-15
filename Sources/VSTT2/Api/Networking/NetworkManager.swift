@@ -26,6 +26,10 @@ final class NetworkManager: DataHandler {
             fatalError("Could not create url")
         }
 
+//        urlSession.dataTask(with: url) { (data, response, error) in
+//            print("Response", response)
+//        }.resume()
+
         return urlSession.dataTaskPublisher(for: url)
             .mapError { $0 as Error }
             .map { $0.data }
