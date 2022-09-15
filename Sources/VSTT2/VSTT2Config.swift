@@ -75,6 +75,18 @@ struct VSTT2Config: Config {
         injector.map(TriggerEventsService.self) {
             TriggerEventsService(with: NetworkManager())
         }
+
+        injector.map(PutUserService.self) {
+            PutUserService(with: NetworkManager())
+        }
+
+        injector.map(GetUserService.self) {
+            GetUserService(with: NetworkManager())
+        }
+
+        injector.map(DeleteUserService.self) {
+            DeleteUserService(with: NetworkManager())
+        }
     }
 
     private func configureManagers(_ injector: Injector) {
@@ -126,8 +138,11 @@ struct VSTT2Config: Config {
             Position()
         }
         
-        injector.map(UserSettings.self) {
-            UserSettings()
+//        injector.map(UserSettings.self) {
+//            UserSettings()
+//        }
+        injector.map(UserController.self) {
+            UserController()
         }
 
         injector.map(AWSS3UploadManager.self) {

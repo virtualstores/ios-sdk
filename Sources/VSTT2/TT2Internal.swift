@@ -16,7 +16,8 @@ internal class TT2Internal {
     @Inject var analytics: TT2AnalyticsManager
     @Inject var floorManager: VSTT2FloorManager
     @Inject var position: Position
-    @Inject var user: UserSettings
+//    @Inject var user: UserSettings
+    @Inject var user: UserController
     @Inject var recording: Recording
     @Inject var awsS3UploadManager: AWSS3UploadManager
     
@@ -92,7 +93,7 @@ internal class TT2Internal {
             }).store(in: &cancellable)
     }
     
-    func getShelfGroups(for storeId: Int64, activeFloor: RtlsOptions?, completion: @escaping ( [ShelfGroup]) -> ()) {
+    func getShelfGroups(for storeId: Int64, activeFloor: RtlsOptions?, completion: @escaping ([ShelfGroup]) -> ()) {
         guard let activeFloor = activeFloor else { return }
         let group = DispatchGroup()
         floorManager.floors.forEach { (rtlsOption) in
@@ -160,8 +161,8 @@ internal class TT2Internal {
         navigation.accuracyPublisher
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (preScanLocation, scanLocation, offset, articleId) in
-              guard let id = self?.analytics.visitId, let user = self?.user.getLastUser(), let name = user.name ?? user.userId else { return }
-                self?.accuracyUploader?.upload(id: String(id) + "_\(name)", articleId: articleId, preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
+              guard let id = self?.analytics.visitId/*, let user = self?.analytics.user, let name = user.name ?? user.userId*/ else { return }
+                self?.accuracyUploader?.upload(id: String(id) /*+ "_\(name)"*/, articleId: articleId, preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
                     Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
                 })
             })
@@ -185,18 +186,23 @@ internal class TT2Internal {
         
         navigation.positionKitManager.recordingPublisher
             .compactMap { $0 }
-            .sink(receiveValue: { (identifier ,data) in
-                self.createAWSData(identifier: identifier, data: data)
+            .sink(receiveValue: { (identifier, data) in
+                self.vpsIdentifier = identifier
+                self.vpsData = data
             })
             .store(in: &cancellable)
 
         recording.sendDataPublisher
-            .sink { (_) in
-                self.sendAWSData()
+            .sink { (metaData) in
+                self.sendAWSData(metaData)
             }.store(in: &cancellable)
     }
 
-    func sendAWSData() {
+    var vpsIdentifier: String?
+    var vpsData: String?
+    func sendAWSData(_ metaData: RecordingMetaData?) {
+        guard let identifier = vpsIdentifier, let data = vpsData else { return }
+        self.createAWSData(metaData: metaData, identifier: identifier, data: data)
         guard let stringDate = recordingStringDate, let time = recordingStringTime else {
 //            if recording.recorded {
 //                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.sendAWSData() }
@@ -205,7 +211,7 @@ internal class TT2Internal {
         }
 
         let folderName: String
-        if let user = self.user.getLastUser() {
+        if let user = metaData {
             let deviceName = user.deviceName ?? UIDevice.current.name
             if let name = user.name ?? user.userId, let route = user.route {
               folderName = "\(stringDate)/\(name)_\(deviceName)/ios/\(route)/\(time)/"
@@ -224,7 +230,7 @@ internal class TT2Internal {
 
     var recordingStringDate: String?
     var recordingStringTime: String?
-    func createAWSData(identifier: String, data: String) {
+    func createAWSData(metaData: RecordingMetaData?, identifier: String, data: String) {
         guard let store = position.store else { return }
         let date = Date()
         let uploadTimeFormatter = DateFormatter()
@@ -234,16 +240,16 @@ internal class TT2Internal {
         let stringDate = uploadDayFormatter.string(from: date)
         let time = uploadTimeFormatter.string(from: date)
         awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
-        let csvData = createCSVData(date: stringDate, time: time, serverUrl: config.centralServerConnection.serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
+        let csvData = createCSVData(metaData: metaData, date: stringDate, time: time, serverUrl: config.centralServerConnection.serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
         let fileName = "keywords\(time).csv"
         awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: csvData)
         recordingStringDate = stringDate
         recordingStringTime = time
     }
     
-    func createCSVData(date: String, time: String, serverUrl: String, clientId: String, storeid: String) -> String {
+    func createCSVData(metaData: RecordingMetaData?, date: String, time: String, serverUrl: String, clientId: String, storeid: String) -> String {
         var csvData = "day,name,device,route,time,gender,age,comments,serverUrl,clientID,storeID,activity\n"
-        guard let user = user.getLastUser() else { return csvData + "\(date),,,ios,,\(time),,,,\(serverUrl),\(clientId),\(storeid),,\n" }
+        guard let user = metaData else { return csvData + "\(date),,,ios,,\(time),,,,\(serverUrl),\(clientId),\(storeid),,\n" }
         let name = user.name ?? user.userId ?? ""
         let route = user.route ?? ""
         let gender = user.gender ?? ""

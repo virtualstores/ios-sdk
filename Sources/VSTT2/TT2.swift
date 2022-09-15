@@ -57,9 +57,15 @@ final public class TT2: ITT2 {
         analytics.eventManager
     }
     
-    public var userSettings: UserSettings {
+//    public var userSettings: UserSettings {
+//        guard let user = tt2Internal?.user else { fatalError("tt2Internal is not initialized") }
+//        
+//        return user
+//    }
+
+    public var user: UserController {
         guard let user = tt2Internal?.user else { fatalError("tt2Internal is not initialized") }
-        
+
         return user
     }
 
@@ -84,6 +90,7 @@ final public class TT2: ITT2 {
     private let config = EnvironmentConfig()
     private var tt2Internal: TT2Internal?
     private var floorHeightDiff: Double?
+    private var activeClient: Client?
 
     private var cancellable = Set<AnyCancellable>()
     private var wifiCancellable = Set<AnyCancellable>()
@@ -99,6 +106,20 @@ final public class TT2: ITT2 {
                 completion(error)
                 return
             }
+
+            guard
+              let client = self.tt2Internal?.internalClients.first(where: { $0.clientId == clientId }),
+              let serverAddress = client.dataServerUrl,
+              let apiKey = client.dataServerApiKey
+            else {
+              completion(VSTT2Error.missingData)
+              return
+            }
+
+            self.activeClient = client
+            let config = EnvironmentConfig()
+            config.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
+            self.user.setup(clientId: clientId, config: config)
             self.tt2Internal?.getStores(with: clientId, completion: { error in
                 completion(error)
             })
@@ -334,11 +355,13 @@ private extension TT2 {
     }
     
     private func setupAnalytics(for store: Store) {
-        let analyticsConfig = EnvironmentConfig()
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
-        
+        let analyticsConfig = EnvironmentConfig()
         analyticsConfig.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
         analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id, config: analyticsConfig)
+        if let client = activeClient {
+            user.setup(clientId: client.clientId, config: analyticsConfig)
+        }
     }
     
     private func setupAnalytics(with zoneData: [Int: ZoneData]?) {

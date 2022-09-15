@@ -32,7 +32,9 @@ public protocol ITT2 {
     var events: TT2EventManager { get }
     
     /// User Settings manager
-    var userSettings: UserSettings { get }
+//    var userSettings: UserSettings { get }
+
+    var user: UserController { get }
 
     /// Recording manager
     var recording: IRecording { get }
@@ -71,4 +73,5 @@ public protocol ITT2 {
 public enum VSTT2Error: Error {
     case noAvailableStores
     case noAvailableMapData
+    case missingData
 }
