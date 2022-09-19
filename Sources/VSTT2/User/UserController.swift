@@ -46,9 +46,9 @@ public class UserController {
   public func setUser(userId: String, completion: @escaping (Error?) -> Void) {
     if vpsProfile == nil {
       getUser(userId: userId, completion: completion)
+    } else {
+      setUser(userId, vpsProfile: nil, completion: completion)
     }
-
-    setUser(userId, vpsProfile: nil, completion: completion)
   }
 
   func setUser(_ userId: String, vpsProfile: VPSProfileDto?, completion: @escaping (Error?) -> Void) {

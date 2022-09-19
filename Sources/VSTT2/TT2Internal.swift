@@ -129,15 +129,13 @@ internal class TT2Internal {
                 self?.floorManager.onNewPostion(location: positionBundle.position)
                 self?.mapController?.updateUserLocation(newLocation: positionBundle.position, std: positionBundle.std)
                 self?.analytics.onNewPositionBundle(point: positionBundle.position)
-            }
-            .store(in: &cancellable)
+            }.store(in: &cancellable)
         
         navigation.positionKitManager.changedFloorPublisher
             .compactMap { $0 }
             .sink { [weak self] (data) in
                 self?.floorManager.onNewFloor(floor: data)
-            }
-            .store(in: &cancellable)
+            }.store(in: &cancellable)
         
         navigation.positionKitManager.directionPublisher
             .compactMap { $0 }
@@ -146,8 +144,7 @@ internal class TT2Internal {
             } receiveValue: { direction in
                 let heading = (self.vpsToMapboxAngle(angle: direction.angle + self.offset)).remainder(dividingBy: 360.0)
                 self.mapController?.updateUserDirection(newDirection: heading)
-            }
-            .store(in: &cancellable)
+            }.store(in: &cancellable)
         
         navigation.positionKitManager.realWorldOffsetPublisher
             .compactMap { $0 }
@@ -155,8 +152,7 @@ internal class TT2Internal {
                 Logger.init().log(message: "RealWorldOffsetPublisher noData")
             } receiveValue: { direction in
                 self.offset = direction.angle
-            }
-            .store(in: &cancellable)
+            }.store(in: &cancellable)
         
         navigation.accuracyPublisher
             .compactMap { $0 }
@@ -165,8 +161,7 @@ internal class TT2Internal {
                 self?.accuracyUploader?.upload(id: String(id) /*+ "_\(name)"*/, articleId: articleId, preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
                     Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
                 })
-            })
-            .store(in: &cancellable)
+            }).store(in: &cancellable)
 
         navigation.positionKitManager.deviceOrientationPublisher
             .compactMap { $0 }
@@ -189,8 +184,7 @@ internal class TT2Internal {
             .sink(receiveValue: { (identifier, data) in
                 self.vpsIdentifier = identifier
                 self.vpsData = data
-            })
-            .store(in: &cancellable)
+            }).store(in: &cancellable)
 
         recording.sendDataPublisher
             .sink { (metaData) in
