@@ -21,16 +21,17 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var zoneManager: TT2ZoneManager
     @Inject var eventManager: TT2EventManager
 
+    var config: EnvironmentConfig?
+    var accuracyUploader: AccuracyUploader?
     private var store: Store?
     private var uploadThreshold = 0
     var visitId: Int64?
+    var rtlsOptionId: Int64?
     private var cancellable = Set<AnyCancellable>()
     private var isRecording: Bool = false
-    private var rtlsOptionId: Int64?
     private var latestRecordedPosition = Date()
     /// now we are uploading positions each time when they are 100
     private var recordedPositionsCount = 0
-    private var config: EnvironmentConfig?
 
     public init() {}
 

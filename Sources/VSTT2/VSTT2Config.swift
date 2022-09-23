@@ -87,6 +87,10 @@ struct VSTT2Config: Config {
         injector.map(DeleteUserService.self) {
             DeleteUserService(with: NetworkManager())
         }
+
+        injector.map(UploadSyncEventsService.self) {
+            UploadSyncEventsService(with: NetworkManager())
+        }
     }
 
     private func configureManagers(_ injector: Injector) {

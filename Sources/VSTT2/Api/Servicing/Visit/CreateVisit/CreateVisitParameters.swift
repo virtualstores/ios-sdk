@@ -42,7 +42,7 @@ extension CreateVisitParameters: Routing {
 
     var path: String { "/visits" }
 
-    var parameters: [String: Any]? {
+    var parametersDictionary: [String: Any]? {
         let parameters = ["storeId": storeId,
                           "start": start,
                           "stop": stop,

@@ -36,7 +36,7 @@ extension UploadTriggersParameters: Routing {
     
     var path: String { "/triggerevents" }
     
-    var parameters: [String: Any]? {
+    var parametersDictionary: [String: Any]? {
         var parameters = ["name": request.name,
                           "timestamp": request.timeStamp,
                           "userPosition": [

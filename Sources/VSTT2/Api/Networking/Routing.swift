@@ -16,7 +16,9 @@ protocol Routing {
     /// Path for request
     var path: String { get }
     /// Needed parameters for request
-    var parameters: [String: Any]? { get }
+    var parametersDictionary: [String: Any]? { get }
+
+    var parametersAny: Any? { get }
 
     var queryItems: [String: String]? { get }
 
@@ -43,7 +45,9 @@ extension Routing {
 
     var path: String { "" }
 
-    var parameters: [String: Any]? { nil }
+    var parametersDictionary: [String: Any]? { nil }
+
+    var parametersAny: Any? { nil}
 
     var queryItems: [String: String]? { nil }
 
@@ -92,7 +96,7 @@ extension Routing {
             }
         }
 
-        if let parameters = self.parameters {
+        if let parameters = self.parametersDictionary {
             do {
                 urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
             } catch {
@@ -100,8 +104,16 @@ extension Routing {
                 logger.log(message: "parameters encoding issue")
                 #endif
             }
+        } else if let parameters = parametersAny {
+          do {
+              urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
+          } catch {
+              #if DEV
+              logger.log(message: "parameters encoding issue")
+              #endif
+          }
         }
-        print("urlRequest", urlRequest)
+//        print("urlRequest", urlRequest)
         return urlRequest
     }
 }

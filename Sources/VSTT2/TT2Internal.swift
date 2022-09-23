@@ -29,7 +29,6 @@ internal class TT2Internal {
     @Inject var itemPositionService: ItemPositionService
     @Inject var shelfGroupService: ShelfGroupService
     
-    var accuracyUploader: AccuracyUploader?
     var deviceOrientationUploader: DeviceOrientationUploader?
     var mapController: IMapController?
     var wifiController: IWiFiController?
@@ -153,15 +152,6 @@ internal class TT2Internal {
             } receiveValue: { direction in
                 self.offset = direction.angle
             }.store(in: &cancellable)
-        
-        navigation.accuracyPublisher
-            .compactMap { $0 }
-            .sink(receiveValue: { [weak self] (preScanLocation, scanLocation, offset, articleId) in
-              guard let id = self?.analytics.visitId/*, let user = self?.analytics.user, let name = user.name ?? user.userId*/ else { return }
-                self?.accuracyUploader?.upload(id: String(id) /*+ "_\(name)"*/, articleId: articleId, preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
-                    Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
-                })
-            }).store(in: &cancellable)
 
         navigation.positionKitManager.deviceOrientationPublisher
             .compactMap { $0 }
@@ -178,17 +168,33 @@ internal class TT2Internal {
                 })
             }.store(in: &cancellable)
 
-        
+
         navigation.positionKitManager.recordingPublisher
             .compactMap { $0 }
-            .sink(receiveValue: { (identifier, data) in
-                self.vpsIdentifier = identifier
-                self.vpsData = data
+            .sink(receiveValue: { [weak self] (identifier, data) in
+                self?.vpsIdentifier = identifier
+                self?.vpsData = data
+            }).store(in: &cancellable)
+
+        navigation.positionKitManager.modifiedUserPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (string) in
+                guard let id = self?.user.userId else { return }
+                self?.user.setUser(id, vpsProfile: VPSProfileDto(vpsProfile: string), completion: { (_) in })
+            }.store(in: &cancellable)
+        
+        navigation.accuracyPublisher
+            .compactMap { $0 }
+            .sink(receiveValue: { [weak self] (preScanLocation, scanLocation, offset, articleId) in
+                guard let id = self?.analytics.visitId/*, let user = self?.analytics.user, let name = user.name ?? user.userId*/ else { return }
+                self?.analytics.accuracyUploader?.upload(id: String(id) /*+ "_\(name)"*/, articleId: articleId, preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
+                    Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
+                })
             }).store(in: &cancellable)
 
         recording.sendDataPublisher
-            .sink { (metaData) in
-                self.sendAWSData(metaData)
+            .sink { [weak self] (metaData) in
+                self?.sendAWSData(metaData)
             }.store(in: &cancellable)
     }
 

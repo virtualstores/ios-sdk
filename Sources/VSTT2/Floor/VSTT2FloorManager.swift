@@ -23,24 +23,19 @@ public class VSTT2FloorManager: VSTT2Floor {
     public var pathFinder: VSPathFinder?
     public var zones: Data?
     public var triggerEvents: [TriggerEvent]?
-    public var zoneData: [Int : ZoneData] = [:]
+    public var zoneData: [Int64 : ZoneData] = [:]
     public var offsetZones: Data?
     public var navgraph: Data?
 
     public var switchFloorPublisher: CurrentValueSubject<(rtlsOptions: RtlsOptions, point: CGPoint)?, Never> = .init(nil)
     
-    public var startCode: PositionedCode? {
-        self.activeFloor?.scanLocations?.first(where: { $0.type == .start })
-    }
-    
-    public var stopCode: PositionedCode? {
-        self.activeFloor?.scanLocations?.first(where: { $0.type == .stop }) ?? startCode
-    }
+    public var startCode: PositionedCode? { activeFloor?.scanLocations?.first(where: { $0.type == .start }) }
+    public var stopCode: PositionedCode? { activeFloor?.scanLocations?.first(where: { $0.type == .stop }) ?? startCode }
+
+    var mapFence: [Int64: MapFence] = [:]
 
     private var cancellable = Set<AnyCancellable>()
     private let dispatchGroup = DispatchGroup()
-
-    private var mapFence: MapFence?
 
     init() {}
 
@@ -68,7 +63,7 @@ public class VSTT2FloorManager: VSTT2Floor {
         self.floors = rtlsOptions
     }
     
-    internal func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence?, zoneData: [Int: ZoneData]?)) -> ()) {
+    internal func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence?, zoneData: [Int64: ZoneData]?)) -> ()) {
         guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
                 
         self.activeFloor = rtlsOptions
@@ -93,38 +88,42 @@ public class VSTT2FloorManager: VSTT2Floor {
 }
 
 private extension VSTT2FloorManager {
-    private func getFloorData(completion: @escaping ((mapFence: MapFence?, zoneData: [Int: ZoneData]?)) -> ()) {
+    private func getFloorData(completion: @escaping ((mapFence: MapFence?, zoneData: [Int64: ZoneData]?)) -> ()) {
         getMapFenceData()
         getMapZones()
         getNavGraph()
         
         dispatchGroup.notify(queue: .main) {
-            if let mapFance = self.mapFence {
+            if let id = self.activeFloor?.id, let mapFance = self.mapFence[id] {
                 completion((mapFence: mapFance, zoneData: self.zoneData))
             }
         }
     }
     
     private func getMapFenceData() {
-        guard let url = self.activeFloor?.mapFenceUrl  else { return }
-        dispatchGroup.enter()
-        let parameters = MapFenceDataParameters(url: url)
-        mapFenceDataService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    print(error)
-                }
-            }, receiveValue: { [weak self] (data) in
-                self?.mapFence = data
-                self?.dispatchGroup.leave()
-            }).store(in: &cancellable)
+        guard mapFence.isEmpty else { return }
+        floors.forEach { (rtls) in
+            guard let url = rtls.mapFenceUrl else { return }
+            dispatchGroup.enter()
+            let parameters = MapFenceDataParameters(url: url)
+            mapFenceDataService
+                .call(with: parameters)
+                .sink(receiveCompletion: { (completion) in
+                    switch completion {
+                    case .finished:
+                        break
+                    case .failure(let error):
+                        print(error)
+                    }
+                }, receiveValue: { [weak self] (data) in
+                    self?.mapFence[rtls.id] = data
+                    self?.dispatchGroup.leave()
+                }).store(in: &cancellable)
+        }
     }
     
     private func getMapZones() {
+        guard zoneData.isEmpty else { return }
         floors.forEach { rtls in
           guard
             let mapZonesUrl = rtls.mapZonesUrl?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
@@ -137,7 +136,7 @@ private extension VSTT2FloorManager {
               case .success(let data):
                   let mapData = MapZoneParser.getMapZonesData(fromJsonData: data)
 
-                  self.zoneData[rtls.floorLevel] = mapData
+                  self.zoneData[rtls.id] = mapData
                   self.dispatchGroup.leave()
               case .failure(let error):
                   Logger(verbosity: .debug).log(message: error.localizedDescription)

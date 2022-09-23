@@ -36,7 +36,7 @@ extension PutUserParameters: Routing {
     ]
   }
 
-  var parameters: [String : Any]? {
+  var parametersDictionary: [String : Any]? {
 //    return [
 //      "id" : user.id,
 //      "userId" : user.userId,

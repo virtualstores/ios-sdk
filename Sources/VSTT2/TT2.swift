@@ -178,13 +178,13 @@ final public class TT2: ITT2 {
                   self?.position.setup(with: shelfGroups, config: config, store: currentStore)
                   group.leave()
               }
-              if let client = self.tt2Internal?.internalClients.first(where: { $0.clientId == currentStore.clientId }) {
-                  self.tt2Internal?.accuracyUploader = AccuracyUploader(store: currentStore, connection: self.config.centralServerConnection, client: client)
-                  self.tt2Internal?.deviceOrientationUploader = DeviceOrientationUploader(store: currentStore, connection: self.config.centralServerConnection, client: client)
-              }
 
               group.notify(queue: .main) {
                   self.setupMap()
+                  if let client = self.tt2Internal?.internalClients.first(where: { $0.clientId == currentStore.clientId }), let converter = self.coordinateConverter {
+                      self.tt2Internal?.analytics.accuracyUploader = AccuracyUploader(store: currentStore, connection: self.config.centralServerConnection, client: client, converter: converter)
+                      self.tt2Internal?.deviceOrientationUploader = DeviceOrientationUploader(store: currentStore, connection: self.config.centralServerConnection, client: client)
+                  }
               }
             case .failure(let error): completion(error)
             }
@@ -298,7 +298,7 @@ private extension TT2 {
         stopPosition: convertedAndFlippedStop
       )
       self.tt2Internal?.mapController?.loadMap(with: mapData)
-      let sharedProperties = floor.zoneData[rtls.floorLevel]?.sharedProperties
+      let sharedProperties = floor.zoneData[rtls.id]?.sharedProperties
       self.tt2Internal?.mapController?.setup(pathfinder: pathfinder, zones: zones, sharedProperties: sharedProperties, shelves: position.shelfGroups ?? [], changedFloor: changedFloor)
     }
 
@@ -364,7 +364,7 @@ private extension TT2 {
         }
     }
     
-    private func setupAnalytics(with zoneData: [Int: ZoneData]?) {
+    private func setupAnalytics(with zoneData: [Int64: ZoneData]?) {
         guard let rtlsOption = activeFloor, let store = activeStore, let zoneData = zoneData else { return }
 
         zoneData.forEach { (key, value) in

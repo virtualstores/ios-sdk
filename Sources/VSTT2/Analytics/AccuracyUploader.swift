@@ -5,22 +5,39 @@
 //  Created by Théodore Roos on 2022-03-22.
 //
 
+import Combine
 import Foundation
 import UIKit
+import VSFoundation
+import VSPositionKitTargets
 
 class AccuracyUploader {
+  @Inject var analytics: TT2AnalyticsManager
+  @Inject var syncEventsService: UploadSyncEventsService
+  @Inject var floorManager: VSTT2FloorManager
+
   let store: Store
   let connection: ServerConnection
   let client: Client
+  let converter: ICoordinateConverter
+
+  var config: EnvironmentConfig? { analytics.config }
+
+  private var cancellable = Set<AnyCancellable>()
 
   public enum Errors: Error {
     case uploadFailure(HTTPURLResponse)
   }
 
-  init(store: Store, connection: ServerConnection, client: Client) {
+  init(store: Store, connection: ServerConnection, client: Client, converter: ICoordinateConverter) {
     self.store = store
     self.connection = connection
     self.client = client
+    self.converter = converter
+  }
+
+  deinit {
+    cancellable.removeAll()
   }
 
   func upload(id: String, articleId: String, preScanLocation: CGPoint, offset: CGVector, scanLocation: CGPoint, errorHandler: @escaping (Error) -> Void) {
@@ -68,8 +85,8 @@ class AccuracyUploader {
 
     guard let url = urlComponents.url else { return }
 
-    //print(url)
-    let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
+//    print(url)
+    URLSession.shared.dataTask(with: url) {(data, response, error) in
       DispatchQueue.main.async {
         if let response = response as? HTTPURLResponse {
           switch response.statusCode {
@@ -80,9 +97,66 @@ class AccuracyUploader {
           errorHandler(error)
         }
       }
-    }
+    }.resume()
+//    URLSession.shared.dataTaskPublisher(for: url)
+//      .tryMap { element in
+//        if let response = element.response as? HTTPURLResponse {
+//          switch response.statusCode {
+//          case 200...299: break
+//          default: errorHandler(Errors.uploadFailure(response))
+//          }
+//        }
+//      }//.mapError { errorHandler($0 as Error) }
 
-    task.resume()
+
+    guard
+      let visitId = analytics.visitId,
+      let rtlsOptionsId = analytics.rtlsOptionId,
+      let mapFence = floorManager.mapFence[rtlsOptionsId],
+      let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
+    else { return }
+
+    let preScanLocationInPixels = preScanLocation.fromMeterToPixel(converter: converter)
+    let scanLocationInPixels = scanLocation.fromMeterToPixel(converter: converter)
+    let isRightAisle = mapFenceData.isRightAisle(p1: preScanLocationInPixels, p2: scanLocationInPixels)
+
+    let event = SyncEvent(
+      rtlsOptionsId: rtlsOptionsId,
+      identifier: articleId,
+      isRightAisle: isRightAisle,
+      isFloorSwap: false,
+      didSync: true,
+      rescueModeCountSinceLastSync: 0,
+      stepDataDistanceSinceLastSyncInMeters: 0,
+      userToSyncPositionDistanceInMeters: 0,
+      errorAngleInDegrees: 0,
+      timestamp: Date(),
+      userPositionInMeters: preScanLocation,
+      syncPositionInMeters: scanLocation,
+      syncPositionOffsetsInMeters: offset,
+      tags: [:]
+    )
+    let parameters = UploadSyncEventsParameters(
+      config: config,
+      visitId: visitId,
+      requestId: UUID().uuidString.uppercased(),
+      event: event
+    )
+    upload(parameters: parameters)
+  }
+
+  func upload(parameters: UploadSyncEventsParameters) {
+    syncEventsService
+      .call(with: parameters)
+      .sink { (result) in
+        switch result {
+        case .finished: break
+        case .failure(let error):
+          Logger(verbosity: .debug).log(message: "AccuracyUploaderError \(error)")
+        }
+      } receiveValue: { (_) in
+
+      }.store(in: &cancellable)
   }
 }
 
@@ -102,7 +176,7 @@ extension URLQueryItem {
     case clientId = "entry.1270289197"
     case storeId = "entry.1258341166"
     case visitId = "entry.788993633"
-//    case combinedInfo = "entry.234712389"
+    //    case combinedInfo = "entry.234712389"
   }
 
   init(entry: EntryIDs, value: String) {

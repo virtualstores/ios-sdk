@@ -27,7 +27,7 @@ extension OrdersParameters: Routing {
 
     var path: String { "/orders" }
 
-    var parameters: [String: Any]? {
+    var parametersDictionary: [String: Any]? {
         let parameters = ["storeId": storeId,
                           "orderIds": orderIds,
                           "device": ["id": deviceInformation.id,

@@ -33,7 +33,7 @@ extension UploadPositionsParameters: Routing {
         return parameters
     }
 
-    var parameters: [String: Any]? {
+    var parametersDictionary: [String: Any]? {
         let parameters = ["positionGrps": positionGrps.asDictionary()] as [String: Any]
 
         return parameters

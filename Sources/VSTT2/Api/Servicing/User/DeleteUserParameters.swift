@@ -36,7 +36,7 @@ extension DeleteUserParameters: Routing {
     ]
   }
 
-  var parameters: [String : Any]? {
+  var parametersDictionary: [String : Any]? {
     vpsProfile?.asDictionary()
   }
 }
