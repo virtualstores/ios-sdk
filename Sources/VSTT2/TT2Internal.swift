@@ -175,6 +175,34 @@ internal class TT2Internal {
                 self?.vpsIdentifier = identifier
                 self?.vpsData = data
             }).store(in: &cancellable)
+        navigation.positionKitManager.recordingPublisherPartial
+            .compactMap { $0 }
+            .sink(receiveValue: { [weak self] (identifier, data) in
+//                self?.vpsIdentifier = identifier
+//                self?.vpsData = data
+                let date = Date()
+                let uploadTimeFormatter = DateFormatter()
+                let uploadDayFormatter = DateFormatter()
+                uploadTimeFormatter.dateFormat = "HHmmss"
+                uploadDayFormatter.dateFormat = "yyMMdd"
+                let stringDate = uploadDayFormatter.string(from: date)
+                let time = uploadTimeFormatter.string(from: date)
+                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
+            }).store(in: &cancellable)
+        navigation.positionKitManager.recordingPublisherEnd
+            .compactMap { $0 }
+            .sink(receiveValue: { [weak self] (identifier, data) in
+                self?.vpsIdentifier = identifier
+                self?.vpsData = data
+                let date = Date()
+                let uploadTimeFormatter = DateFormatter()
+                let uploadDayFormatter = DateFormatter()
+                uploadTimeFormatter.dateFormat = "HHmmss"
+                uploadDayFormatter.dateFormat = "yyMMdd"
+                let stringDate = uploadDayFormatter.string(from: date)
+                let time = uploadTimeFormatter.string(from: date)
+                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
+            }).store(in: &cancellable)
 
         navigation.positionKitManager.modifiedUserPublisher
             .compactMap { $0 }
@@ -239,7 +267,6 @@ internal class TT2Internal {
         uploadDayFormatter.dateFormat = "yyMMdd"
         let stringDate = uploadDayFormatter.string(from: date)
         let time = uploadTimeFormatter.string(from: date)
-        awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
         let csvData = createCSVData(metaData: metaData, date: stringDate, time: time, serverUrl: config.centralServerConnection.serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
         let fileName = "keywords\(time).csv"
         awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: csvData)

@@ -77,7 +77,8 @@ public class AWSS3UploadManager {
   }
 
   func sendCollectedDataToS3(status: AWSRecordObject.Status = .pending, folderName: String = "") {
-    let arr = getAllRecordedObject().filter { $0.status == status.rawValue } + getAllRecordedObject().filter { $0.status == AWSRecordObject.Status.inProgress.rawValue }
+    let objects = getAllRecordedObject()
+    let arr = objects.filter { $0.status == status.rawValue } + objects.filter { $0.status == AWSRecordObject.Status.inProgress.rawValue } + objects.filter { $0.status == AWSRecordObject.Status.failed.rawValue }
     arr.forEach { (object) in
       if let id = object.identifier, let convertedData = object.data?.data(using: .utf8) {
         self.sendToS3(AWSS3Key: .dataAnalyze, key: object.folderName ?? folderName, identifier: id, data: convertedData)
@@ -164,7 +165,7 @@ public class AWSS3UploadManager {
 
   private func sendToS3(AWSS3Key: AWSS3Keys, key: String, identifier: String, data: Data) {
     let splitIdentifier = identifier.split(separator: ".")
-    let strippedIdentifier = splitIdentifier[0].components(separatedBy: CharacterSet.decimalDigits).joined()
+    let strippedIdentifier = splitIdentifier[0]
     var fileExtension = ".json"
     if splitIdentifier.count > 1 {
       fileExtension = "." + String(splitIdentifier[splitIdentifier.capacity - 1])
@@ -197,7 +198,7 @@ public class AWSS3UploadManager {
         } else {
           Logger(verbosity: .info).log(message: "Successfully uploaded \(identifier) to S3")
           self.updateRecordsAfter(uploadingFailed: false, identifier: identifier, key: key)
-          if self.getAllRecordedObject().count == 0 {
+          if self.getAllRecordedObject().filter({ $0.status == AWSRecordObject.Status.inProgress.rawValue }).count == 0 {
             DispatchQueue.main.async { self.dataUploadedPublisher.send(true) }
           }
         }
