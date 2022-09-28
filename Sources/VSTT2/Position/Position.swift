@@ -65,7 +65,7 @@ public class Position: IPosition {
                   var itemPositions: [ItemPosition] = []
                   data.forEach { (position) in
                     guard let point = position.itemPosition, let offset = position.itemPositionOffset, let floorLevelId = store.rtlsOptions.first(where: { $0.id == (position.rtlsOptionsId ?? -1) })?.id else { return }
-                    itemPositions.append(ItemPosition(point: point, offset: offset, floorLevelId: floorLevelId, shelfId: position.shelfId, shelfName: "undefined"))
+                    itemPositions.append(ItemPosition(point: point, offset: offset, floorLevelId: floorLevelId, shelfId: position.shelfId, identifier: position.barcode))
                   }
                   let item = Item(name: "", externalId: barcode, itemPositions: itemPositions)
                   self?.barcodePositions.append(item)

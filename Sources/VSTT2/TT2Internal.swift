@@ -204,6 +204,12 @@ internal class TT2Internal {
                 self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
             }).store(in: &cancellable)
 
+        navigation.positionKitManager.rescueModePublisher
+          .compactMap { $0 }
+          .sink { [weak self] (_) in
+            self?.analytics.accuracyUploader?.numberOfRescueModes += 1
+          }.store(in: &cancellable)
+
         navigation.positionKitManager.modifiedUserPublisher
             .compactMap { $0 }
             .sink { [weak self] (string) in
@@ -213,9 +219,9 @@ internal class TT2Internal {
         
         navigation.accuracyPublisher
             .compactMap { $0 }
-            .sink(receiveValue: { [weak self] (preScanLocation, scanLocation, offset, articleId) in
+            .sink(receiveValue: { [weak self] (preScanLocation, position) in
                 guard let id = self?.analytics.visitId/*, let user = self?.analytics.user, let name = user.name ?? user.userId*/ else { return }
-                self?.analytics.accuracyUploader?.upload(id: String(id) /*+ "_\(name)"*/, articleId: articleId, preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
+                self?.analytics.accuracyUploader?.upload(id: String(id) /*+ "_\(name)"*/, preScanLocation: preScanLocation, position: position, errorHandler: { (error) in
                     Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
                 })
             }).store(in: &cancellable)
@@ -326,23 +332,6 @@ internal class TT2Internal {
                 }
             }, receiveValue: {_ in
                 
-            }).store(in: &cancellable)
-    }
-    
-    func getItemPosition(storeId: Int64, itemId: String) {
-        let parameters = ItemPositionParameters(storeId: storeId, barcode: itemId, config: config)
-        
-        itemPositionService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
-                }
-            }, receiveValue: { data in
-                print(data)
             }).store(in: &cancellable)
     }
     

@@ -71,9 +71,9 @@ public extension ShelfGroupDto {
         let itemPosition =  ItemPosition(
             xPosition: dto.itemPositionX ?? 0.0, yPosition: dto.itemPositionY ?? 0.0,
             offsetX: dto.itemPositionOffsetX ?? 0.0, offsetY: dto.itemPositionOffsetY ?? 0.0,
-            floorLevelId: dto.floorLevelId ?? -1,
+            floorLevelId: dto.floorLevelId,
             shelfId: dto.shelfGroupId,
-            shelfName: dto.name
+            identifier: dto.name
         )
 
         return ShelfGroup(id: dto.shelfGroupId ?? 0,

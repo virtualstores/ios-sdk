@@ -344,14 +344,7 @@ private extension TT2 {
 
         let properties = ZoneProperties(description: nil, id: name, name: name, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
         self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevelId: rtlsOption.id, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
-
-        #if DEBUG
-        let shouldRecord = false
-        #else
-        let shouldRecord = false
-        #endif
-
-        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, shouldRecord: shouldRecord)
+        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, parameterPackage: .retail)
     }
     
     private func setupAnalytics(for store: Store) {

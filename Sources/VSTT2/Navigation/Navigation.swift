@@ -16,7 +16,7 @@ final public class Navigation: INavigation {
     private(set) var positionKitManager: PositionManager
     public private(set) var isActive: Bool = false
 
-    var accuracyPublisher: CurrentValueSubject<(preScanLocation: CGPoint, scanLocation: CGPoint, offset: CGVector, articleId: String)?,Never> = .init(nil)
+    var accuracyPublisher: CurrentValueSubject<(preScanLocation: CGPoint, position: ItemPosition)?,Never> = .init(nil)
 
     var currentAccessPointPosition: CGPoint = .zero
 
@@ -41,13 +41,15 @@ public extension Navigation {
     func start(startPosition: CGPoint, startAngle: Double) throws {
         guard !isActive else {
             self.stop()
+            var err: Error?
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
               do {
                 try self.start(startPosition: startPosition, startAngle: startAngle)
               } catch {
-                print(error)
+                err = error
               }
             }
+            if let error = err { throw error }
             return
         }
 
@@ -71,19 +73,21 @@ public extension Navigation {
         prepareAccuracyUpload(position: position)
         let angle = atan2(-position.offsetPoint.y, -position.offsetPoint.x)*180.0/Double.pi
 
-        positionKitManager.syncPosition(xPosition: position.point.x, yPosition: position.point.y, startAngle: angle, syncPosition: forceSync, syncAngle: syncRotation, uncertainAngle: false)
+        positionKitManager.syncPosition(xPosition: position.pointWithOffset.x, yPosition: position.pointWithOffset.y, startAngle: angle, syncPosition: forceSync, syncAngle: syncRotation, uncertainAngle: false)
     }
 
     func start(startPosition: CGPoint) throws {
         guard let heading = self.heading, !isActive else {
             self.stop()
+            var err: Error?
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
               do {
                 try self.start(startPosition: startPosition)
               } catch {
-                print(error)
+                err = error
               }
             }
+            if let error = err { throw error }
             return
         }
 
@@ -98,9 +102,9 @@ public extension Navigation {
         userStartAngle = heading
     }
 
-    func syncPosition(position: ItemPosition) throws  {
+    func syncPosition(position: ItemPosition, forceSync: Bool = false) throws  {
         guard let heading = self.heading, isActive else {
-            try self.start(startPosition: position.point)
+            try self.start(startPosition: position.pointWithOffset)
             return
         }
 
@@ -109,7 +113,7 @@ public extension Navigation {
         if let startLocationAngle = self.startWithAngle(startPosition: position.point) {
             positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: startLocationAngle, syncPosition: true, syncAngle: true, uncertainAngle: false)
         } else {
-            let syncingWithCompass = doCompassStart(point: position.point) && !hasStartLocationAngle
+            let syncingWithCompass = forceSync ? forceSync : doCompassStart(point: position.point) && !hasStartLocationAngle
             positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)
         }
     }
@@ -159,15 +163,8 @@ extension Navigation {
 private extension Navigation {
     func prepareAccuracyUpload(position: ItemPosition) {
         guard let preScanLocation = positionKitManager.positionPublisher.value?.position else { return }
-        let shelfId: String
-        if let id = position.shelfId {
-            shelfId = String(id)
-        } else {
-            shelfId = "undefined"
-        }
-        let shelfName = position.shelfName ?? "undefined"
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.accuracyPublisher.send((preScanLocation: preScanLocation, scanLocation: position.point, offset: position.offset, articleId: "ShelfID: \(shelfId), ShelfName: \(shelfName)"))
+            self.accuracyPublisher.send((preScanLocation: preScanLocation, position))
         }
     }
 
@@ -190,6 +187,6 @@ private extension Navigation {
 
 extension CGPoint {
     func distance(to point: CGPoint) -> CGFloat {
-        return sqrt(pow(self.x - point.x, 2) + pow(self.y - point.y, 2))
+        sqrt(pow(x - point.x, 2) + pow(y - point.y, 2))
     }
 }

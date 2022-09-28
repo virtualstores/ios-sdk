@@ -23,6 +23,8 @@ class AccuracyUploader {
 
   var config: EnvironmentConfig? { analytics.config }
 
+  var numberOfRescueModes: Int64 = 0
+
   private var cancellable = Set<AnyCancellable>()
 
   public enum Errors: Error {
@@ -40,7 +42,7 @@ class AccuracyUploader {
     cancellable.removeAll()
   }
 
-  func upload(id: String, articleId: String, preScanLocation: CGPoint, offset: CGVector, scanLocation: CGPoint, errorHandler: @escaping (Error) -> Void) {
+  func upload(id: String, preScanLocation: CGPoint, position: ItemPosition, errorHandler: @escaping (Error) -> Void) {
     guard
       let serverAddress = connection.serverAddress,
       let clientName = client.name,
@@ -51,6 +53,7 @@ class AccuracyUploader {
     var urlComponents = URLComponents()
 
     // Ternary operator
+    let offset = position.offset
     let dx = abs(offset.dx) > 0.02 ? offset.dx : 0.0
     let dy = abs(offset.dy) > 0.02 ? offset.dy : 0.0
 
@@ -68,13 +71,13 @@ class AccuracyUploader {
 
     urlComponents.queryItems = [
       URLQueryItem(entry: .sessionId, value: id),
-      URLQueryItem(entry: .articleId, value: articleId),
+      URLQueryItem(entry: .articleId, value: position.identifier),
       URLQueryItem(entry: .preScanLocationX, value: "\(preScanLocation.x)"),
       URLQueryItem(entry: .preScanLocationY, value: "\(preScanLocation.y)"),
       URLQueryItem(entry: .offsetX, value: "\(dx)"),
       URLQueryItem(entry: .offsetY, value: "\(dy)"),
-      URLQueryItem(entry: .scanLocationX, value: "\(scanLocation.x)"),
-      URLQueryItem(entry: .scanLocationY, value: "\(scanLocation.y)"),
+      URLQueryItem(entry: .scanLocationX, value: "\(position.point.x)"),
+      URLQueryItem(entry: .scanLocationY, value: "\(position.point.y)"),
       URLQueryItem(entry: .appVersion, value: "\(appVersion) (\(buildNumber)), \(systemName) \(systemVersion), \(modelName)"),
       URLQueryItem(entry: .positionKitVersion, value: "PositionKit: 0.0.8"),//\(positionKitVersion)"),
       URLQueryItem(entry: .serverUrl, value: "\(serverAddress)"),
@@ -117,24 +120,28 @@ class AccuracyUploader {
     else { return }
 
     let preScanLocationInPixels = preScanLocation.fromMeterToPixel(converter: converter)
-    let scanLocationInPixels = scanLocation.fromMeterToPixel(converter: converter)
+    let scanLocationInPixels = position.point.fromMeterToPixel(converter: converter)
     let isRightAisle = mapFenceData.isRightAisle(p1: preScanLocationInPixels, p2: scanLocationInPixels)
 
+    var tags = ["identifier": position.identifier]
+    if let shelfId = position.shelfId {
+      tags["shelfId"] = String(shelfId)
+    }
     let event = SyncEvent(
       rtlsOptionsId: rtlsOptionsId,
-      identifier: articleId,
+      identifier: position.identifier,
       isRightAisle: isRightAisle,
       isFloorSwap: false,
       didSync: true,
-      rescueModeCountSinceLastSync: 0,
+      rescueModeCountSinceLastSync: numberOfRescueModes,
       stepDataDistanceSinceLastSyncInMeters: 0,
-      userToSyncPositionDistanceInMeters: 0,
+      userToSyncPositionDistanceInMeters: calculateDistance(p1: preScanLocation, p2: position.point),
       errorAngleInDegrees: 0,
       timestamp: Date(),
       userPositionInMeters: preScanLocation,
-      syncPositionInMeters: scanLocation,
+      syncPositionInMeters: position.point,
       syncPositionOffsetsInMeters: offset,
-      tags: [:]
+      tags: tags
     )
     let parameters = UploadSyncEventsParameters(
       config: config,
@@ -157,6 +164,14 @@ class AccuracyUploader {
       } receiveValue: { (_) in
 
       }.store(in: &cancellable)
+  }
+
+  func calculateDistance(p1: CGPoint, p2: CGPoint) -> Double {
+    print("distance1",p1.distance(to: p2))
+    let x = p2.x - p1.x
+    let y = p2.y - p1.y
+    print("distance2", (pow(x, 2) + pow(y, 2)).squareRoot())
+    return (pow(x, 2) + pow(y, 2)).squareRoot()
   }
 }
 
