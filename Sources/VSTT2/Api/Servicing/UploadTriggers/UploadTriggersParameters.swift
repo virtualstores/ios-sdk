@@ -27,6 +27,8 @@ public struct UploadTriggersParameters {
 
 extension UploadTriggersParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
+
+    var method: RequestType { .POST }
     
     var queryItems: [String: String]? {
         let parameters = ["requestId": requestId, "visitId": String(visitId)] as [String: String]

@@ -24,7 +24,6 @@ class DeviceOrientationUploader {
   }
 
   func upload(id: String, visitId: Int64, deviceOrientation: String, currentLocation: CGPoint, direction: Double, errorHandler: @escaping (Error) -> Void) {
-    print(#function, "Test to upload")
     guard
       let serverAddress = connection.serverAddress,
       let clientName = client.name,

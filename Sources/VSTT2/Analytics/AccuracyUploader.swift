@@ -15,6 +15,7 @@ class AccuracyUploader {
   @Inject var analytics: TT2AnalyticsManager
   @Inject var syncEventsService: UploadSyncEventsService
   @Inject var floorManager: VSTT2FloorManager
+  @Inject var persistence: Persistence
 
   let store: Store
   let connection: ServerConnection
@@ -135,7 +136,7 @@ class AccuracyUploader {
       didSync: true,
       rescueModeCountSinceLastSync: numberOfRescueModes,
       stepDataDistanceSinceLastSyncInMeters: 0,
-      userToSyncPositionDistanceInMeters: calculateDistance(p1: preScanLocation, p2: position.point),
+      userToSyncPositionDistanceInMeters: preScanLocation.distance(to: position.point),
       errorAngleInDegrees: 0,
       timestamp: Date(),
       userPositionInMeters: preScanLocation,
@@ -152,7 +153,15 @@ class AccuracyUploader {
     upload(parameters: parameters)
   }
 
-  func upload(parameters: UploadSyncEventsParameters) {
+  func upload(parameters: UploadSyncEventsParameters, retry: Bool = false) {
+    if !retry {
+      var parameters = parameters.asPersistence
+      do {
+        try self.persistence.save(&parameters)
+      } catch {
+        Logger(verbosity: .error).log(message: "UploadSyncEventsParametersSaveError \(error)")
+      }
+    }
     syncEventsService
       .call(with: parameters)
       .sink { (result) in
@@ -162,16 +171,25 @@ class AccuracyUploader {
           Logger(verbosity: .debug).log(message: "AccuracyUploaderError \(error)")
         }
       } receiveValue: { (_) in
-
+        let parameters = parameters.asPersistence
+        do {
+          try self.persistence.delete(parameters)
+        } catch {
+          Logger(verbosity: .error).log(message: "UploadSyncEventsParametersDeleteError \(error)")
+        }
       }.store(in: &cancellable)
   }
 
-  func calculateDistance(p1: CGPoint, p2: CGPoint) -> Double {
-    print("distance1",p1.distance(to: p2))
-    let x = p2.x - p1.x
-    let y = p2.y - p1.y
-    print("distance2", (pow(x, 2) + pow(y, 2)).squareRoot())
-    return (pow(x, 2) + pow(y, 2)).squareRoot()
+  func retryFailed() {
+    let objects = getAllSyncEventObjects()
+    objects.forEach { (object) in
+      guard let parameters = object.asParameters else { return }
+      upload(parameters: parameters, retry: true)
+    }
+  }
+
+  func getAllSyncEventObjects() -> [UploadSyncEventsParametersPersistence] {
+    persistence.get(arrayOf: UploadSyncEventsParametersPersistence.self)
   }
 }
 
@@ -196,5 +214,80 @@ extension URLQueryItem {
 
   init(entry: EntryIDs, value: String) {
     self.init(name: entry.rawValue, value: value)
+  }
+}
+
+extension UploadSyncEventsParameters {
+  var asPersistence: UploadSyncEventsParametersPersistence {
+    let event = UploadSyncEventsParametersPersistence()
+    event.apiKey = config?.centralServerConnection.apiKey
+    event.serverAddress = config?.centralServerConnection.serverAddress
+    event.mqttAddress = config?.centralServerConnection.mqttAddress
+    event.storeId = config?.centralServerConnection.storeId
+
+    event.visitId = visitId
+    event.requestId = requestId
+
+    event.rtlsOptionsId = self.event.rtlsOptionsId
+    event.identifier = self.event.identifier
+    event.isRightAisle = self.event.isRightAisle
+    event.isFloorSwap = self.event.isFloorSwap
+    event.didSync = self.event.didSync
+    event.rescueModeCountSinceLastSync = self.event.rescueModeCountSinceLastSync
+    event.stepDataDistanceSinceLastSyncInMeters = self.event.stepDataDistanceSinceLastSyncInMeters
+    event.userToSyncPositionDistanceInMeters = self.event.userToSyncPositionDistanceInMeters
+    event.errorAngleInDegrees = self.event.errorAngleInDegrees
+    event.timestamp = self.event.timestamp
+    event.userPositionInMeters = self.event.userPositionInMeters
+    event.syncPositionInMeters = self.event.syncPositionInMeters
+    event.syncPositionOffsetsInMeters = self.event.syncPositionOffsetsInMeters
+    event.tags = self.event.tags
+    return event
+  }
+}
+
+extension UploadSyncEventsParametersPersistence {
+  var asParameters: UploadSyncEventsParameters? {
+    guard
+      let visitId = visitId,
+      let requestId = requestId,
+      let rtlsOptionsId = rtlsOptionsId,
+      let identifier = identifier,
+      let isRightAisle = isRightAisle,
+      let isFloorSwap = isFloorSwap,
+      let didSync = didSync,
+      let rescueModeCountSinceLastSync = rescueModeCountSinceLastSync,
+      let stepDataDistanceSinceLastSyncInMeters = stepDataDistanceSinceLastSyncInMeters,
+      let userToSyncPositionDistanceInMeters = userToSyncPositionDistanceInMeters,
+      let errorAngleInDegrees = errorAngleInDegrees,
+      let timestamp = timestamp,
+      let userPositionInMeters = userPositionInMeters,
+      let syncPositionInMeters = syncPositionInMeters,
+      let syncPositionOffsetsInMeters = syncPositionOffsetsInMeters,
+      let tags = tags
+    else { return nil }
+    let config = EnvironmentConfig()
+    config.centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: serverAddress, mqttAddress: mqttAddress, storeId: storeId)
+    return UploadSyncEventsParameters(
+      config: config,
+      visitId: visitId,
+      requestId: requestId,
+      event: SyncEvent(
+        rtlsOptionsId: rtlsOptionsId,
+        identifier: identifier,
+        isRightAisle: isRightAisle,
+        isFloorSwap: isFloorSwap,
+        didSync: didSync,
+        rescueModeCountSinceLastSync: rescueModeCountSinceLastSync,
+        stepDataDistanceSinceLastSyncInMeters: stepDataDistanceSinceLastSyncInMeters,
+        userToSyncPositionDistanceInMeters: userToSyncPositionDistanceInMeters,
+        errorAngleInDegrees: errorAngleInDegrees,
+        timestamp: timestamp,
+        userPositionInMeters: userPositionInMeters,
+        syncPositionInMeters: syncPositionInMeters,
+        syncPositionOffsetsInMeters: syncPositionOffsetsInMeters,
+        tags: tags
+      )
+    )
   }
 }

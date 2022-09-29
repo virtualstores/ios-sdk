@@ -8,13 +8,13 @@
 import Foundation
 import VSFoundation
 
-public struct OrdersParameters {
+struct OrdersParameters {
     private let config: EnvironmentConfig
     private let storeId: Int64
     private let orderIds: [String]
     private let deviceInformation: DeviceInformation
 
-    public init( storeId: Int64, orderIds: [String], deviceInformation: DeviceInformation, config: EnvironmentConfig) {
+    init(storeId: Int64, orderIds: [String], deviceInformation: DeviceInformation, config: EnvironmentConfig) {
         self.storeId = storeId
         self.orderIds = orderIds
         self.deviceInformation = deviceInformation
@@ -24,6 +24,8 @@ public struct OrdersParameters {
 
 extension OrdersParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
+
+    var method: RequestType { .POST }
 
     var path: String { "/orders" }
 

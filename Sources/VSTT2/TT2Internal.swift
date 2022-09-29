@@ -185,8 +185,6 @@ internal class TT2Internal {
                 let uploadDayFormatter = DateFormatter()
                 uploadTimeFormatter.dateFormat = "HHmmss"
                 uploadDayFormatter.dateFormat = "yyMMdd"
-                let stringDate = uploadDayFormatter.string(from: date)
-                let time = uploadTimeFormatter.string(from: date)
                 self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
             }).store(in: &cancellable)
         navigation.positionKitManager.recordingPublisherEnd
@@ -199,8 +197,6 @@ internal class TT2Internal {
                 let uploadDayFormatter = DateFormatter()
                 uploadTimeFormatter.dateFormat = "HHmmss"
                 uploadDayFormatter.dateFormat = "yyMMdd"
-                let stringDate = uploadDayFormatter.string(from: date)
-                let time = uploadTimeFormatter.string(from: date)
                 self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
             }).store(in: &cancellable)
 
@@ -246,16 +242,13 @@ internal class TT2Internal {
 
         let folderName: String
         if let user = metaData {
+            let name = user.name ?? user.userId ?? "undefined"
+            let activity = user.activity ?? "undefinedMode"
+            let route = user.route ?? "undefinedRoute"
             let deviceName = user.deviceName ?? UIDevice.current.name
-            if let name = user.name ?? user.userId, let route = user.route {
-              folderName = "\(stringDate)/\(name)_\(deviceName)/ios/\(route)/\(time)/"
-            } else if let name = user.name ?? user.userId {
-              folderName = "\(stringDate)/\(name)_\(deviceName)/ios/undefinedRoute/\(time)/"
-            } else {
-              folderName = "\(stringDate)/undefined/ios/undefinedRoute/\(time)/"
-            }
+            folderName = "\(stringDate)/\(name)_\(deviceName)/ios/\(activity)/\(route)/\(time)/"
         } else {
-            folderName = "\(stringDate)/undefined/ios/undefinedRoute/\(time)/"
+            folderName = "\(stringDate)/undefined/ios/undefinedMode/undefinedRoute/\(time)/"
         }
         awsS3UploadManager.sendCollectedDataToS3(folderName: folderName)
         recordingStringDate = nil

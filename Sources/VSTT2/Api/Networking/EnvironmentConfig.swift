@@ -16,7 +16,8 @@ public class EnvironmentConfig {
         case v2 = "api/v2"
     }
 
-    public var centralServerConnection: ServerConnection {
+    var centralServerConnection: ServerConnection {
+        set { _centralServerConnection = newValue }
         get {
             guard let config = _centralServerConnection else { fatalError("ServerConnection not initialized") }
 
@@ -25,7 +26,7 @@ public class EnvironmentConfig {
     }
     
     private var _analyticsServerConnection: ServerConnection?
-    public var analyticsServerConnection: ServerConnection {
+    var analyticsServerConnection: ServerConnection {
         get {
             guard let config = _analyticsServerConnection else { fatalError("ServerConnection not initialized") }
 

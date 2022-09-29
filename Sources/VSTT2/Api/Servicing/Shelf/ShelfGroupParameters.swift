@@ -8,12 +8,12 @@
 import Foundation
 import VSFoundation
 
-public struct ShelfGroupParameters {
+struct ShelfGroupParameters {
     private let config: EnvironmentConfig
     private let storeId: Int64
     private let rtlsOptionsId: Int64
 
-    public init(storeId: Int64, rtlsOptionsId: Int64, config: EnvironmentConfig) {
+    init(storeId: Int64, rtlsOptionsId: Int64, config: EnvironmentConfig) {
         self.config = config
         self.storeId = storeId
         self.rtlsOptionsId = rtlsOptionsId
@@ -22,6 +22,8 @@ public struct ShelfGroupParameters {
 
 extension ShelfGroupParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
+
+    var method: RequestType { .GET }
 
     var path: String { "/shelfgroups" }
 
@@ -33,6 +35,4 @@ extension ShelfGroupParameters: Routing {
 
         return parameters
     }
-
-    var method: RequestType { .GET }
 }

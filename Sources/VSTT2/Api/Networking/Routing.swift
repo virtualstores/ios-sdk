@@ -9,16 +9,19 @@ import Foundation
 import VSFoundation
 
 protocol Routing {
-    /// Base url
-    var baseURL: String { get }
+    /// Environment config data
+    var environmentConfig: EnvironmentConfig? { get }
+
     /// Request type
     var method: RequestType { get }
+    /// Base url
+    var baseURL: String { get }
     /// Path for request
     var path: String { get }
     /// Needed parameters for request
     var parametersDictionary: [String: Any]? { get }
 
-    var parametersAny: Any? { get }
+    var parameters: Any? { get }
 
     var queryItems: [String: String]? { get }
 
@@ -28,26 +31,18 @@ protocol Routing {
     var headers: [String: String]? { get }
     /// Final UrlRequest
     var urlRequest: URLRequest? { get }
-    /// Environment config data
-    var environmentConfig: EnvironmentConfig? { get }
 }
 
 extension Routing {
-    var environmentConfig: EnvironmentConfig? { nil }
-
     var baseURL: String {
         guard let url = environmentConfig?.centralServerConnection.serverAddress else { fatalError("baseURL is not exist") }
         
         return url
     }
 
-    var method: RequestType { .POST }
-
-    var path: String { "" }
-
     var parametersDictionary: [String: Any]? { nil }
 
-    var parametersAny: Any? { nil}
+    var parameters: Any? { nil }
 
     var queryItems: [String: String]? { nil }
 
@@ -104,7 +99,7 @@ extension Routing {
                 logger.log(message: "parameters encoding issue")
                 #endif
             }
-        } else if let parameters = parametersAny {
+        } else if let parameters = parameters {
           do {
               urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
           } catch {
@@ -113,7 +108,6 @@ extension Routing {
               #endif
           }
         }
-//        print("urlRequest", urlRequest)
         return urlRequest
     }
 }
