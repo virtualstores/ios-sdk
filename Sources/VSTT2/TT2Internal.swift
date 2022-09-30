@@ -168,7 +168,6 @@ internal class TT2Internal {
                 })
             }.store(in: &cancellable)
 
-
         navigation.positionKitManager.recordingPublisher
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data) in
@@ -212,6 +211,11 @@ internal class TT2Internal {
                 guard let id = self?.user.userId else { return }
                 self?.user.setUser(id, vpsProfile: VPSProfileDto(vpsProfile: string), completion: { (_) in })
             }.store(in: &cancellable)
+
+        navigation.positionKitManager.stepEventDataPublisher
+            .compactMap { $0 }
+            .sink(receiveValue: { [weak self] in self?.analytics.stepEventUploader?.events.append($0) })
+            .store(in: &cancellable)
         
         navigation.accuracyPublisher
             .compactMap { $0 }

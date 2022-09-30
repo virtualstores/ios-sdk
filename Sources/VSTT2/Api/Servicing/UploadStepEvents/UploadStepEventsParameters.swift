@@ -13,7 +13,7 @@ struct UploadStepEventsParameters {
   let visitId: Int64
   let requestId: String
 
-  let event: StepEvent
+  let events: [StepEvent]
 }
 
 extension UploadStepEventsParameters: Routing {
@@ -26,8 +26,9 @@ extension UploadStepEventsParameters: Routing {
   var queryItems: [String : String]? { ["visitId": String(visitId), "requestId": requestId] }
 
   var parameters: Any? {
-    [
-      [
+    var parameters: [[String:Any]] = []
+    events.forEach { (event) in
+      parameters.append([
         "rtlsOptionsId" : event.rtlsOptionsId,
         "type" : event.type,
         "timestamp" : event.timestamp,
@@ -38,20 +39,42 @@ extension UploadStepEventsParameters: Routing {
         "relativeDirection" : event.relativeDirection,
         "stepCertainty" : event.stepCertainty,
         "speed" : event.speed
-      ]
-    ]
+      ])
+    }
+    return parameters
   }
 }
 
-struct StepEvent {
+final class UploadStepEventsPersistence: IPersistenceModel {
+  var retainOriginalIndex: Bool = false
+  var index: String?
+
+  convenience init(index: String) {
+    self.init()
+    self.index = index
+  }
+  // config
+  var apiKey: String?
+  var serverAddress: String?
+  var mqttAddress: String?
+  var storeId: Int64?
+
+  var visitId: Int64?
+  var requestId: String?
+
+  // event
+  var events: [StepEvent]?
+}
+
+struct StepEvent: Codable {
   let rtlsOptionsId: Int64
-  let type: String
+  let type: String?
   let timestamp: Int64
   let success: Bool
-  let duration: Double
-  let direction: Double
-  let directionCertainty: Double
-  let relativeDirection: Double
+  let duration: Int64
+  let direction: Double?
+  let directionCertainty: Double?
+  let relativeDirection: Double?
   let stepCertainty: Double
-  let speed: Double
+  let speed: Double?
 }

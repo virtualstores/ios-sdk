@@ -22,6 +22,7 @@ class AccuracyUploader {
   let client: Client
   let converter: ICoordinateConverter
 
+  var stepEventUploader: StepEventUploader? { analytics.stepEventUploader }
   var config: EnvironmentConfig? { analytics.config }
 
   var numberOfRescueModes: Int64 = 0
@@ -112,7 +113,6 @@ class AccuracyUploader {
 //        }
 //      }//.mapError { errorHandler($0 as Error) }
 
-
     guard
       let visitId = analytics.visitId,
       let rtlsOptionsId = analytics.rtlsOptionId,
@@ -128,6 +128,7 @@ class AccuracyUploader {
     if let shelfId = position.shelfId {
       tags["shelfId"] = String(shelfId)
     }
+    let distance: Double = stepEventUploader?.events.map { $0.distance }.sum() ?? 0.0
     let event = SyncEvent(
       rtlsOptionsId: rtlsOptionsId,
       identifier: position.identifier,
@@ -135,7 +136,7 @@ class AccuracyUploader {
       isFloorSwap: false,
       didSync: true,
       rescueModeCountSinceLastSync: numberOfRescueModes,
-      stepDataDistanceSinceLastSyncInMeters: 0,
+      stepDataDistanceSinceLastSyncInMeters: distance,
       userToSyncPositionDistanceInMeters: preScanLocation.distance(to: position.point),
       errorAngleInDegrees: 0,
       timestamp: Date(),
@@ -150,18 +151,18 @@ class AccuracyUploader {
       requestId: UUID().uuidString.uppercased(),
       event: event
     )
-    upload(parameters: parameters)
+    do {
+      var persistence = parameters.asPersistence
+      try self.persistence.save(&persistence)
+      upload(parameters: parameters)
+      stepEventUploader?.upload()
+      numberOfRescueModes = 0
+    } catch {
+      Logger(verbosity: .error).log(message: "UploadSyncEventsParametersSaveError \(error)")
+    }
   }
 
-  func upload(parameters: UploadSyncEventsParameters, retry: Bool = false) {
-    if !retry {
-      var parameters = parameters.asPersistence
-      do {
-        try self.persistence.save(&parameters)
-      } catch {
-        Logger(verbosity: .error).log(message: "UploadSyncEventsParametersSaveError \(error)")
-      }
-    }
+  func upload(parameters: UploadSyncEventsParameters) {
     syncEventsService
       .call(with: parameters)
       .sink { (result) in
@@ -171,9 +172,9 @@ class AccuracyUploader {
           Logger(verbosity: .debug).log(message: "AccuracyUploaderError \(error)")
         }
       } receiveValue: { (_) in
-        let parameters = parameters.asPersistence
+        let persistence = parameters.asPersistence
         do {
-          try self.persistence.delete(parameters)
+          try self.persistence.delete(persistence)
         } catch {
           Logger(verbosity: .error).log(message: "UploadSyncEventsParametersDeleteError \(error)")
         }
@@ -184,12 +185,12 @@ class AccuracyUploader {
     let objects = getAllSyncEventObjects()
     objects.forEach { (object) in
       guard let parameters = object.asParameters else { return }
-      upload(parameters: parameters, retry: true)
+      upload(parameters: parameters)
     }
   }
 
-  func getAllSyncEventObjects() -> [UploadSyncEventsParametersPersistence] {
-    persistence.get(arrayOf: UploadSyncEventsParametersPersistence.self)
+  func getAllSyncEventObjects() -> [UploadSyncEventsPersistence] {
+    persistence.get(arrayOf: UploadSyncEventsPersistence.self)
   }
 }
 
@@ -218,8 +219,8 @@ extension URLQueryItem {
 }
 
 extension UploadSyncEventsParameters {
-  var asPersistence: UploadSyncEventsParametersPersistence {
-    let event = UploadSyncEventsParametersPersistence()
+  var asPersistence: UploadSyncEventsPersistence {
+    let event = UploadSyncEventsPersistence()
     event.apiKey = config?.centralServerConnection.apiKey
     event.serverAddress = config?.centralServerConnection.serverAddress
     event.mqttAddress = config?.centralServerConnection.mqttAddress
@@ -246,7 +247,7 @@ extension UploadSyncEventsParameters {
   }
 }
 
-extension UploadSyncEventsParametersPersistence {
+extension UploadSyncEventsPersistence {
   var asParameters: UploadSyncEventsParameters? {
     guard
       let visitId = visitId,

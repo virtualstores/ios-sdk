@@ -91,6 +91,10 @@ struct VSTT2Config: Config {
         injector.map(UploadSyncEventsService.self) {
             UploadSyncEventsService(with: NetworkManager())
         }
+
+        injector.map(UploadStepEventsService.self) {
+            UploadStepEventsService(with: NetworkManager())
+        }
     }
 
     private func configureManagers(_ injector: Injector) {

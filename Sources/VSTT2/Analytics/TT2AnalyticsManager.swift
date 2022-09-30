@@ -23,6 +23,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
     var config: EnvironmentConfig?
     var accuracyUploader: AccuracyUploader?
+    var stepEventUploader: StepEventUploader?
     private var store: Store?
     private var uploadThreshold = 0
     var visitId: Int64?
@@ -40,6 +41,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         self.uploadThreshold = uploadThreshold
         self.rtlsOptionId = rtlsOptionId
         self.config = config
+        self.stepEventUploader = StepEventUploader()
         bindPublishers()
     }
 
@@ -83,6 +85,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         stopCollectingHeatMapData()
         guard let visitId = visitId, let points = positionUploadWorker.getPoints() else { return }
         uploadData(recordedPositions: points)
+        stepEventUploader?.upload()
         let date = DateFormatter.standardFormatter.string(from: Date())
         let parameters = StopVisitParameters(config: config, requestId: UUID().uuidString.uppercased(), visitId: visitId, stop: date)
         stopVisitService

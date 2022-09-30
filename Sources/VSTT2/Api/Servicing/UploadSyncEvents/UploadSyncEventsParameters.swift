@@ -78,7 +78,7 @@ struct SyncEvent {
   let tags: [String:String]
 }
 
-final class UploadSyncEventsParametersPersistence: IPersistenceModel {
+final class UploadSyncEventsPersistence: IPersistenceModel {
   var retainOriginalIndex: Bool = false
   var index: String?
 
