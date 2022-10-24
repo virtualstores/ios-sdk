@@ -44,7 +44,7 @@ class AccuracyUploader {
     cancellable.removeAll()
   }
 
-  func upload(id: String, preScanLocation: CGPoint, position: ItemPosition, errorHandler: @escaping (Error) -> Void) {
+  private func upload(id: String, preScanLocation: CGPoint, position: ItemPosition, errorHandler: @escaping (Error) -> Void) {
     guard
       let serverAddress = connection.serverAddress,
       let clientName = client.name,
@@ -112,37 +112,76 @@ class AccuracyUploader {
 //          }
 //        }
 //      }//.mapError { errorHandler($0 as Error) }
+  }
 
+  func upload(syncEvent: AccuracySyncEvent.Event) {
     guard
       let visitId = analytics.visitId,
       let rtlsOptionsId = analytics.rtlsOptionId,
       let mapFence = floorManager.mapFence[rtlsOptionsId],
       let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     else { return }
+    let identifier: String
+    var shelfId: Int64?
+    let point: CGPoint
+    var preScanLocation: CGPoint?
+    var offset: CGVector?
+    var code: PositionedCode?
 
-    let preScanLocationInPixels = preScanLocation.fromMeterToPixel(converter: converter)
-    let scanLocationInPixels = position.point.fromMeterToPixel(converter: converter)
+    switch syncEvent {
+    case .syncEvent(let event):
+      let position = event.itemPosition
+      identifier = position.identifier
+      shelfId = position.shelfId
+      point = position.point
+      preScanLocation = event.preSyncScanLocation
+      offset = position.offset
+      upload(id: String(visitId), preScanLocation: event.preSyncScanLocation, position: position, errorHandler: { (error) in
+        Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
+      })
+    case .startLocationSyncEvent(let event):
+      identifier = event.startScanLocation.code
+      point = event.startScanLocation.point
+      code = event.startScanLocation
+    case .startSyncEvent(let event):
+      let position = event.itemPosition
+      identifier = position.identifier
+      shelfId = position.shelfId
+      point = position.point
+      offset = position.offset
+    }
+
+    let preScanLocationInPixels = (preScanLocation ?? .zero).fromMeterToPixel(converter: converter)
+    let scanLocationInPixels = point.fromMeterToPixel(converter: converter)
     let isRightAisle = mapFenceData.isRightAisle(p1: preScanLocationInPixels, p2: scanLocationInPixels)
 
-    var tags = ["identifier": position.identifier]
-    if let shelfId = position.shelfId {
+    var tags = ["identifier": identifier]
+    if let shelfId = shelfId {
       tags["shelfId"] = String(shelfId)
+    }
+    tags["isStartSync"] = String(code != nil)
+    if let angle = code?.direction {
+      tags["syncAngle"] = String(angle)
+    }
+    tags["isWifiResetSync"] = String(false)
+    if (tags["isWifiResetSync"]! as NSString).boolValue {
+      tags["wifiResetSyncRadius"] = String(0)
     }
     let distance: Double = stepEventUploader?.events.map { $0.distance }.sum() ?? 0.0
     let event = SyncEvent(
       rtlsOptionsId: rtlsOptionsId,
-      identifier: position.identifier,
+      identifier: identifier,
       isRightAisle: isRightAisle,
       isFloorSwap: false,
       didSync: true,
       rescueModeCountSinceLastSync: numberOfRescueModes,
       stepDataDistanceSinceLastSyncInMeters: distance,
-      userToSyncPositionDistanceInMeters: preScanLocation.distance(to: position.point),
+      userToSyncPositionDistanceInMeters: (preScanLocation ?? point).distance(to: point),
       errorAngleInDegrees: 0,
       timestamp: Date(),
-      userPositionInMeters: preScanLocation,
-      syncPositionInMeters: position.point,
-      syncPositionOffsetsInMeters: offset,
+      userPositionInMeters: preScanLocation ?? .zero,
+      syncPositionInMeters: point,
+      syncPositionOffsetsInMeters: offset ?? .zero,
       tags: tags
     )
     let parameters = UploadSyncEventsParameters(
@@ -292,3 +331,37 @@ extension UploadSyncEventsPersistence {
     )
   }
 }
+
+struct AccuracySyncEvent {
+  enum Event {
+    case syncEvent(SyncEvent)
+    case startLocationSyncEvent(StartLocationSyncEvent)
+    case startSyncEvent(StartSyncEvent)
+
+    func getEvent() -> (syncEvent: SyncEvent?, startLocationSyncEvent: StartLocationSyncEvent?, startSyncEvent: StartSyncEvent?) {
+      var syncEvent: SyncEvent?
+      var startLocationSyncEvent: StartLocationSyncEvent?
+      var startSyncEvent: StartSyncEvent?
+
+      switch self {
+      case .syncEvent(let event): syncEvent = event
+      case .startLocationSyncEvent(let event): startLocationSyncEvent = event
+      case .startSyncEvent(let event): startSyncEvent = event
+      }
+
+      return (syncEvent, startLocationSyncEvent, startSyncEvent)
+    }
+  }
+  struct SyncEvent {
+    let itemPosition: ItemPosition
+    let preSyncScanLocation: CGPoint
+  }
+  struct StartLocationSyncEvent {
+    let startScanLocation: PositionedCode
+  }
+  struct StartSyncEvent {
+    let itemPosition: ItemPosition
+    let startDirection: Double
+  }
+}
+

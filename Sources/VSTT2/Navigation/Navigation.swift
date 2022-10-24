@@ -16,7 +16,7 @@ final public class Navigation: INavigation {
     private(set) var positionKitManager: PositionManager
     public private(set) var isActive: Bool = false
 
-    var accuracyPublisher: CurrentValueSubject<(preScanLocation: CGPoint, position: ItemPosition)?,Never> = .init(nil)
+    var accuracyPublisher: CurrentValueSubject<AccuracySyncEvent.Event?,Never> = .init(nil)
 
     var currentAccessPointPosition: CGPoint = .zero
 
@@ -65,6 +65,7 @@ public extension Navigation {
 
     func start(code: PositionedCode) throws {
         try start(startPosition: code.point, startAngle: code.direction)
+        prepareAccuracyUpload(code: code)
     }
 
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
@@ -76,7 +77,7 @@ public extension Navigation {
         positionKitManager.syncPosition(xPosition: position.pointWithOffset.x, yPosition: position.pointWithOffset.y, startAngle: angle, syncPosition: forceSync, syncAngle: syncRotation, uncertainAngle: false)
     }
 
-    func start(startPosition: CGPoint) throws {
+    func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
         guard let heading = self.heading, !isActive else {
             self.stop()
             var err: Error?
@@ -98,13 +99,16 @@ public extension Navigation {
                                            xPosition: startPosition.x,
                                            yPosition: startPosition.y,
                                            uncertainAngle: startWithAngle == nil)
+        if let position = position {
+            prepareAccuracyUpload(position: position, startDirection: heading.degrees)
+        }
         isActive = true
         userStartAngle = heading
     }
 
     func syncPosition(position: ItemPosition, forceSync: Bool = false) throws  {
         guard let heading = self.heading, isActive else {
-            try self.start(startPosition: position.pointWithOffset)
+            try self.start(startPosition: position.pointWithOffset, position: position)
             return
         }
 
@@ -161,11 +165,18 @@ extension Navigation {
 }
 
 private extension Navigation {
-    func prepareAccuracyUpload(position: ItemPosition) {
-        guard let preScanLocation = positionKitManager.positionPublisher.value?.position else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.accuracyPublisher.send((preScanLocation: preScanLocation, position))
+    func prepareAccuracyUpload(position: ItemPosition? = nil, code: PositionedCode? = nil, startDirection: Double? = nil) {
+        var event: AccuracySyncEvent.Event?
+        if let position = position {
+            if let startDirection = startDirection {
+                event = .startSyncEvent(AccuracySyncEvent.StartSyncEvent(itemPosition: position, startDirection: startDirection))
+            } else if let preScanLocation = positionKitManager.positionPublisher.value?.position {
+                event = .syncEvent(AccuracySyncEvent.SyncEvent(itemPosition: position, preSyncScanLocation: preScanLocation))
+            }
+        } else if let code = code {
+            event = .startLocationSyncEvent(AccuracySyncEvent.StartLocationSyncEvent(startScanLocation: code))
         }
+        accuracyPublisher.send(event)
     }
 
     func startWithAngle(startPosition: CGPoint) -> Double? {
@@ -182,11 +193,5 @@ private extension Navigation {
         guard let userPosition = positionKitManager.positionPublisher.value?.position else { return false }
         let distance = point.distance(to: userPosition)
         return distance > 7
-    }
-}
-
-extension CGPoint {
-    func distance(to point: CGPoint) -> CGFloat {
-        sqrt(pow(x - point.x, 2) + pow(y - point.y, 2))
     }
 }

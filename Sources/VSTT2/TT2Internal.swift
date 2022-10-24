@@ -219,11 +219,8 @@ internal class TT2Internal {
         
         navigation.accuracyPublisher
             .compactMap { $0 }
-            .sink(receiveValue: { [weak self] (preScanLocation, position) in
-                guard let id = self?.analytics.visitId/*, let user = self?.analytics.user, let name = user.name ?? user.userId*/ else { return }
-                self?.analytics.accuracyUploader?.upload(id: String(id) /*+ "_\(name)"*/, preScanLocation: preScanLocation, position: position, errorHandler: { (error) in
-                    Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
-                })
+            .sink(receiveValue: { [weak self] (event) in
+                self?.analytics.accuracyUploader?.upload(syncEvent: event)
             }).store(in: &cancellable)
 
         recording.sendDataPublisher

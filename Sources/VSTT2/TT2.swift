@@ -17,7 +17,7 @@ final public class TT2: ITT2 {
 
     public var initialized: Bool { _tt2Internal != nil }
     public var stores: [TT2Store] { tt2Internal.internalStores.map({ $0.toTT2Store() }) }
-    public var activeStores: [TT2Store] { tt2Internal.internalStores.filter({ $0.active }).map({ $0.toTT2Store() })}
+    public var activeStores: [TT2Store] { tt2Internal.internalStores.filter({ $0.active }).map({ $0.toTT2Store() }) }
     public var navigation: Navigation { tt2Internal.navigation }
     public var analytics: TT2AnalyticsManager { tt2Internal.analytics }
     public var floor: VSTT2FloorManager { tt2Internal.floorManager }
@@ -301,7 +301,7 @@ private extension TT2 {
 
         let properties = ZoneProperties(description: nil, id: name, name: name, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
         self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevelId: rtlsOption.id, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
-        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, parameterPackage: .retail)
+      self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, parameterPackage: .client_2)
     }
     
     private func setupAnalytics(for store: Store) {
@@ -318,7 +318,7 @@ private extension TT2 {
         guard let rtlsOption = activeFloor, let store = activeStore, let zoneData = zoneData else { return }
 
         zoneData.forEach { (key, value) in
-            guard let rtls = floor.floors.first(where: { $0.floorLevel == key }) else { return }
+            guard let rtls = floor.floors.first(where: { $0.id == key }) else { return }
             mapZonesTree?.add(rtls, value.mapZones, value.mapZonesPoints)
         }
 
