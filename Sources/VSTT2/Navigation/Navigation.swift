@@ -15,6 +15,7 @@ import UIKit
 final public class Navigation: INavigation {
     private(set) var positionKitManager: PositionManager
     public private(set) var isActive: Bool = false
+    public var currentPosition: CGPoint? { positionKitManager.positionPublisher.value?.position }
 
     var accuracyPublisher: CurrentValueSubject<AccuracySyncEvent.Event?,Never> = .init(nil)
 

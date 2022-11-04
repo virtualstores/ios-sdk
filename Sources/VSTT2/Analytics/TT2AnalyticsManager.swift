@@ -45,7 +45,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         bindPublishers()
     }
 
-    public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:], completion: @escaping (Error?) -> Void) {
+    public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
         guard let storeId = store?.statServerConnection.storeId, visitId == nil else { return }
 
         let date = DateFormatter.standardFormatter.string(from: Date())
@@ -64,11 +64,11 @@ final public class TT2AnalyticsManager: TT2Analytics {
                 case .finished: break
                 case .failure(let error):
                     Logger(verbosity: .debug).log(message: error.localizedDescription)
-                    completion(error)
+                    DispatchQueue.main.async { completion(.failure(error)) }
                 }
             }, receiveValue: { [weak self] (data) in
                 self?.visitId = data.visitId
-                completion(nil)
+                DispatchQueue.main.async { completion(.success(data.visitId)) }
             }).store(in: &cancellable)
     }
 

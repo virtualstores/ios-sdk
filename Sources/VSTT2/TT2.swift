@@ -51,10 +51,11 @@ final public class TT2: ITT2 {
 
     private var cancellable = Set<AnyCancellable>()
     private var wifiCancellable = Set<AnyCancellable>()
+    private var positionKitParams: ParameterPackage = .retail
     
     public init() {}
 
-    public func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (Error?) -> ()) {
+    public func initialize(with apiUrl: String, apiKey: String, clientId: Int64, positionKitParams: ParameterPackage = .retail, completion: @escaping (Error?) -> ()) {
         config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
 
         self._tt2Internal = TT2Internal(config: config)
@@ -77,6 +78,7 @@ final public class TT2: ITT2 {
             let config = EnvironmentConfig()
             config.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
             self.user.setup(clientId: clientId, config: config)
+            self.positionKitParams = positionKitParams
             self.tt2Internal.getStores(with: clientId, completion: { error in
                 completion(error)
             })
@@ -301,7 +303,7 @@ private extension TT2 {
 
         let properties = ZoneProperties(description: nil, id: name, name: name, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
         self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevelId: rtlsOption.id, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
-      self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, parameterPackage: .client_2)
+        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, parameterPackage: positionKitParams)
     }
     
     private func setupAnalytics(for store: Store) {

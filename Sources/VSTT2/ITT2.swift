@@ -51,7 +51,7 @@ public protocol ITT2 {
     var mapZonesTree: Tree? { get }
 
     /// Method for initialize TT2 for specific client
-    func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (Error?) -> ())
+    func initialize(with apiUrl: String, apiKey: String, clientId: Int64, positionKitParams: ParameterPackage, completion: @escaping (Error?) -> ())
     
     /// Method for initiate selected Store data
     func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ())
