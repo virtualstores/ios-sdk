@@ -124,6 +124,7 @@ class AccuracyUploader {
     let identifier: String
     var shelfId: Int64?
     let point: CGPoint
+    let pointWithOffset: CGPoint
     var preScanLocation: CGPoint?
     var offset: CGVector?
     var code: PositionedCode?
@@ -134,6 +135,7 @@ class AccuracyUploader {
       identifier = position.identifier
       shelfId = position.shelfId
       point = position.point
+      pointWithOffset = position.pointWithOffset
       preScanLocation = event.preSyncScanLocation
       offset = position.offset
       upload(id: String(visitId), preScanLocation: event.preSyncScanLocation, position: position, errorHandler: { (error) in
@@ -142,17 +144,19 @@ class AccuracyUploader {
     case .startLocationSyncEvent(let event):
       identifier = event.startScanLocation.code
       point = event.startScanLocation.point
+      pointWithOffset = point
       code = event.startScanLocation
     case .startSyncEvent(let event):
       let position = event.itemPosition
       identifier = position.identifier
       shelfId = position.shelfId
       point = position.point
+      pointWithOffset = position.pointWithOffset
       offset = position.offset
     }
 
     let preScanLocationInPixels = (preScanLocation ?? .zero).fromMeterToPixel(converter: converter)
-    let scanLocationInPixels = point.fromMeterToPixel(converter: converter)
+    let scanLocationInPixels = pointWithOffset.fromMeterToPixel(converter: converter)
     let isRightAisle = mapFenceData.isRightAisle(p1: preScanLocationInPixels, p2: scanLocationInPixels)
 
     var tags = ["identifier": identifier]
