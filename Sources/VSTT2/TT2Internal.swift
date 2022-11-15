@@ -227,6 +227,18 @@ internal class TT2Internal {
             .sink { [weak self] (metaData) in
                 self?.sendAWSData(metaData)
             }.store(in: &cancellable)
+
+        analytics.zoneManager.onEnterPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (zone) in
+                self?.mapController?.zone.onEnterPublisher.send(zone)
+            }.store(in: &cancellable)
+
+        analytics.zoneManager.onExitPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (zone) in
+                self?.mapController?.zone.onExitPublisher.send(zone)
+            }.store(in: &cancellable)
     }
 
     var vpsIdentifier: String?

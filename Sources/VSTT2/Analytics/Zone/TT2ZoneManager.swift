@@ -15,6 +15,8 @@ import VSPositionKit
 public class TT2ZoneManager: TT2Zone {
     public var zoneEnteredPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
     public var zoneExitedPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
+    var onEnterPublisher: CurrentValueSubject<Zone?, Never> = .init(nil)
+    var onExitPublisher: CurrentValueSubject<Zone?, Never> = .init(nil)
     
     private var rtlsOptions: RtlsOptions?
     private var zonesPoint: [[CGPoint]] = []
@@ -97,6 +99,7 @@ public class TT2ZoneManager: TT2Zone {
     
     private func createZoneEnteredEvent(for currentPosition: CGPoint, polygon: [CGPoint]) -> TriggerEvent? {
         guard let zone = zones.first(where: { $0.points == polygon }), let rtlsOptions = self.rtlsOptions else { return nil }
+        onEnterPublisher.send(zone)
         
         let groupId = UUID().uuidString.uppercased()
         insideZones[groupId] = zone.polygon
@@ -108,6 +111,7 @@ public class TT2ZoneManager: TT2Zone {
     
     private func exitZone(for currentPosition: CGPoint, polygon: [CGPoint]) {
         guard let zone = zones.first(where: { $0.points == polygon }), let rtlsOptions = self.rtlsOptions else { return }
+        onExitPublisher.send(zone)
         insideZones.forEach { (key, value) in
             guard value == zone.polygon else { return }
             
