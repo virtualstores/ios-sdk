@@ -12,6 +12,8 @@ import VSPositionKitTargets
 import CoreGraphics
 import UIKit
 
+let version = "1.0.0"
+
 final public class TT2: ITT2 {
     private let context = Context(VSTT2Config())
 

@@ -48,13 +48,23 @@ final public class TT2AnalyticsManager: TT2Analytics {
     public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
         guard let storeId = store?.statServerConnection.storeId, visitId == nil else { return }
 
+        let device = UIDevice.current
+        var editedTags = tags
+        editedTags["tt2SdkVersion"] = version
+        editedTags["tt2VpsVersion"] = "undefined"
+        editedTags["tt2DeviceManufacturer"] = "Apple"
+        editedTags["tt2DeviceModel"] = device.modelName
+        editedTags["tt2DeviceOs"] = device.systemName
+        editedTags["tt2DeviceOsVersion"] = device.systemVersion
+        editedTags["tt2MLActive"] = "false"
+
         let date = DateFormatter.standardFormatter.string(from: Date())
         let parameters = CreateVisitParameters(requestId: UUID().uuidString.uppercased(),
                                                 storeId: storeId,
                                                 start: date,
                                                 stop: date,
                                                 deviceInformation: deviceInformation,
-                                                tags: tags,
+                                                tags: editedTags,
                                                 metaData: metaData,
                                                 config: config)
         createVisitService

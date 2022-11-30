@@ -60,7 +60,6 @@ public class TriggerEvent {
         case zoneTrigger(ZoneTrigger)
         
         func getTrigger() -> (appTrigger: AppTrigger?, coordinateTrigger: CoordinateTrigger?, shelfTrigger: ShelfTrigger?, zoneTrigger: ZoneTrigger?) {
-            
             var app: AppTrigger?
             var coordinate: CoordinateTrigger?
             var shelf: ShelfTrigger?
@@ -71,7 +70,7 @@ public class TriggerEvent {
             case .shelfTrigger(let shefTrigger): shelf = shefTrigger
             case .zoneTrigger(let zoneTrigger): zone = zoneTrigger
             }
-            
+
             return (appTrigger: app, coordinateTrigger: coordinate, shelfTrigger: shelf, zoneTrigger: zone)
         }
     }
@@ -262,42 +261,36 @@ public class TriggerEvent {
 
 public extension TriggerEvent {
     var toMessageShown: TriggerEvent? {
-        guard let id = self.tags[DefaultTags.id] else { return nil }
-        var tags: [String : String] = [:]
-        self.tags.forEach { (key, value) in
-            tags[key] = value
-        }
-        tags[DefaultTags.messageShown] = id
+        guard let id = tags[.id] else { return nil }
+        var tags: [String : String] = tags
+        tags[.messageShown] = id
         let event = TriggerEvent(
-            rtlsOptionsId: self.rtlsOptionsId,
-            name: self.name,
-            description: self.description,
-            timestamp: self.timestamp,
-            userPosition: self.userPosition,
-            eventType: .appTrigger(TriggerEvent.AppTrigger(event: self.name)),
+            rtlsOptionsId: rtlsOptionsId,
+            name: name,
+            description: description,
+            timestamp: timestamp,
+            userPosition: userPosition,
+            eventType: .appTrigger(TriggerEvent.AppTrigger(event: name)),
             tags: tags,
-            metaData: self.metaData,
-            hasBeenTriggered: self.hasBeenTriggered
+            metaData: metaData,
+            hasBeenTriggered: hasBeenTriggered
         )
         return event
     }
 
     func toPollResponse(option: Message.Poll.Option) -> TriggerEvent {
-        var tags: [String : String] = [:]
-        self.tags.forEach { (key, value) in
-            tags[key] = value
-        }
-        tags[DefaultTags.pollResponse] = option.description
+        var tags: [String : String] = tags
+        tags[.pollResponse] = option.description
         let event = TriggerEvent(
-            rtlsOptionsId: self.rtlsOptionsId,
-            name: self.name,
-            description: self.description,
-            timestamp: self.timestamp,
-            userPosition: self.userPosition,
-            eventType: .appTrigger(TriggerEvent.AppTrigger(event: self.name)),
+            rtlsOptionsId: rtlsOptionsId,
+            name: name,
+            description: description,
+            timestamp: timestamp,
+            userPosition: userPosition,
+            eventType: .appTrigger(TriggerEvent.AppTrigger(event: name)),
             tags: tags,
-            metaData: self.metaData,
-            hasBeenTriggered: self.hasBeenTriggered
+            metaData: metaData,
+            hasBeenTriggered: hasBeenTriggered
         )
         return event
     }
@@ -322,4 +315,10 @@ public struct ScanEvent {
         case unknown = 0
         case shelf = 1
     }
+}
+
+private extension String {
+  static let id: String = TriggerEvent.DefaultTags.id
+  static let messageShown: String = TriggerEvent.DefaultTags.messageShown
+  static let pollResponse: String = TriggerEvent.DefaultTags.pollResponse
 }
