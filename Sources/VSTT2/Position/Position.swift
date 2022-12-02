@@ -43,14 +43,14 @@ public class Position: IPosition {
             }
         }
         
-        completion(position)
+        DispatchQueue.main.async { completion(position) }
     }
 
     public func getBy(barcode: String, completion: @escaping (Item?) -> ()) {
         guard let store = store else { return }
 
         if let item = barcodePositions.first(where: { $0.externalId == barcode }) {
-            completion(item)
+            DispatchQueue.main.async { completion(item) }
         } else {
             itemPositionService
                 .call(with: ItemPositionParameters(storeId: store.id, barcode: barcode, config: config))
@@ -59,7 +59,7 @@ public class Position: IPosition {
                     case .finished: break
                     case .failure(let error):
                         Logger(verbosity: .debug).log(message: error.localizedDescription)
-                        completion(nil)
+                      DispatchQueue.main.async { completion(nil) }
                     }
                 } receiveValue: { [weak self] (data) in
                   var itemPositions: [ItemPosition] = []
@@ -69,7 +69,7 @@ public class Position: IPosition {
                   }
                   let item = Item(name: "", externalId: barcode, itemPositions: itemPositions)
                   self?.barcodePositions.append(item)
-                  completion(item)
+                  DispatchQueue.main.async { completion(item) }
                 }.store(in: &cancellable)
         }
     }
@@ -91,7 +91,7 @@ public class Position: IPosition {
         }
 
         group.notify(queue: .main) {
-            completion(positions)
+            DispatchQueue.main.async { completion(positions) }
         }
     }
     
