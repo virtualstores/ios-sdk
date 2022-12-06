@@ -30,6 +30,7 @@ final class NetworkManager: DataHandler {
             .mapError { $0 as Error }
             .map { (result) in
               if let response = result.response as? HTTPURLResponse {
+//                print("result", response.)
                 let timeInterval = Date().timeIntervalSince(date)
                 print("-->", response.statusCode, response.url?.absoluteString ?? "", "[\(result.data.count) b]", String(format: "[%.03f s]", timeInterval))
               }

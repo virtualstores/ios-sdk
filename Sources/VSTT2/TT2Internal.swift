@@ -205,11 +205,17 @@ internal class TT2Internal {
             self?.analytics.accuracyUploader?.numberOfRescueModes += 1
           }.store(in: &cancellable)
 
-        navigation.positionKitManager.modifiedUserPublisher
+        navigation.positionKitManager.mlDataPublisher
             .compactMap { $0 }
-            .sink { [weak self] (string) in
+            .sink { [weak self] (mlData) in
+              guard let id = self?.user.userId else { return }
+              self?.user.setUser(id, mlData: mlData, completion: { (_) in })
+            }.store(in: &cancellable)
+        navigation.positionKitManager.onMlCalibrationPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (mlUser) in
                 guard let id = self?.user.userId else { return }
-                self?.user.setUser(id, vpsProfile: VPSProfileDto(vpsProfile: string), completion: { (_) in })
+                //self?.user.setUser(id, vpsProfile: VPSProfileDto(vpsProfile: string), completion: { (_) in })
             }.store(in: &cancellable)
 
         navigation.positionKitManager.stepEventDataPublisher

@@ -25,8 +25,8 @@ public struct Store: Codable {
     public let serverConnection: ServerConnection
     public let statServerConnection: ServerConnection
     public let positionServiceSettings: PositionServiceSettings?
-    public let syncPositionFilter: SyncFilter
-    public let syncCompassFilter: SyncFilter
+    public let syncPositionFilter: SyncFilter?
+    public let syncCompassFilter: SyncFilter?
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -66,8 +66,8 @@ public struct Store: Codable {
         serverConnection = try container.decode(ServerConnection.self, forKey: .serverConnection)
         statServerConnection = try container.decode(ServerConnection.self, forKey: .statServerConnection)
         positionServiceSettings = try container.decodeIfPresent(PositionServiceSettings.self, forKey: .positionServiceSettings)
-        syncPositionFilter = try container.decode(SyncFilter.self, forKey: .syncPositionFilter)
-        syncCompassFilter = try container.decode(SyncFilter.self, forKey: .syncCompassFilter)
+        syncPositionFilter = try container.decodeIfPresent(SyncFilter.self, forKey: .syncPositionFilter)
+        syncCompassFilter = try container.decodeIfPresent(SyncFilter.self, forKey: .syncCompassFilter)
     }
 
     public func getCodesFor(type: PositionedCode.CodeType, floorLevel: Int) -> [PositionedCode] {

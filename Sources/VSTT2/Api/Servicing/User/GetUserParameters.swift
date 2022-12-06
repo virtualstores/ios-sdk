@@ -22,11 +22,16 @@ struct GetUserParameters {
 extension GetUserParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
 
-  var path: String { "/users/tags" }
+  var path: String { "/users/ml" }
 
   var method: RequestType { .GET }
 
   var queryItems: [String : String]? {
-    [ "userid" : userid, "clientId" : String(clientId) ]
+    [
+      "userid" : userid,
+      "clientId" : String(clientId),
+      "hardwareType" : "IOS",
+      "modifierCount" : String(100)
+    ]
   }
 }

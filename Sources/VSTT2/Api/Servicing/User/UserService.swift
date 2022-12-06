@@ -16,7 +16,7 @@ final class PutUserService: DataFetchingManager {
 }
 
 final class GetUserService: DataFetchingManager {
-  func call(with parameters: GetUserParameters) -> AnyPublisher<[String:String], Error> {
+  func call(with parameters: GetUserParameters) -> AnyPublisher<[VPSProfileDto2], Error> {
     execute(parameters, errorType: Error.self)
   }
 }
@@ -29,6 +29,21 @@ final class DeleteUserService: DataFetchingManager {
 
 struct VPSProfileDto: Codable {
   let vpsProfile: String
+}
+
+struct VPSProfileDto2: Codable {
+  let type: String
+  let mlAlgorithms: [MLAlgorithms]
+
+  struct MLAlgorithms: Codable {
+    let type: PersonalMLAlgorithm
+    let orientationModes: [OrientationModes]
+
+    struct OrientationModes: Codable {
+      let type: DeviceOrientation
+      let personalMLData: [PersonalMLData]
+    }
+  }
 }
 
 struct TT2UserDto: Codable {

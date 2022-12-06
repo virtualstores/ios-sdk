@@ -9,12 +9,13 @@ import Combine
 import Foundation
 import VSFoundation
 
-public class UserController {
+public class UserController: IUserController {
   @Inject var putUserService: PutUserService
   @Inject var getUserService: GetUserService
   @Inject var deleteUserService: DeleteUserService
 
   var vpsProfile: [String:String]?
+  var mlData: [VPSProfileDto2]?
 
   private var config: EnvironmentConfig?
   private var cancellable = Set<AnyCancellable>()
@@ -31,9 +32,23 @@ public class UserController {
 
   init() {}
 
+  public func getVPSMLParamPackage(mlAlgorithm: PersonalMLAlgorithm) -> [PersonalMLData]? {
+    var data = [PersonalMLData]()
+    mlData?.forEach { (profile) in
+      guard let mlAlgo = profile.mlAlgorithms.first(where: { $0.type == mlAlgorithm }) else { return }
+//      mlAlgo.orientationModes.fl
+    }
+    return data
+  }
+
   func setup(clientId: Int64, config: EnvironmentConfig?) {
     self.config = config
     self.clientId = clientId
+    getUser(userId: "gbikfdsvbndab.k") { (error) in
+      if let error = error {
+        Logger(verbosity: .info).log(message: "GetUserError: \(error)")
+      }
+    }
     if let userId = userId {
       self.getUser(userId: userId) { (error) in
         if let error = error {
@@ -47,13 +62,13 @@ public class UserController {
     if vpsProfile == nil {
       getUser(userId: userId, completion: completion)
     } else {
-      setUser(userId, vpsProfile: nil, completion: completion)
+      //setUser(userId, vpsProfile: nil, completion: completion)
     }
   }
 
-  func setUser(_ userId: String, vpsProfile: VPSProfileDto?, completion: @escaping (Error?) -> Void) {
+  func setUser(_ userId: String, mlData: PersonalMLData, completion: @escaping (Error?) -> Void) {
     guard let clientId = clientId else { return }
-    let parameters = PutUserParameters(clientId: clientId, userId: userId, vpsProfile: vpsProfile, config: config)
+    let parameters = PutUserParameters(clientId: clientId, userId: userId, mlData: [mlData], config: config)
     putUserService
       .call(with: parameters)
       .sink { (result) in
@@ -83,7 +98,7 @@ public class UserController {
           DispatchQueue.main.async { completion(error) }
         }
       } receiveValue: { [weak self] (profile) in
-        self?.vpsProfile = !profile.isEmpty ? profile : nil
+        print("MLData", profile)
         DispatchQueue.main.async { completion(nil) }
       }.store(in: &cancellable)
   }
