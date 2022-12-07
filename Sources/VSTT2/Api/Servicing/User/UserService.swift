@@ -41,7 +41,7 @@ struct VPSProfileDto2: Codable {
 
     struct OrientationModes: Codable {
       let type: DeviceOrientation
-      let personalMLData: [PersonalMLData]
+      let personalMLData: [PersonalMLDataDTO]
     }
   }
 }

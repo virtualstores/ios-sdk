@@ -9,7 +9,25 @@ import Combine
 import Foundation
 import VSFoundation
 
-public class UserController: IUserController {
+struct UserControllerBusiness {
+  func getVPSSettings(positionServiceSettings: PositionServiceSettings?) -> VPSSettings {
+    var mlAlgos: [PersonalMLAlgorithm] = []
+    if let positionServiceSettings = positionServiceSettings {
+      if positionServiceSettings.useCoefficientOptimizer {
+        mlAlgos.append(.coefficientOptimizer)
+      }
+      if positionServiceSettings.useDriftCompensator {
+        mlAlgos.append(.driftCompensator)
+      }
+    } else {
+      mlAlgos.append(.coefficientOptimizer)
+    }
+
+    return VPSSettings(mlAlgos: !mlAlgos.isEmpty ? mlAlgos : nil, useML: positionServiceSettings?.useML ?? true, mlAlgo: .coefficientOptimizer)
+  }
+}
+
+public class UserController {
   @Inject var putUserService: PutUserService
   @Inject var getUserService: GetUserService
   @Inject var deleteUserService: DeleteUserService
@@ -18,6 +36,7 @@ public class UserController: IUserController {
   var mlData: [VPSProfileDto2]?
 
   private var config: EnvironmentConfig?
+  private var positionServiceSettings: PositionServiceSettings?
   private var cancellable = Set<AnyCancellable>()
 
   let defaults = UserDefaults.standard
@@ -29,44 +48,44 @@ public class UserController: IUserController {
     set { defaults.set(newValue, forKey: "TT2USERCLIENTID") }
     get { defaults.object(forKey: "TT2USERCLIENTID") as? Int64 }
   }
+}
 
-  init() {}
+extension UserController: IUserController {
+  public func getVPSSettings() -> VPSSettings {
+    UserControllerBusiness().getVPSSettings(positionServiceSettings: positionServiceSettings)
+  }
 
-  public func getVPSMLParamPackage(mlAlgorithm: PersonalMLAlgorithm) -> [PersonalMLData]? {
-    var data = [PersonalMLData]()
+  public func getVPSMLParamPackage(mlAlgorithm: PersonalMLAlgorithm) -> [PersonalMLDataDTO] {
+    var data = [PersonalMLDataDTO]()
     mlData?.forEach { (profile) in
       guard let mlAlgo = profile.mlAlgorithms.first(where: { $0.type == mlAlgorithm }) else { return }
-//      mlAlgo.orientationModes.fl
+      mlAlgo.orientationModes.compactMap { $0 }.forEach { (orientationMode) in
+        data.append(contentsOf: orientationMode.personalMLData)
+      }
     }
     return data
   }
+}
 
-  func setup(clientId: Int64, config: EnvironmentConfig?) {
+public extension UserController {
+  func initializeUser(userId: String, completion: @escaping (Error?) -> Void) {
+    getUser(userId: userId, completion: completion)
+    self.userId = userId
+  }
+
+  func deleteUser(userId: String, completion: @escaping (Error?) -> Void) {
+    deleteUser(userId, vpsProfile: nil, completion: completion)
+  }
+}
+
+extension UserController {
+  func setup(clientId: Int64, positionServiceSettings: PositionServiceSettings? = nil, config: EnvironmentConfig?) {
     self.config = config
     self.clientId = clientId
-    getUser(userId: "gbikfdsvbndab.k") { (error) in
-      if let error = error {
-        Logger(verbosity: .info).log(message: "GetUserError: \(error)")
-      }
-    }
-    if let userId = userId {
-      self.getUser(userId: userId) { (error) in
-        if let error = error {
-          Logger(verbosity: .info).log(message: "GetUserError: \(error)")
-        }
-      }
-    }
+    self.positionServiceSettings = positionServiceSettings
   }
 
-  public func setUser(userId: String, completion: @escaping (Error?) -> Void) {
-    if vpsProfile == nil {
-      getUser(userId: userId, completion: completion)
-    } else {
-      //setUser(userId, vpsProfile: nil, completion: completion)
-    }
-  }
-
-  func setUser(_ userId: String, mlData: PersonalMLData, completion: @escaping (Error?) -> Void) {
+  func setUser(_ userId: String, mlData: PersonalMLDataDTO, completion: @escaping (Error?) -> Void) {
     guard let clientId = clientId else { return }
     let parameters = PutUserParameters(clientId: clientId, userId: userId, mlData: [mlData], config: config)
     putUserService
@@ -78,9 +97,7 @@ public class UserController: IUserController {
           Logger(verbosity: .debug).log(message: error.localizedDescription)
           DispatchQueue.main.async { completion(error) }
         }
-      } receiveValue: { [weak self] (_) in
-        self?.userId = userId
-        self?.clientId = clientId
+      } receiveValue: { (_) in
         DispatchQueue.main.async { completion(nil) }
       }.store(in: &cancellable)
   }
@@ -98,13 +115,9 @@ public class UserController: IUserController {
           DispatchQueue.main.async { completion(error) }
         }
       } receiveValue: { [weak self] (profile) in
-        print("MLData", profile)
+        self?.mlData = profile
         DispatchQueue.main.async { completion(nil) }
       }.store(in: &cancellable)
-  }
-
-  public func deleteUser(userId: String, completion: @escaping (Error?) -> Void) {
-    deleteUser(userId, vpsProfile: nil, completion: completion)
   }
 
   func deleteUser(_ userId: String, vpsProfile: VPSProfileDto?, completion: @escaping (Error?) -> Void) {

@@ -214,8 +214,7 @@ internal class TT2Internal {
         navigation.positionKitManager.onMlCalibrationPublisher
             .compactMap { $0 }
             .sink { [weak self] (mlUser) in
-                guard let id = self?.user.userId else { return }
-                //self?.user.setUser(id, vpsProfile: VPSProfileDto(vpsProfile: string), completion: { (_) in })
+              self?.analytics.updateVisitWithMLTags(mlUser: mlUser)
             }.store(in: &cancellable)
 
         navigation.positionKitManager.stepEventDataPublisher

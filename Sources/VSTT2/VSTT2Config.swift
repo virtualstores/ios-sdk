@@ -40,6 +40,10 @@ struct VSTT2Config: Config {
             StopVisitService(with: NetworkManager())
         }
 
+        injector.map(TagsVisitService.self) {
+            TagsVisitService(with: NetworkManager())
+        }
+
         injector.map(ClientsListService.self) {
             ClientsListService(with: NetworkManager())
         }

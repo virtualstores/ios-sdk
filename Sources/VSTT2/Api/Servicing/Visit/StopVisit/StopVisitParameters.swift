@@ -11,13 +11,13 @@ public struct StopVisitParameters {
   private let config: EnvironmentConfig?
   private let requestId: String
   private let visitId: Int64
-  private let stop: String
+  private let stopTimestamp: String
 
-  init(config: EnvironmentConfig?, requestId: String, visitId: Int64, stop: String) {
+  init(config: EnvironmentConfig?, requestId: String, visitId: Int64, stopTimestamp: String) {
     self.config = config
     self.requestId = requestId
     self.visitId = visitId
-    self.stop = stop
+    self.stopTimestamp = stopTimestamp
   }
 }
 
@@ -28,7 +28,7 @@ extension StopVisitParameters: Routing {
     let parameters: [String : String] = [
       "requestId": requestId,
       "visitId": String(visitId),
-      "timestamp": stop
+      "timestamp": stopTimestamp
     ]
 
     return parameters

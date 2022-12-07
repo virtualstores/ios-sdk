@@ -305,7 +305,7 @@ private extension TT2 {
 
         let properties = ZoneProperties(description: nil, id: name, name: name, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
         self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevelId: rtlsOption.id, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
-        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, parameterPackage: positionKitParams)
+        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, parameterPackage: positionKitParams, userController: user)
     }
     
     private func setupAnalytics(for store: Store) {
@@ -313,8 +313,9 @@ private extension TT2 {
         let analyticsConfig = EnvironmentConfig()
         analyticsConfig.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
         analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id, config: analyticsConfig)
-        if let client = activeClient {
-            user.setup(clientId: client.clientId, config: analyticsConfig)
+        if let client = activeClient, let activeStore = activeStore {
+            let store = tt2Internal.internalStores.first(where: { $0.id == activeStore.id })
+            user.setup(clientId: client.clientId, positionServiceSettings: store?.positionServiceSettings, config: analyticsConfig)
         }
     }
     

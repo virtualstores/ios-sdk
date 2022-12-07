@@ -11,11 +11,11 @@ import VSFoundation
 struct PutUserParameters {
   private let clientId: Int64
   private let userId: String
-  private let mlData: [PersonalMLData]
+  private let mlData: [PersonalMLDataDTO]
   private let config: EnvironmentConfig?
   private let requestId = UUID().uuidString
 
-  init(clientId: Int64, userId: String, mlData: [PersonalMLData], config: EnvironmentConfig?) {
+  init(clientId: Int64, userId: String, mlData: [PersonalMLDataDTO], config: EnvironmentConfig?) {
     self.clientId = clientId
     self.userId = userId
     self.mlData = mlData

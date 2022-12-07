@@ -14,6 +14,7 @@ import UIKit
 final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var createVisitService: CreateVisitService
     @Inject var stopVisitService: StopVisitService
+    @Inject var tagsVisitService: TagsVisitService
     @Inject var uploadPositionsService: UploadPositionsService
     @Inject var uploadTriggersService: UploadTriggersService
     @Inject var uploadScanEventsService: UploadScanEventsService
@@ -97,7 +98,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         uploadData(recordedPositions: points)
         stepEventUploader?.upload()
         let date = DateFormatter.standardFormatter.string(from: Date())
-        let parameters = StopVisitParameters(config: config, requestId: UUID().uuidString.uppercased(), visitId: visitId, stop: date)
+        let parameters = StopVisitParameters(config: config, requestId: UUID().uuidString.uppercased(), visitId: visitId, stopTimestamp: date)
         stopVisitService
             .call(with: parameters)
             .sink { [weak self] (result) in
@@ -153,6 +154,27 @@ final public class TT2AnalyticsManager: TT2Analytics {
                 self?.uploadTriggerEvents(request: event)
             }
             .store(in: &cancellable)
+    }
+
+    func updateVisitWithMLTags(mlUser: MlUser) {
+      guard let visitId = visitId else { return }
+      let hasML = !mlUser.speedModifier.isEmpty || !mlUser.directionModifier.isEmpty
+
+      let tags = [
+        "tt2MLActive": hasML ? "true" : "false",
+        "tt2MLAlgorithm": mlUser.mlAlgorithm.rawValue,
+        "tt2MLSpeedModifier": mlUser.speedModifier.description,
+        "tt2MLDirectionModifier": mlUser.directionModifier.description
+      ]
+      let parameters = TagsVisitParameters(config: config, requestId: UUID().uuidString, visitId: visitId, tags: tags)
+      tagsVisitService
+        .call(with: parameters)
+        .sink { (result) in
+
+        } receiveValue: { (_) in
+
+        }
+        .store(in: &cancellable)
     }
     
     private func postTriggerEvent(for event: TriggerEvent) -> PostTriggerEventRequest {
