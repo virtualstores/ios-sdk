@@ -11,13 +11,12 @@ import VSFoundation
 struct DeleteUserParameters {
   private let clientId: Int64
   private let userId: String
-  private let vpsProfile: VPSProfileDto?
   private let config: EnvironmentConfig?
+  private let requestId = UUID().uuidString
 
-  init(clientId: Int64, userId: String, vpsProfile: VPSProfileDto?, config: EnvironmentConfig?) {
+  init(clientId: Int64, userId: String, config: EnvironmentConfig?) {
     self.clientId = clientId
     self.userId = userId
-    self.vpsProfile = vpsProfile
     self.config = config
   }
 }
@@ -25,18 +24,16 @@ struct DeleteUserParameters {
 extension DeleteUserParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
 
-  var path: String { "/users/tags" }
+  var path: String { "/users" }
 
   var method: RequestType { .DELETE }
 
   var queryItems: [String : String]? {
     return [
       "userId" : userId,
-      "clientId" : String(clientId)
+      "clientId" : String(clientId),
+      "hardwareType" : "IOS",
+      "requestId" : requestId
     ]
-  }
-
-  var parametersDictionary: [String : Any]? {
-    vpsProfile?.asDictionary()
   }
 }

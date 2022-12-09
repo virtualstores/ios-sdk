@@ -209,7 +209,7 @@ internal class TT2Internal {
             .compactMap { $0 }
             .sink { [weak self] (mlData) in
               guard let id = self?.user.userId else { return }
-              self?.user.setUser(id, mlData: mlData, completion: { (_) in })
+              self?.user.updateUserML(id, mlData: mlData, completion: { (_) in })
             }.store(in: &cancellable)
         navigation.positionKitManager.onMlCalibrationPublisher
             .compactMap { $0 }

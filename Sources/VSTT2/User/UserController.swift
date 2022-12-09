@@ -73,8 +73,9 @@ public extension UserController {
     self.userId = userId
   }
 
+  /// Only use for development purposes
   func deleteUser(userId: String, completion: @escaping (Error?) -> Void) {
-    deleteUser(userId, vpsProfile: nil, completion: completion)
+    deleteUser(userId, completion: completion)
   }
 }
 
@@ -85,7 +86,7 @@ extension UserController {
     self.positionServiceSettings = positionServiceSettings
   }
 
-  func setUser(_ userId: String, mlData: PersonalMLDataDTO, completion: @escaping (Error?) -> Void) {
+  func updateUserML(_ userId: String, mlData: PersonalMLDataDTO, completion: @escaping (Error?) -> Void) {
     guard let clientId = clientId else { return }
     let parameters = PutUserParameters(clientId: clientId, userId: userId, mlData: [mlData], config: config)
     putUserService
@@ -120,9 +121,9 @@ extension UserController {
       }.store(in: &cancellable)
   }
 
-  func deleteUser(_ userId: String, vpsProfile: VPSProfileDto?, completion: @escaping (Error?) -> Void) {
+  func deleteUser(_ userId: String, completion: @escaping (Error?) -> Void) {
     guard let clientId = clientId else { return }
-    let parameters = DeleteUserParameters(clientId: clientId, userId: userId, vpsProfile: vpsProfile, config: config)
+    let parameters = DeleteUserParameters(clientId: clientId, userId: userId, config: config)
     deleteUserService
       .call(with: parameters)
       .sink { (result) in
@@ -136,6 +137,7 @@ extension UserController {
         self?.vpsProfile = nil
         self?.userId = nil
         self?.clientId = nil
+        completion(nil)
       }.store(in: &cancellable)
   }
 }

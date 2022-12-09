@@ -97,8 +97,12 @@ final public class TT2AnalyticsManager: TT2Analytics {
         guard let visitId = visitId, let points = positionUploadWorker.getPoints() else { return }
         uploadData(recordedPositions: points)
         stepEventUploader?.upload()
-        let date = DateFormatter.standardFormatter.string(from: Date())
-        let parameters = StopVisitParameters(config: config, requestId: UUID().uuidString.uppercased(), visitId: visitId, stopTimestamp: date)
+        let parameters = StopVisitParameters(
+          config: config,
+          requestId: UUID().uuidString.uppercased(),
+          visitId: visitId,
+          stopTimestamp: DateFormatter.standardFormatter.string(from: Date())
+        )
         stopVisitService
             .call(with: parameters)
             .sink { [weak self] (result) in

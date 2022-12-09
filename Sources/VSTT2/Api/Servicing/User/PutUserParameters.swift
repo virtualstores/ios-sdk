@@ -39,7 +39,20 @@ extension PutUserParameters: Routing {
     ]
   }
 
-  var parametersDictionary: [String : Any]? {
-    mlData.asDictionary()
+  var parameters: Any? {
+    var paramters: [[String:Any]] = []
+    mlData.forEach { (dto) in
+      paramters.append([
+        "version" : dto.version,
+        "timestamp" : dto.timestamp,
+        "mlAlgoTag" : dto.mlAlgoTag.rawValue,
+        "deviceOrientation" : dto.deviceOrientation.rawValue,
+        "speedModifier" : dto.speedModifier,
+        "angleModifier" : dto.angleModifier,
+        "driftModifier" : dto.driftModifier,
+        "properties" : dto.properties.asDictionary()
+      ])
+    }
+    return paramters
   }
 }
