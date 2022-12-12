@@ -26,7 +26,7 @@ extension TagsVisitParameters: Routing {
 
   var method: RequestType { .PUT }
 
-  var path: String { "/visits/stop" }
+  var path: String { "/visits/tags" }
 
   var queryItems: [String : String]? {
     [

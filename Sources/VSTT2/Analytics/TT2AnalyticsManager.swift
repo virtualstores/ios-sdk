@@ -46,18 +46,12 @@ final public class TT2AnalyticsManager: TT2Analytics {
         bindPublishers()
     }
 
-    public func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
+    public func startVisit(deviceInformation: DeviceInformation, tags: [String:String] = [:], metaData: [String:String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
         guard let storeId = store?.statServerConnection.storeId, visitId == nil else { return }
 
-        let device = UIDevice.current
         var editedTags = tags
-        editedTags["tt2SdkVersion"] = version
-        editedTags["tt2VpsVersion"] = "undefined"
-        editedTags["tt2DeviceManufacturer"] = "Apple"
-        editedTags["tt2DeviceModel"] = device.modelName
-        editedTags["tt2DeviceOs"] = device.systemName
-        editedTags["tt2DeviceOsVersion"] = device.systemVersion
-        editedTags["tt2MLActive"] = "false"
+        tt2VisitStartTags.forEach { editedTags[$0.key] = $0.value }
+        (tt2VPSSettingsTags ?? tt2VPSSettingsDefaultTags).forEach { editedTags[$0.key] = $0.value }
 
         let date = DateFormatter.standardFormatter.string(from: Date())
         let parameters = CreateVisitParameters(requestId: UUID().uuidString.uppercased(),
@@ -163,20 +157,22 @@ final public class TT2AnalyticsManager: TT2Analytics {
     func updateVisitWithMLTags(mlUser: MlUser) {
       guard let visitId = visitId else { return }
       let hasML = !mlUser.speedModifier.isEmpty || !mlUser.directionModifier.isEmpty
-
       let tags = [
         "tt2MLActive": hasML ? "true" : "false",
         "tt2MLAlgorithm": mlUser.mlAlgorithm.rawValue,
         "tt2MLSpeedModifier": mlUser.speedModifier.description,
         "tt2MLDirectionModifier": mlUser.directionModifier.description
       ]
-      let parameters = TagsVisitParameters(config: config, requestId: UUID().uuidString, visitId: visitId, tags: tags)
+      let parameters = TagsVisitParameters(config: config, requestId: UUID().uuidString.uppercased(), visitId: visitId, tags: tags)
       tagsVisitService
         .call(with: parameters)
         .sink { (result) in
-
+          switch result {
+          case .finished: break
+          case .failure(let error): print("UpdateVisitWithMLTagsError", error)
+          }
         } receiveValue: { (_) in
-
+          print("UpdateVisitWithMLTags", "Updated")
         }
         .store(in: &cancellable)
     }
@@ -289,4 +285,35 @@ private extension TT2AnalyticsManager {
                 /// use data
             }).store(in: &cancellable)
     }
+}
+
+private extension TT2AnalyticsManager {
+  var tt2VisitStartTags: [String:String] {
+    [
+      "tt2SdkVersion" : version,
+      "tt2VpsVersion" : "undefined",
+      "tt2DeviceManufacturer" : "Apple",
+      "tt2DeviceModel" : UIDevice.current.modelName,
+      "tt2DeviceOs" : UIDevice.current.systemName,
+      "tt2DeviceOsVersion" : UIDevice.current.systemVersion,
+      "tt2MLActive" : "false"
+    ]
+  }
+
+  var tt2VPSSettingsDefaultTags: [String:String] {
+    [
+      "tt2SdkVpsSettingUseML" : "true",
+      "tt2SdkVpsSettingUseCoefficientOptimizer" : "true",
+      "tt2SdkVpsSettingUseDriftCompensator" : "false"
+    ]
+  }
+
+  var tt2VPSSettingsTags: [String:String]? {
+    guard let settings = store?.positionServiceSettings else { return nil }
+    return [
+      "tt2SdkVpsSettingUseML" : settings.useML.description,
+      "tt2SdkVpsSettingUseCoefficientOptimizer" : settings.useCoefficientOptimizer.description,
+      "tt2SdkVpsSettingUseDriftCompensator" : settings.useDriftCompensator.description
+    ]
+  }
 }

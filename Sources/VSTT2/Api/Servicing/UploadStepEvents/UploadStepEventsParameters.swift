@@ -28,6 +28,18 @@ extension UploadStepEventsParameters: Routing {
   var parameters: Any? {
     var parameters: [[String:Any]] = []
     events.forEach { (event) in
+      var mlAdjustmens: [String:Double]?
+      if let speedModelFactor = event.mlAdjustmentSpeedModelFactor,
+         let speedAdjuster = event.mlAdjustmentSpeedAdjuster,
+         let driftInRadians = event.mlAdjustmentDriftInRadians,
+         let rotationInRadians = event.mlAdjustmentRotationInRadians {
+        mlAdjustmens = [
+          "speedModelFactor" : speedModelFactor,
+          "speedAdjuster" : speedAdjuster,
+          "driftInRadians" : driftInRadians,
+          "rotationInRadians" : rotationInRadians
+        ]
+      }
       parameters.append([
         "rtlsOptionsId" : event.rtlsOptionsId,
         "type" : event.type,
@@ -38,7 +50,9 @@ extension UploadStepEventsParameters: Routing {
         "directionCertainty" : event.directionCertainty,
         "relativeDirection" : event.relativeDirection,
         "stepCertainty" : event.stepCertainty,
-        "speed" : event.speed
+        "speed" : event.speed,
+        "mlAdjustment" : mlAdjustmens?.asDictionary(),
+        "quaternion" : event.quaternion
       ])
     }
     return parameters
@@ -77,4 +91,9 @@ struct StepEvent: Codable {
   let relativeDirection: Double?
   let stepCertainty: Double
   let speed: Double?
+  let mlAdjustmentSpeedModelFactor: Double?
+  let mlAdjustmentSpeedAdjuster: Double?
+  let mlAdjustmentDriftInRadians: Double?
+  let mlAdjustmentRotationInRadians: Double?
+  let quaternion: [Double]
 }

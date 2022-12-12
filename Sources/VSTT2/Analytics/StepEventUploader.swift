@@ -50,7 +50,7 @@ class StepEventUploader {
       .sink { (result) in
         switch result {
         case .finished: break
-        case .failure(let error): print("UploadStepEventsParameters", error)
+        case .failure(let error): print("UploadStepEventsParametersError", error.localizedDescription)
         }
       } receiveValue: { (_) in
         let persistence = parameters.asPersistence
@@ -75,7 +75,12 @@ extension StepEventData {
       directionCertainty: directionCertainty,
       relativeDirection: relativeDirection,
       stepCertainty: stepCertainty,
-      speed: speed
+      speed: speed,
+      mlAdjustmentSpeedModelFactor: mlAdjustment?.speedModelFactor,
+      mlAdjustmentSpeedAdjuster: mlAdjustment?.speedAdjuster,
+      mlAdjustmentDriftInRadians: mlAdjustment?.driftInRadians,
+      mlAdjustmentRotationInRadians: mlAdjustment?.rotationInRadians,
+      quaternion: quaternion
     )
   }
 }

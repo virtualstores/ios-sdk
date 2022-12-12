@@ -54,7 +54,7 @@ extension UploadScanEventsParameters: Routing {
 
     var parametersDictionary: [String: Any]? {
         let parameters = ["barcode": barcode,
-                          "shelfIf": shelfId,
+                          "shelfId": shelfId,
                           "x": Double(point.x),
                           "y": Double(point.y),
                           "timestamp": timeStamp,

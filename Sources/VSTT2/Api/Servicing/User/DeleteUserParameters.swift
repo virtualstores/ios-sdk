@@ -12,7 +12,7 @@ struct DeleteUserParameters {
   private let clientId: Int64
   private let userId: String
   private let config: EnvironmentConfig?
-  private let requestId = UUID().uuidString
+  private let requestId = UUID().uuidString.uppercased()
 
   init(clientId: Int64, userId: String, config: EnvironmentConfig?) {
     self.clientId = clientId

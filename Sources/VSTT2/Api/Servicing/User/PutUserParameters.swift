@@ -13,7 +13,7 @@ struct PutUserParameters {
   private let userId: String
   private let mlData: [PersonalMLDataDTO]
   private let config: EnvironmentConfig?
-  private let requestId = UUID().uuidString
+  private let requestId = UUID().uuidString.uppercased()
 
   init(clientId: Int64, userId: String, mlData: [PersonalMLDataDTO], config: EnvironmentConfig?) {
     self.clientId = clientId
