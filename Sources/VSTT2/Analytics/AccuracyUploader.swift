@@ -122,18 +122,16 @@ class AccuracyUploader {
       let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     else { return }
     let identifier: String
-    var shelfId: Int64?
     let point: CGPoint
     let pointWithOffset: CGPoint
     var preScanLocation: CGPoint?
     var offset: CGVector?
-    var code: PositionedCode?
 
+    var tags:[String:String]
     switch syncEvent {
     case .syncEvent(let event):
       let position = event.itemPosition
       identifier = position.identifier
-      shelfId = position.shelfId
       point = position.point
       pointWithOffset = position.pointWithOffset
       preScanLocation = event.preSyncScanLocation
@@ -141,36 +139,46 @@ class AccuracyUploader {
       upload(id: String(visitId), preScanLocation: event.preSyncScanLocation, position: position, errorHandler: { (error) in
         Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
       })
+      tags = [
+        "identifier": identifier,
+        "isStartSync": String(false)
+      ]
+      if let shelfId = position.shelfId {
+        tags["shelfId"] = String(shelfId)
+      }
     case .startLocationSyncEvent(let event):
       identifier = event.startScanLocation.code
       point = event.startScanLocation.point
       pointWithOffset = point
-      code = event.startScanLocation
+      tags = [
+        "identifier": identifier,
+        "isStartSync": String(true),
+        "syncAngle": String(event.startScanLocation.direction)
+      ]
     case .startSyncEvent(let event):
       let position = event.itemPosition
       identifier = position.identifier
-      shelfId = position.shelfId
       point = position.point
       pointWithOffset = position.pointWithOffset
       offset = position.offset
+      tags = [
+        "identifier": identifier,
+        "isStartSync": String(true),
+        "syncAngle": String(event.startDirection)
+      ]
+      if let shelfId = position.shelfId {
+        tags["shelfId"] = String(shelfId)
+      }
     }
 
-    let preScanLocationInPixels = (preScanLocation ?? .zero).fromMeterToPixel(converter: converter)
+    let preScanLocationInPixels = preScanLocation?.fromMeterToPixel(converter: converter)
     let scanLocationInPixels = pointWithOffset.fromMeterToPixel(converter: converter)
-    let isRightAisle = mapFenceData.isRightAisle(p1: preScanLocationInPixels, p2: scanLocationInPixels)
+    let isRightAisle = preScanLocation != nil ? mapFenceData.isRightAisle(p1: preScanLocationInPixels!, p2: scanLocationInPixels) : false
 
-    var tags = ["identifier": identifier]
-    if let shelfId = shelfId {
-      tags["shelfId"] = String(shelfId)
-    }
-    tags["isStartSync"] = String(code != nil)
-    if let angle = code?.direction {
-      tags["syncAngle"] = String(angle)
-    }
-    tags["isWifiResetSync"] = String(false)
-    if (tags["isWifiResetSync"]! as NSString).boolValue {
-      tags["wifiResetSyncRadius"] = String(0)
-    }
+    //tags["isWifiResetSync"] = String(false)
+    //if (tags["isWifiResetSync"]! as NSString).boolValue {
+    //  tags["wifiResetSyncRadius"] = String(0)
+    //}
     let distance: Double = stepEventUploader?.events.map { $0.distance }.sum() ?? 0.0
     let event = SyncEvent(
       rtlsOptionsId: rtlsOptionsId,
@@ -183,7 +191,7 @@ class AccuracyUploader {
       userToSyncPositionDistanceInMeters: (preScanLocation ?? point).distance(to: point),
       errorAngleInDegrees: 0,
       timestamp: Date(),
-      userPositionInMeters: preScanLocation ?? .zero,
+      userPositionInMeters: preScanLocation,
       syncPositionInMeters: point,
       syncPositionOffsetsInMeters: offset ?? .zero,
       tags: tags
