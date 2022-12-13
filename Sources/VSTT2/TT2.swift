@@ -27,7 +27,7 @@ final public class TT2: ITT2 {
     public var events: TT2EventManager { analytics.eventManager }
 //    public var userSettings: UserSettings { tt2Internal.user }
     public var user: UserController { tt2Internal.user }
-    public var recording: IRecording { tt2Internal.recording }
+    public var recording: IRecordingManager { tt2Internal.recording }
 
     public private(set) var activeStore: TT2Store?
     public var activeFloor: RtlsOptions? { floor.activeFloor }
@@ -156,10 +156,6 @@ final public class TT2: ITT2 {
     
     public func getMapData() -> MapData? {
         return self.mapData
-    }
-
-    public func startMap() {
-        tt2Internal.mapController?.start()
     }
 
     public func stop() {
@@ -313,10 +309,10 @@ private extension TT2 {
         let analyticsConfig = EnvironmentConfig()
         analyticsConfig.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
         analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id, config: analyticsConfig)
-        if let client = activeClient, let activeStore = activeStore {
-            let store = tt2Internal.internalStores.first(where: { $0.id == activeStore.id })
-            user.setup(clientId: client.clientId, positionServiceSettings: store?.positionServiceSettings, config: analyticsConfig)
+        if let client = activeClient {
+            user.setup(clientId: client.clientId, positionServiceSettings: store.positionServiceSettings, config: analyticsConfig)
         }
+        tt2Internal.awsS3UploadManager.setup(store.hasSensorRecordingActive)
     }
     
     private func setupAnalytics(with zoneData: [Int64: ZoneData]?) {

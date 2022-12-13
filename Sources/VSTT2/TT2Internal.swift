@@ -18,7 +18,7 @@ internal class TT2Internal {
     @Inject var position: Position
 //    @Inject var user: UserSettings
     @Inject var user: UserController
-    @Inject var recording: Recording
+    @Inject var recording: RecordingManager
     @Inject var awsS3UploadManager: AWSS3UploadManager
     
     /// Services for getting the api data
@@ -120,6 +120,17 @@ internal class TT2Internal {
     
     
     private func bindPublishers() {
+        navigation.isActivePublisher
+            .sink { [weak self] (isActive) in
+                if isActive {
+                  self?.mapController?.start()
+                  if self?.awsS3UploadManager.hasSensorRecordingActive ?? false {
+                    print("Recording")
+                      self?.recording.start()
+                  }
+                }
+            }.store(in: &cancellable)
+
         navigation.positionKitManager.positionPublisher
             .compactMap{ $0 }
             .sink { error in
@@ -177,8 +188,6 @@ internal class TT2Internal {
         navigation.positionKitManager.recordingPublisherPartial
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data) in
-//                self?.vpsIdentifier = identifier
-//                self?.vpsData = data
                 let date = Date()
                 let uploadTimeFormatter = DateFormatter()
                 let uploadDayFormatter = DateFormatter()
@@ -190,13 +199,17 @@ internal class TT2Internal {
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data) in
                 self?.vpsIdentifier = identifier
-                self?.vpsData = data
                 let date = Date()
                 let uploadTimeFormatter = DateFormatter()
                 let uploadDayFormatter = DateFormatter()
                 uploadTimeFormatter.dateFormat = "HHmmss"
                 uploadDayFormatter.dateFormat = "yyMMdd"
                 self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
+
+                if self?.awsS3UploadManager.hasSensorRecordingActive ?? false {
+                  print("Uploading")
+                    self?.sendAWSData(nil)
+                }
             }).store(in: &cancellable)
 
         navigation.positionKitManager.rescueModePublisher
@@ -249,34 +262,33 @@ internal class TT2Internal {
     var vpsIdentifier: String?
     var vpsData: String?
     func sendAWSData(_ metaData: RecordingMetaData?) {
-        guard let identifier = vpsIdentifier, let data = vpsData else { return }
-        self.createAWSData(metaData: metaData, identifier: identifier, data: data)
-        guard let stringDate = recordingStringDate, let time = recordingStringTime else {
-//            if recording.recorded {
-//                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.sendAWSData() }
-//            }
-            return
-        }
+        guard
+            let identifier = vpsIdentifier,
+            let awsData = createAWSData(metaData: metaData, identifier: identifier)
+        else { return }
+        let stringDate = awsData.recordingStringDate
+        let time = awsData.recordingStringTime
 
         let folderName: String
-        if let user = metaData {
-            let name = user.name ?? user.userId ?? "undefined"
-            let activity = user.activity ?? "undefinedMode"
-            let route = user.route ?? "undefinedRoute"
-            let deviceName = user.deviceName ?? UIDevice.current.name
-            folderName = "\(stringDate)/\(name)_\(deviceName)/ios/\(activity)/\(route)/\(time)/"
+        if let id = analytics.visitId, let serverAddress = awsData.serverAddress, awsS3UploadManager.hasSensorRecordingActive {
+          folderName = "\(serverAddress)/\(id)/"
         } else {
-            folderName = "\(stringDate)/undefined/ios/undefinedMode/undefinedRoute/\(time)/"
+            if let user = metaData {
+                let name = user.name ?? user.userId ?? "undefined"
+                let activity = user.activity ?? "undefinedMode"
+                let route = user.route ?? "undefinedRoute"
+                let deviceName = user.deviceName ?? UIDevice.current.name
+                folderName = "\(stringDate)/\(name)_\(deviceName)/ios/\(activity)/\(route)/\(time)/"
+            } else {
+                folderName = "\(stringDate)/undefined/ios/undefinedMode/undefinedRoute/\(time)/"
+            }
         }
         awsS3UploadManager.sendCollectedDataToS3(folderName: folderName)
-        recordingStringDate = nil
-        recordingStringTime = nil
+        vpsIdentifier = nil
     }
 
-    var recordingStringDate: String?
-    var recordingStringTime: String?
-    func createAWSData(metaData: RecordingMetaData?, identifier: String, data: String) {
-        guard let store = position.store else { return }
+    func createAWSData(metaData: RecordingMetaData?, identifier: String) -> (recordingStringDate: String, recordingStringTime: String, serverAddress: String?)? {
+        guard let store = position.store else { return nil }
         let date = Date()
         let uploadTimeFormatter = DateFormatter()
         let uploadDayFormatter = DateFormatter()
@@ -284,11 +296,14 @@ internal class TT2Internal {
         uploadDayFormatter.dateFormat = "yyMMdd"
         let stringDate = uploadDayFormatter.string(from: date)
         let time = uploadTimeFormatter.string(from: date)
-        let csvData = createCSVData(metaData: metaData, date: stringDate, time: time, serverUrl: config.centralServerConnection.serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
+        var serverAddress = config.centralServerConnection.serverAddress?.trimmingCharacters(in: CharacterSet(charactersIn: "htps:/"))
+        if serverAddress?.hasSuffix("/api/v1") ?? false || serverAddress?.hasSuffix("/api/v2") ?? false {
+          serverAddress?.removeLast(7)
+        }
+        let csvData = createCSVData(metaData: metaData, date: stringDate, time: time, serverUrl: serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
         let fileName = "keywords\(time).csv"
         awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: csvData)
-        recordingStringDate = stringDate
-        recordingStringTime = time
+        return (recordingStringDate: stringDate, recordingStringTime: time, serverAddress: serverAddress)
     }
     
     func createCSVData(metaData: RecordingMetaData?, date: String, time: String, serverUrl: String, clientId: String, storeid: String) -> String {

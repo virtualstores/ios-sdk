@@ -161,8 +161,8 @@ struct VSTT2Config: Config {
             AWSS3UploadManager()
         }
 
-        injector.map(Recording.self) {
-            Recording()
+        injector.map(RecordingManager.self) {
+            RecordingManager()
         }
     }
 

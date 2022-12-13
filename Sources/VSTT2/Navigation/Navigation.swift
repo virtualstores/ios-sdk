@@ -13,10 +13,15 @@ import CoreGraphics
 import UIKit
 
 final public class Navigation: INavigation {
-    private(set) var positionKitManager: PositionManager
-    public private(set) var isActive: Bool = false
     public var currentPosition: CGPoint? { positionKitManager.positionPublisher.value?.position }
+    public private(set) var isActive: Bool = false {
+        didSet {
+            isActivePublisher.send(isActive)
+        }
+    }
 
+    private(set) var positionKitManager: PositionManager
+    var isActivePublisher: CurrentValueSubject<Bool, Never> = .init(false)
     var accuracyPublisher: CurrentValueSubject<AccuracySyncEvent.Event?,Never> = .init(nil)
 
     var currentAccessPointPosition: CGPoint = .zero

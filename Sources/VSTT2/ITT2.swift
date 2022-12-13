@@ -37,7 +37,7 @@ public protocol ITT2 {
     var user: UserController { get }
 
     /// Recording manager
-    var recording: IRecording { get }
+    var recording: IRecordingManager { get }
     
     /// Active store
     var activeStore: TT2Store? { get }
@@ -64,8 +64,6 @@ public protocol ITT2 {
     
     /// Methode for creating MapData for MapSdk
     func getMapData() -> MapData?
-
-    func startMap()
 
     func stop()
 

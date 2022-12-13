@@ -49,7 +49,23 @@ public class AWSS3UploadManager {
 
   var dataUploadedPublisher: CurrentValueSubject<Bool, Never> = .init(false)
 
+  var hasSensorRecordingActive: Bool = false
+
   private static let MAX_TRIES = 20
+
+  func setup(_ hasSensorRecordingActive: Bool) {
+    self.hasSensorRecordingActive = hasSensorRecordingActive
+    let region: AWSRegionType
+    let provider: AWSCognitoCredentialsProvider
+    if hasSensorRecordingActive {
+      region = .EUNorth1
+      provider = AWSCognitoCredentialsProvider(regionType: region, identityPoolId: "eu-north-1:33816793-1fcf-4333-9952-bd6327a65cdf")
+    } else {
+      region = .EUWest1
+      provider = AWSCognitoCredentialsProvider(regionType: region, identityPoolId: "eu-west-1:459584f7-a00f-4c3b-8e4b-9995a05c3c0c")
+    }
+    AWSServiceManager.default().defaultServiceConfiguration = AWSServiceConfiguration(region: region, credentialsProvider: provider)
+  }
 
   private func insert(identifier: String, data: String, date: String) {
     var recording = AWSRecordObject()
@@ -76,7 +92,7 @@ public class AWSS3UploadManager {
     insert(identifier: fileName, data: data, date: date)
   }
 
-  func sendCollectedDataToS3(status: AWSRecordObject.Status = .pending, folderName: String = "") {
+  func sendCollectedDataToS3(status: AWSRecordObject.Status = .pending, folderName: String? = nil) {
     let objects = getAllRecordedObject()
     let arr = objects.filter { $0.status == status.rawValue } + objects.filter { $0.status == AWSRecordObject.Status.inProgress.rawValue } + objects.filter { $0.status == AWSRecordObject.Status.failed.rawValue }
     arr.forEach { (object) in
@@ -163,7 +179,8 @@ public class AWSS3UploadManager {
     }
   }
 
-  private func sendToS3(AWSS3Key: AWSS3Keys, key: String, identifier: String, data: Data) {
+  private func sendToS3(AWSS3Key: AWSS3Keys, key: String?, identifier: String, data: Data) {
+    guard let key = key else { return }
     let splitIdentifier = identifier.split(separator: ".")
     let strippedIdentifier = splitIdentifier[0]
     var fileExtension = ".json"
@@ -171,7 +188,11 @@ public class AWSS3UploadManager {
       fileExtension = "." + String(splitIdentifier[splitIdentifier.capacity - 1])
     }
     let getPreSignedURLRequest = AWSS3GetPreSignedURLRequest()
-    getPreSignedURLRequest.bucket = "product-information-storage"
+    if hasSensorRecordingActive {
+      getPreSignedURLRequest.bucket = "virtualstores-public-files"
+    } else {
+      getPreSignedURLRequest.bucket = "product-information-storage"
+    }
     getPreSignedURLRequest.key = AWSS3Key.rawValue + key + strippedIdentifier + fileExtension
     getPreSignedURLRequest.httpMethod = .PUT
     getPreSignedURLRequest.expires = Date(timeIntervalSinceNow: 3600)

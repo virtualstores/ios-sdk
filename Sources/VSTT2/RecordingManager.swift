@@ -9,7 +9,7 @@ import Foundation
 import VSFoundation
 import Combine
 
-public protocol IRecording {
+public protocol IRecordingManager {
   var dataUploadedPublisher: CurrentValueSubject<Bool, Never> { get }
 
   /**
@@ -27,7 +27,7 @@ public protocol IRecording {
   func sendData(metaData: RecordingMetaData)
 }
 
-class Recording: IRecording {
+class RecordingManager: IRecordingManager {
   @Inject var navigation: Navigation
   @Inject var uploader: AWSS3UploadManager
 
@@ -46,9 +46,8 @@ class Recording: IRecording {
 
   func bindPublishers() {
     uploader.dataUploadedPublisher
-      .sink { (value) in
-        self.dataUploadedPublisher.send(value)
-      }.store(in: &cancellable)
+      .sink { [weak self] in self?.dataUploadedPublisher.send($0) }
+      .store(in: &cancellable)
   }
 
   func start() {
