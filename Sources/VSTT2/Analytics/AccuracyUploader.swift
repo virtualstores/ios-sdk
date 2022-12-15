@@ -114,7 +114,7 @@ class AccuracyUploader {
 //      }//.mapError { errorHandler($0 as Error) }
   }
 
-  func upload(syncEvent: AccuracySyncEvent.Event) {
+  func upload(syncEvent: AccuracySyncEvent.Event, isFloorSwap: Bool) {
     guard
       let visitId = analytics.visitId,
       let rtlsOptionsId = analytics.rtlsOptionId,
@@ -183,8 +183,8 @@ class AccuracyUploader {
     let event = SyncEvent(
       rtlsOptionsId: rtlsOptionsId,
       identifier: identifier,
-      isRightAisle: isRightAisle,
-      isFloorSwap: false,
+      isRightAisle: !isFloorSwap ? isRightAisle : false,
+      isFloorSwap: isFloorSwap,
       didSync: true,
       rescueModeCountSinceLastSync: numberOfRescueModes,
       stepDataDistanceSinceLastSyncInMeters: distance,

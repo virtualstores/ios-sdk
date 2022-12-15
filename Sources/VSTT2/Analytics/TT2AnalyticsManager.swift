@@ -10,6 +10,7 @@ import VSFoundation
 import Combine
 import CoreGraphics
 import UIKit
+import VSPositionKit
 
 final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var createVisitService: CreateVisitService
@@ -291,7 +292,7 @@ private extension TT2AnalyticsManager {
   var tt2VisitStartTags: [String:String] {
     [
       "tt2SdkVersion" : version,
-      "tt2VpsVersion" : "undefined",
+      "tt2VpsVersion" : GlobalQPSValues.shared.VPS_VERSION,
       "tt2DeviceManufacturer" : "Apple",
       "tt2DeviceModel" : UIDevice.current.modelName,
       "tt2DeviceOs" : UIDevice.current.systemName,

@@ -11,12 +11,12 @@ import VSFoundation
 
 public class Position: IPosition {
     @Inject var itemPositionService: ItemPositionService
+    @Inject var getPositionByBarcodeUseCase: GetPositionByBarcodeUseCase
 
     private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
     public internal(set) var shelfGroups: [ShelfGroup]?
     private var config: EnvironmentConfig?
     var store: Store?
-    private var barcodePositions: [Item] = []
     private var cancellable = Set<AnyCancellable>()
     
     public init() {}
@@ -33,6 +33,7 @@ public class Position: IPosition {
 
         self.config = config
         self.store = store
+        getPositionByBarcodeUseCase.itemsRepository.reset()
     }
     
     public func getBy(shelfName: String, completion: @escaping (ItemPosition?) -> ()) {
@@ -49,28 +50,8 @@ public class Position: IPosition {
     public func getBy(barcode: String, completion: @escaping (Item?) -> ()) {
         guard let store = store else { return }
 
-        if let item = barcodePositions.first(where: { $0.externalId == barcode }) {
+        getPositionByBarcodeUseCase.invoke(storeId: store.id, barcode: barcode) { (item) in
             DispatchQueue.main.async { completion(item) }
-        } else {
-            itemPositionService
-                .call(with: ItemPositionParameters(storeId: store.id, barcode: barcode, config: config))
-                .sink { (subscriberCompletion) in
-                    switch subscriberCompletion {
-                    case .finished: break
-                    case .failure(let error):
-                        Logger(verbosity: .debug).log(message: error.localizedDescription)
-                      DispatchQueue.main.async { completion(nil) }
-                    }
-                } receiveValue: { [weak self] (data) in
-                  var itemPositions: [ItemPosition] = []
-                  data.forEach { (position) in
-                    guard let point = position.itemPosition, let offset = position.itemPositionOffset else { return }
-                    itemPositions.append(ItemPosition(point: point, offset: offset, floorLevelId: position.rtlsOptionsId, shelfId: position.shelfId, identifier: position.barcode))
-                  }
-                  let item = Item(name: "", externalId: barcode, itemPositions: itemPositions)
-                  self?.barcodePositions.append(item)
-                  DispatchQueue.main.async { completion(item) }
-                }.store(in: &cancellable)
         }
     }
 

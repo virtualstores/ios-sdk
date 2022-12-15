@@ -11,15 +11,29 @@ import VSPositionKit
 import VSPositionKitTargets
 
 struct VSTT2Config: Config {
-    public init() { }
+    let environment: EnvironmentConfig
+  let itemsRepository: ItemsRepository
+    let storeRepository: StoreRepository
+    public init(environment: EnvironmentConfig) {
+        self.environment = environment
+
+        itemsRepository = ItemsRepository(api: ItemsApi(config: environment))
+        storeRepository = StoreRepository(api: StoreApi(config: environment))
+    }
     
     func configure(_ injector: Injector) {
         configureManagers(injector)
         configureHelpers(injector)
         configureServices(injector)
+        configureRepositories(injector)
+        configureUseCases(injector)
     }
 
     private func configureServices(_ injector: Injector) {
+        injector.map(EnvironmentConfig.self) {
+            environment
+        }
+
         injector.map(UploadScanEventsService.self) {
             UploadScanEventsService(with: NetworkManager())
         }
@@ -163,6 +177,34 @@ struct VSTT2Config: Config {
 
         injector.map(RecordingManager.self) {
             RecordingManager()
+        }
+    }
+
+    private func configureRepositories(_ injector: Injector) {
+        injector.map(IItemsRepository.self) {
+            itemsRepository
+        }
+
+        injector.map(IStoreRepository.self) {
+            storeRepository
+        }
+    }
+
+    private func configureUseCases(_ injector: Injector) {
+        injector.map(GetPositionByBarcodeUseCase.self) {
+            GetPositionByBarcodeUseCase(storeRepository: storeRepository, itemsRepository: itemsRepository)
+        }
+
+        injector.map(FetchStoreUseCase.self) {
+            FetchStoreUseCase(repo: storeRepository)
+        }
+
+        injector.map(SetActiveStoreUseCase.self) {
+            SetActiveStoreUseCase(repo: storeRepository)
+        }
+
+        injector.map(GetCachedStoreUseCase.self) {
+            GetCachedStoreUseCase(repo: storeRepository)
         }
     }
 

@@ -15,11 +15,11 @@ import UIKit
 let version = "1.0.0"
 
 final public class TT2: ITT2 {
-    private let context = Context(VSTT2Config())
+    private let context: Context
 
     public var initialized: Bool { _tt2Internal != nil }
     public var stores: [TT2Store] { tt2Internal.internalStores.map({ $0.toTT2Store() }) }
-    public var activeStores: [TT2Store] { tt2Internal.internalStores.filter({ $0.active }).map({ $0.toTT2Store() }) }
+    public var activeStores: [TT2Store] { tt2Internal.internalStoresActive.map({ $0.toTT2Store() }) }
     public var navigation: Navigation { tt2Internal.navigation }
     public var analytics: TT2AnalyticsManager { tt2Internal.analytics }
     public var floor: VSTT2FloorManager { tt2Internal.floorManager }
@@ -55,11 +55,12 @@ final public class TT2: ITT2 {
     private var wifiCancellable = Set<AnyCancellable>()
     private var positionKitParams: ParameterPackage = .retail
     
-    public init() {}
-
-    public func initialize(with apiUrl: String, apiKey: String, clientId: Int64, positionKitParams: ParameterPackage = .retail, completion: @escaping (Error?) -> ()) {
+    public init(with apiUrl: String, apiKey: String) {
         config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
+        self.context = Context(VSTT2Config(environment: config))
+    }
 
+    public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, completion: @escaping (Error?) -> ()) {
         self._tt2Internal = TT2Internal(config: config)
         self.tt2Internal.getClients(completion: { (error) in
             if let error = error {
@@ -100,7 +101,8 @@ final public class TT2: ITT2 {
     public func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ()) {
         ///check
         guard let currentStore = tt2Internal.internalStores.first(where: { $0.id == store.id }) else { return }
-        
+
+        self.tt2Internal.setActiveStore(storeId: currentStore.id)
         self.activeStore = store
         self.floor.setupFloors(with: currentStore.rtlsOptions)
 
@@ -199,6 +201,18 @@ private extension TT2 {
                       }
                       do {
                           try self.navigation.changeFloorStart(startPosition: data.point)
+//                          if self.navigation.isActive {
+//                              let point: CGPoint
+//                              switch data.position {
+//                              case .code(let code): point = code.point
+//                              case .itemPosition(itemPosition: let itemPosition, angle: let angle): point = itemPosition.pointWithOffset
+//                              case .point(let p): point = p
+//                              }
+//                              try self.navigation.changeFloorStart(startPosition: point)
+//                          } else if let position = data.position.itemPosition() {
+//                          } else {
+//                              throw NSError()
+//                          }
                           self.floorChangePublisher.send(data.rtlsOptions.name)
                       } catch {
                           Logger(verbosity: .critical).log(message: "Starting on new floor failed")

@@ -23,7 +23,9 @@ internal class TT2Internal {
     
     /// Services for getting the api data
     @Inject var clientListService : ClientsListService
-    @Inject var storesListService: StoresListService
+    @Inject var fetchStoreUseCase: FetchStoreUseCase
+    @Inject var getCachedStoreUseCase: GetCachedStoreUseCase
+    @Inject var setActiveStoreUseCase: SetActiveStoreUseCase
     @Inject var swapLocationsService: SwapLocationsService
     @Inject var ordersService: OrdersService
     @Inject var itemPositionService: ItemPositionService
@@ -39,7 +41,8 @@ internal class TT2Internal {
     private var offset: Double
     
     var internalClients: [Client] = []
-    var internalStores: [Store] = []
+    var internalStores: [Store] { getCachedStoreUseCase.invoke(filterOnlyActive: false) }
+    var internalStoresActive: [Store] { getCachedStoreUseCase.invoke() }
     var shelfGroups: [Int64: [ShelfGroup]] = [:]
     
     public init(config: EnvironmentConfig) {
@@ -74,22 +77,11 @@ internal class TT2Internal {
     }
     
     func getStores(with clientId: Int64, completion: @escaping (Error?) -> ()) {
-        let parameters = StoresListParameters(clientId: clientId, config: config)
-        
-        storesListService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (result) in
-                switch result {
-                case .finished:
-                    break
-                case .failure(let error):
-                    completion(error)
-                    Logger(verbosity: .critical).log(message: "No available store")
-                }
-            }, receiveValue: { (data) in
-                self.internalStores = data.stores
-                completion(nil)
-            }).store(in: &cancellable)
+        fetchStoreUseCase.invoke(clientId: clientId, completion: completion)
+    }
+
+    func setActiveStore(storeId: Int64) {
+        setActiveStoreUseCase.invoke(storeId: storeId)
     }
     
     func getShelfGroups(for storeId: Int64, activeFloor: RtlsOptions?, completion: @escaping ([ShelfGroup]) -> ()) {
@@ -237,9 +229,9 @@ internal class TT2Internal {
         
         navigation.accuracyPublisher
             .compactMap { $0 }
-            .sink(receiveValue: { [weak self] (event) in
-                self?.analytics.accuracyUploader?.upload(syncEvent: event)
-            }).store(in: &cancellable)
+            .sink { [weak self] (data) in
+                self?.analytics.accuracyUploader?.upload(syncEvent: data.event, isFloorSwap: data.isFloorSwap)
+            }.store(in: &cancellable)
 
         recording.sendDataPublisher
             .sink { [weak self] (metaData) in
