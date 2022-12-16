@@ -9,7 +9,7 @@ import Foundation
 import VSFoundation
 import CoreGraphics
 
-public struct UploadScanEventsParameters {
+struct UploadScanEventsParameters {
     private let config: EnvironmentConfig?
     private let apiKey: String
     private let visitId: Int64
@@ -42,6 +42,8 @@ public struct UploadScanEventsParameters {
 extension UploadScanEventsParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
 
+    var method: RequestType { .POST }
+
     var path: String { "/scanevents" }
 
     var queryItems: [String: String]? {
@@ -50,9 +52,9 @@ extension UploadScanEventsParameters: Routing {
         return parameters
     }
 
-    var parameters: [String: Any]? {
+    var parametersDictionary: [String: Any]? {
         let parameters = ["barcode": barcode,
-                          "shelfIf": shelfId,
+                          "shelfId": shelfId,
                           "x": Double(point.x),
                           "y": Double(point.y),
                           "timestamp": timeStamp,

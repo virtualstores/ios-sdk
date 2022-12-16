@@ -8,10 +8,10 @@
 import Foundation
 import VSFoundation
 
-public struct ClientsListParameters {
+struct ClientsListParameters {
     private var config: EnvironmentConfig
 
-    public init(config: EnvironmentConfig) {
+    init(config: EnvironmentConfig) {
         self.config = config
     }
 }

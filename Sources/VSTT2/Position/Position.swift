@@ -11,12 +11,12 @@ import VSFoundation
 
 public class Position: IPosition {
     @Inject var itemPositionService: ItemPositionService
+    @Inject var getPositionByBarcodeUseCase: GetPositionByBarcodeUseCase
 
     private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
-    private var shelfGroups: [ShelfGroup]?
+    public internal(set) var shelfGroups: [ShelfGroup]?
     private var config: EnvironmentConfig?
     var store: Store?
-    private var barcodePositions: [Item] = []
     private var cancellable = Set<AnyCancellable>()
     
     public init() {}
@@ -33,9 +33,10 @@ public class Position: IPosition {
 
         self.config = config
         self.store = store
+        getPositionByBarcodeUseCase.itemsRepository.reset()
     }
     
-    public func getBy(shelfName: String, completion: @escaping (ItemPosition) -> ()) {
+    public func getBy(shelfName: String, completion: @escaping (ItemPosition?) -> ()) {
         var position: ItemPosition?
         shelfGroups?.forEach { shelfGroup in
             if let shelf = shelfGroup.shelves.first(where: { $0.name == shelfName }) {
@@ -43,36 +44,14 @@ public class Position: IPosition {
             }
         }
         
-        guard let itemPosition = position else { return }
-        
-        completion(itemPosition)
+        DispatchQueue.main.async { completion(position) }
     }
 
     public func getBy(barcode: String, completion: @escaping (Item?) -> ()) {
         guard let store = store else { return }
 
-        if let item = barcodePositions.first(where: { $0.externalId == barcode }) {
-            completion(item)
-        } else {
-            itemPositionService
-                .call(with: ItemPositionParameters(storeId: store.id, barcode: barcode, config: config))
-                .sink { (subscriberCompletion) in
-                    switch subscriberCompletion {
-                    case .finished: break
-                    case .failure(let error):
-                        Logger(verbosity: .debug).log(message: error.localizedDescription)
-                        completion(nil)
-                    }
-                } receiveValue: { [weak self] (data) in
-                  var itemPositions: [ItemPosition] = []
-                  data.forEach { (position) in
-                    guard let point = position.itemPosition, let offset = position.itemPositionOffset, let floorLevelId = store.rtlsOptions.first(where: { $0.id == (position.rtlsOptionsId ?? -1) })?.id else { return }
-                    itemPositions.append(ItemPosition(point: point, offset: offset, floorLevelId: floorLevelId))
-                  }
-                  let item = Item(name: "", externalId: barcode, itemPositions: itemPositions)
-                  self?.barcodePositions.append(item)
-                  completion(item)
-                }.store(in: &cancellable)
+        getPositionByBarcodeUseCase.invoke(storeId: store.id, barcode: barcode) { (item) in
+            DispatchQueue.main.async { completion(item) }
         }
     }
 
@@ -93,7 +72,11 @@ public class Position: IPosition {
         }
 
         group.notify(queue: .main) {
-            completion(positions)
+            DispatchQueue.main.async { completion(positions) }
         }
+    }
+    
+    deinit {
+        cancellable.removeAll()
     }
 }

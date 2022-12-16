@@ -9,6 +9,7 @@ import Foundation
 import Combine
 import Foundation
 import VSFoundation
+import CoreGraphics
 
 ///
 /// Interface for TT2 SDK.
@@ -26,9 +27,17 @@ public protocol ITT2 {
     
     /// Position manager
     var position: Position { get }
+
+    /// Event Manager
+    var events: TT2EventManager { get }
     
     /// User Settings manager
-    var userSettings: UserSettings { get }
+//    var userSettings: UserSettings { get }
+
+    var user: UserController { get }
+
+    /// Recording manager
+    var recording: IRecordingManager { get }
     
     /// Active store
     var activeStore: TT2Store? { get }
@@ -39,24 +48,30 @@ public protocol ITT2 {
     /// List of available stores
     var stores: [TT2Store] { get }
 
+    var mapZonesTree: Tree? { get }
+
     /// Method for initialize TT2 for specific client
-    func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (Error?) -> ())
+    func initialize(clientId: Int64, positionKitParams: ParameterPackage, completion: @escaping (Error?) -> ())
     
     /// Method for initiate selected Store data
     func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ())
     
     /// Setup the Map
-    func setMap(map: IMapController)
+    func set(map: IMapController)
+
+    /// Setup the WiFi
+    func set(wifi: IWiFiController)
     
     /// Methode for creating MapData for MapSdk
-    func getMapData(mapStyle: MapStyle) -> MapData?
+    func getMapData() -> MapData?
 
-    func startMap()
+    func stop()
 
-    func stop() 
+    func setActiveFloor(rtls: RtlsOptions)
 }
 
 public enum VSTT2Error: Error {
     case noAvailableStores
     case noAvailableMapData
+    case missingData
 }

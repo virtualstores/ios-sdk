@@ -99,8 +99,7 @@ class InAndOutZone {
     }
 
     struct Trigger {
-          let id: String
-          let polygon: [CGPoint]
+        let id: String
+        let polygon: [CGPoint]
     }
-
 }

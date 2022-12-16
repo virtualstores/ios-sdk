@@ -27,7 +27,7 @@ final class ClientsListTests: XCTestCase {
             return
         }
         
-        XCTAssertEqual(client.clientId, "1")
+        XCTAssertEqual(client.clientId, 1)
         XCTAssertEqual(client.name, "Gunnis Hp")
     }
 }

@@ -8,6 +8,7 @@
 import XCTest
 //@testable import VSEngineWrapper
 import VSTT2
+import VSFoundation
 
 extension String {
     static var swapLocationsFixture: String {

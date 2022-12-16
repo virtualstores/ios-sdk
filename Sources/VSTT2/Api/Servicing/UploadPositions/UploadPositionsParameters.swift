@@ -8,7 +8,7 @@
 import Foundation
 import VSFoundation
 
-public struct UploadPositionsParameters {
+struct UploadPositionsParameters {
     private var config: EnvironmentConfig?
     private let visitId: Int64
     private let requestId: String
@@ -25,6 +25,8 @@ public struct UploadPositionsParameters {
 extension UploadPositionsParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
 
+    var method: RequestType { .POST }
+
     var path: String { "/positions" }
 
     var queryItems: [String: String]? {
@@ -33,7 +35,7 @@ extension UploadPositionsParameters: Routing {
         return parameters
     }
 
-    var parameters: [String: Any]? {
+    var parametersDictionary: [String: Any]? {
         let parameters = ["positionGrps": positionGrps.asDictionary()] as [String: Any]
 
         return parameters

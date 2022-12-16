@@ -9,6 +9,7 @@
 import Foundation
 import AWSS3
 import VSFoundation
+import Combine
 
 public enum AWSS3Keys: String {
   case dataAnalyze = "data-analyze/"
@@ -46,7 +47,25 @@ final class AWSRecordObject: IPersistenceModel {
 public class AWSS3UploadManager {
   @Inject var persistence: Persistence
 
+  var dataUploadedPublisher: CurrentValueSubject<Bool, Never> = .init(false)
+
+  var hasSensorRecordingActive: Bool = false
+
   private static let MAX_TRIES = 20
+
+  func setup(_ hasSensorRecordingActive: Bool) {
+    self.hasSensorRecordingActive = hasSensorRecordingActive
+    let region: AWSRegionType
+    let provider: AWSCognitoCredentialsProvider
+    if hasSensorRecordingActive {
+      region = .EUNorth1
+      provider = AWSCognitoCredentialsProvider(regionType: region, identityPoolId: "eu-north-1:33816793-1fcf-4333-9952-bd6327a65cdf")
+    } else {
+      region = .EUWest1
+      provider = AWSCognitoCredentialsProvider(regionType: region, identityPoolId: "eu-west-1:459584f7-a00f-4c3b-8e4b-9995a05c3c0c")
+    }
+    AWSServiceManager.default().defaultServiceConfiguration = AWSServiceConfiguration(region: region, credentialsProvider: provider)
+  }
 
   private func insert(identifier: String, data: String, date: String) {
     var recording = AWSRecordObject()
@@ -73,8 +92,9 @@ public class AWSS3UploadManager {
     insert(identifier: fileName, data: data, date: date)
   }
 
-  func sendCollectedDataToS3(status: AWSRecordObject.Status = .pending, folderName: String = "") {
-    let arr = getAllRecordedObject().filter { $0.status == status.rawValue }
+  func sendCollectedDataToS3(status: AWSRecordObject.Status = .pending, folderName: String? = nil) {
+    let objects = getAllRecordedObject()
+    let arr = objects.filter { $0.status == status.rawValue } + objects.filter { $0.status == AWSRecordObject.Status.inProgress.rawValue } + objects.filter { $0.status == AWSRecordObject.Status.failed.rawValue }
     arr.forEach { (object) in
       if let id = object.identifier, let convertedData = object.data?.data(using: .utf8) {
         self.sendToS3(AWSS3Key: .dataAnalyze, key: object.folderName ?? folderName, identifier: id, data: convertedData)
@@ -114,10 +134,10 @@ public class AWSS3UploadManager {
     persistence.get(arrayOf: AWSRecordObject.self)
   }
 
-  private func updateRecordsAfter(uploadingFailed: Bool) {
-    let arr = getAllRecordedObject()
-    let filteredArr = arr.filter { $0.status == AWSRecordObject.Status.inProgress.rawValue }
-    self.updateStatus(objects: filteredArr, status: uploadingFailed ? .failed : .succeded)
+  private func updateRecordsAfter(uploadingFailed: Bool, identifier: String, key: String) {
+    guard let object = getAllRecordedObject().filter({ $0.status == AWSRecordObject.Status.inProgress.rawValue }).first(where: { $0.identifier == identifier && key.contains($0.folderName ?? "") }) else { return }
+//    self.updateStatus(objects: filteredArr, status: uploadingFailed ? .failed : .succeded)
+    updateStatus(object: object, status: uploadingFailed ? .failed : .succeded)
   }
 
   private func updateStatus(object: AWSRecordObject, status: AWSRecordObject.Status? = nil) {
@@ -159,15 +179,20 @@ public class AWSS3UploadManager {
     }
   }
 
-  private func sendToS3(AWSS3Key: AWSS3Keys, key: String, identifier: String, data: Data) {
+  private func sendToS3(AWSS3Key: AWSS3Keys, key: String?, identifier: String, data: Data) {
+    guard let key = key else { return }
     let splitIdentifier = identifier.split(separator: ".")
-    let strippedIdentifier = splitIdentifier[0].components(separatedBy: CharacterSet.decimalDigits).joined()
+    let strippedIdentifier = splitIdentifier[0]
     var fileExtension = ".json"
     if splitIdentifier.count > 1 {
       fileExtension = "." + String(splitIdentifier[splitIdentifier.capacity - 1])
     }
     let getPreSignedURLRequest = AWSS3GetPreSignedURLRequest()
-    getPreSignedURLRequest.bucket = "product-information-storage"
+    if hasSensorRecordingActive {
+      getPreSignedURLRequest.bucket = "virtualstores-public-files"
+    } else {
+      getPreSignedURLRequest.bucket = "product-information-storage"
+    }
     getPreSignedURLRequest.key = AWSS3Key.rawValue + key + strippedIdentifier + fileExtension
     getPreSignedURLRequest.httpMethod = .PUT
     getPreSignedURLRequest.expires = Date(timeIntervalSinceNow: 3600)
@@ -178,7 +203,7 @@ public class AWSS3UploadManager {
     AWSS3PreSignedURLBuilder.default().getPreSignedURL(getPreSignedURLRequest).continueWith { (task:AWSTask<NSURL>) -> Any? in
       if let error = task.error as NSError? {
         Logger(verbosity: .critical).log(message: "Uploading error: \(error.localizedDescription)")
-        self.updateRecordsAfter(uploadingFailed: true)
+        self.updateRecordsAfter(uploadingFailed: true, identifier: identifier, key: key)
         return nil
       }
       
@@ -190,10 +215,13 @@ public class AWSS3UploadManager {
       URLSession.shared.uploadTask(with: request, from: data) { (responseData, response, error) in
         if let error = error {
           Logger(verbosity: .critical).log(message: "Failed to upload \(identifier), trying again: \(error.localizedDescription)")
-          self.updateRecordsAfter(uploadingFailed: true)
+          self.updateRecordsAfter(uploadingFailed: true, identifier: identifier, key: key)
         } else {
           Logger(verbosity: .info).log(message: "Successfully uploaded \(identifier) to S3")
-          self.updateRecordsAfter(uploadingFailed: false)
+          self.updateRecordsAfter(uploadingFailed: false, identifier: identifier, key: key)
+          if self.getAllRecordedObject().filter({ $0.status == AWSRecordObject.Status.inProgress.rawValue }).count == 0 {
+            DispatchQueue.main.async { self.dataUploadedPublisher.send(true) }
+          }
         }
       }.resume()
       return nil

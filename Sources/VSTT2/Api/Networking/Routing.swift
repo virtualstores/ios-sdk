@@ -9,14 +9,19 @@ import Foundation
 import VSFoundation
 
 protocol Routing {
-    /// Base url
-    var baseURL: String { get }
+    /// Environment config data
+    var environmentConfig: EnvironmentConfig? { get }
+
     /// Request type
     var method: RequestType { get }
+    /// Base url
+    var baseURL: String { get }
     /// Path for request
     var path: String { get }
     /// Needed parameters for request
-    var parameters: [String: Any]? { get }
+    var parametersDictionary: [String: Any]? { get }
+
+    var parameters: Any? { get }
 
     var queryItems: [String: String]? { get }
 
@@ -26,33 +31,27 @@ protocol Routing {
     var headers: [String: String]? { get }
     /// Final UrlRequest
     var urlRequest: URLRequest? { get }
-    /// Environment config data
-    var environmentConfig: EnvironmentConfig? { get }
 }
 
 extension Routing {
-    var environmentConfig: EnvironmentConfig? { nil }
-
     var baseURL: String {
         guard let url = environmentConfig?.centralServerConnection.serverAddress else { fatalError("baseURL is not exist") }
         
         return url
     }
 
-    var method: RequestType { .POST }
+    var parametersDictionary: [String: Any]? { nil }
 
-    var path: String { "" }
-
-    var parameters: [String: Any]? { nil }
+    var parameters: Any? { nil }
 
     var queryItems: [String: String]? { nil }
 
-    var encoding: ParameterEncoding { ParameterEncoding.json }
+    var encoding: ParameterEncoding { .json }
 
     var headers: [String: String]? {
         guard let apiKey = environmentConfig?.centralServerConnection.apiKey else { fatalError("apiKey is not exist") }
 
-       return  ["apiKey" : apiKey]
+        return  ["apiKey" : apiKey]
     }
 
     var urlRequest: URLRequest? {
@@ -92,7 +91,7 @@ extension Routing {
             }
         }
 
-        if let parameters = self.parameters {
+        if let parameters = self.parametersDictionary {
             do {
                 urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
             } catch {
@@ -100,8 +99,15 @@ extension Routing {
                 logger.log(message: "parameters encoding issue")
                 #endif
             }
+        } else if let parameters = parameters {
+          do {
+              urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
+          } catch {
+              #if DEV
+              logger.log(message: "parameters encoding issue")
+              #endif
+          }
         }
-
         return urlRequest
     }
 }

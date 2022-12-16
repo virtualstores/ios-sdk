@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreGraphics
+import VSFoundation
 
 public struct ShelfDto: Codable {
     public var shelfId: Int64?
@@ -18,6 +19,7 @@ public struct ShelfDto: Codable {
     public var itemPositionOffsetY: Double?
     public var points: [PointDto]?
     public var shelfTiers: [ShelfTierDto]?
+    public var floorLevelId: Int64?
 
     public init(shelfId: Int64?, shelfGroupId: Int64?, name: String?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, points: [PointDto]?, shelfTiers: [ShelfTierDto]?) {
         self.shelfId = shelfId
@@ -46,8 +48,13 @@ public struct ShelfDto: Codable {
 
 public extension ShelfDto {
     static func toShelf(_ dto: ShelfDto) -> Shelf {
-        let itemPosition = ItemPosition(xPosition: dto.itemPositionX ?? 0.0, yPosition: dto.itemPositionY ?? 0.0,
-                                        offsetX: dto.itemPositionOffsetX ?? 0.0, offsetY: dto.itemPositionOffsetY ?? 0.0)
+        let itemPosition = ItemPosition(
+            xPosition: dto.itemPositionX ?? 0.0, yPosition: dto.itemPositionY ?? 0.0,
+            offsetX: dto.itemPositionOffsetX ?? 0.0, offsetY: dto.itemPositionOffsetY ?? 0.0,
+            floorLevelId: dto.floorLevelId,
+            shelfId: dto.shelfId,
+            identifier: dto.name
+        )
 
         let points = dto.points ?? []
 

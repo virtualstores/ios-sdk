@@ -8,12 +8,12 @@
 import Foundation
 import VSFoundation
 
-public struct ItemPositionParameters {
+struct ItemPositionParameters {
     private let storeId: Int64
     private let barcode: String
     private let config: EnvironmentConfig?
 
-    public init(storeId: Int64, barcode: String, config: EnvironmentConfig?) {
+    init(storeId: Int64, barcode: String, config: EnvironmentConfig?) {
         self.storeId = storeId
         self.barcode = barcode
         self.config = config
@@ -23,9 +23,9 @@ public struct ItemPositionParameters {
 extension ItemPositionParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
 
-    var path: String { "/shelfgroups/barcodes" }
-
     var method: RequestType { .GET }
+
+    var path: String { "/shelfgroups/barcodes" }
 
     var queryItems: [String: String]? {
         let parameters = ["storeId": String(storeId),

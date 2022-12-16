@@ -9,7 +9,7 @@ import Foundation
 import Combine
 import CoreGraphics
 
-/// Event finterface. Will give all data which need iOS app for Events
+/// Event interface. Will give all data which need iOS app for Events
 public protocol TT2Event {
     /// Publisher for receiving triggered message information
     var messageEventPublisher: CurrentValueSubject<TriggerEvent?, Never> { get }
@@ -17,13 +17,16 @@ public protocol TT2Event {
     /// Publisher for receiving pointOfInteres information
     var pointOfInterestPublisher: CurrentValueSubject<PointOfInterest?, Never> { get }
     
-    /// Methode for being able to addEvent
-    func addEvent(event: TriggerEvent)
+    /// Method for being able to add event
+    func add(event: TriggerEvent)
 
-    /// Methode for being able to removeEvent
-    func removeEvent(with id: String)
+    /// Method for being able to remove event
+    func remove(event: TriggerEvent)
+
+    /// Method for being able to remove event
+    func remove(event id: String)
     
-    /// Methode for receaving new position, for checking  events for that position
+    /// Method for receiving new position, for checking  events for that position
     func onNewPosition(currentPosition: CGPoint)
 }
 

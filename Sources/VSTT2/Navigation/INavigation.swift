@@ -25,10 +25,10 @@ public protocol INavigation {
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws
     
     /// Start the position with compass
-    func start(startPosition: CGPoint) throws
+    func start(startPosition: CGPoint, position: ItemPosition?) throws
         
     /// Synchronize the position with compass
-    func syncPosition(position: ItemPosition) throws
+    func syncPosition(position: ItemPosition, forceSync: Bool) throws
     
     /// This will stop notifying the location publishers.
     func stop()

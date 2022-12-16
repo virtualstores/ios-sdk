@@ -7,10 +7,11 @@
 
 import Foundation
 import Combine
+import VSFoundation
 
 public protocol IPosition {
     /// Method will return ItemPosition for shelfName
-    func getBy(shelfName: String, completion: @escaping (ItemPosition) -> ())
+    func getBy(shelfName: String, completion: @escaping (ItemPosition?) -> ())
     
     /// Method will return Item for barcode
     func getBy(barcode: String, completion: @escaping (Item?) -> ())

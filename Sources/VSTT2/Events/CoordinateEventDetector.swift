@@ -62,11 +62,12 @@ internal class CoordinateEventDetector: EventDetector {
 
 extension CoordinateEventDetector: InAndOutRadiusDelegate {
     func onEnter(trigger: InAndOutRadius.Trigger, position: CGPoint) {
-        guard let tuple = triggersAndEvents[trigger.id] else { return }
+        guard let tuple = triggersAndEvents[trigger.id], tuple.triggerType.type == .enter else { return }
         self.postEvent(event: tuple.event, position: position)
     }
 
     func onExit(trigger: InAndOutRadius.Trigger, position: CGPoint) {
-        // TODO: Will be done when coordinate trigger has support on server for onExit
+        guard let tuple = triggersAndEvents[trigger.id], tuple.triggerType.type == .exit else { return }
+        self.postEvent(event: tuple.event, position: position)
     }
 }

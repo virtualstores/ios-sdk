@@ -11,16 +11,12 @@ final public class TT2User: IPersistenceModel {
     public var retainOriginalIndex = false
     public var index: String?
 
-    public init() {
-        self.alpha = []
-        self.beta = []
-        self.y = []
-    }
+    public init() { }
     
-    func setup(id: String?, userId: String?, userHeight: Float?, name: String?, age: String?, gender: String?) {
+    func setup(id: String?, userId: String?, height: Float?, name: String?, age: String?, gender: String?) {
         self.id = id
         self.userId = userId
-        self.userHeight = userHeight
+        self.height = height
         self.name = name
         self.age = age
         self.gender = gender
@@ -33,18 +29,13 @@ final public class TT2User: IPersistenceModel {
 
     public var id: String?
     public var userId: String?
-    public var userHeight: Float?
+    public var height: Float?
     public var name: String?
     public var age: String?
     public var gender: String?
     public var route: String?
     public var comments: String?
     public var activity: String?
-    public var speedRegressionIntercept: Float?
-    public var speedRegressionSlope: Float?
-    public var alpha: [Float]?
-    public var beta: [Float]?
-    public var y: [Float]?
-    public var noScanML: String?
+    public var deviceName: String?
+    var vpsProfile: [String:String]?
 }
-

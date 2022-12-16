@@ -8,7 +8,7 @@
 import Foundation
 
 public extension DateFormatter {
-    static let standardFormatter = DateFormatter(timeZone: TimeZone(secondsFromGMT: 0), dateFormat: "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    static let standardFormatter = DateFormatter(timeZone: TimeZone(secondsFromGMT: 0), dateFormat: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
     convenience init(timeZone: TimeZone?, dateFormat: String? = nil) {
         self.init()

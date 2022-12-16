@@ -12,7 +12,7 @@ public struct MessagesParameters {
     private let storeId: Int64
     private let config: EnvironmentConfig?
 
-    public init(storeId: Int64, config: EnvironmentConfig?) {
+    private init(storeId: Int64, config: EnvironmentConfig?) {
         self.storeId = storeId
         self.config = config
     }

@@ -8,18 +8,28 @@
 import Foundation
 import Combine
 import VSFoundation
-import VSPositionKit
+import VSPositionKitTargets
 import CoreGraphics
 import UIKit
 
 final public class Navigation: INavigation {
-    public var positionKitManager: PositionManager
-    public var isActive: Bool = false
+    @Inject var floor: VSTT2FloorManager
+
+    public var currentPosition: CGPoint? { positionKitManager.positionPublisher.value?.position }
+    public private(set) var isActive: Bool = false {
+        didSet {
+            isActivePublisher.send(isActive)
+        }
+    }
+
+    private(set) var positionKitManager: PositionManager
+    var isActivePublisher: CurrentValueSubject<Bool, Never> = .init(false)
+    var accuracyPublisher: CurrentValueSubject<(event: AccuracySyncEvent.Event, isFloorSwap: Bool)?,Never> = .init(nil)
+
+    var currentAccessPointPosition: CGPoint = .zero
 
     private var startCodes: [PositionedCode] = []
     private var hasStartLocationAngle: Bool = false
-
-    var accuracyPublisher: CurrentValueSubject<(preScanLocation: CGPoint, scanLocation: CGPoint, offset: CGVector)?,Never> = .init(nil)
 
     private var heading: TT2Course? {
         let north = positionKitManager.rtlsOption?.north ?? 0.0
@@ -30,8 +40,20 @@ final public class Navigation: INavigation {
 
     private var userStartAngle: TT2Course = TT2Course(fromRadians: 0.0)
 
-    public init(positionManager: PositionManager) {
+    init(positionManager: PositionManager) {
         self.positionKitManager = positionManager
+    }
+
+    var onValidateFloorCompletion: (() throws -> ())?
+    func validateFloorLevel(floorId: Int64?, completion: @escaping (Bool) throws -> Void) throws {
+      guard let floorId = floorId, let currentFloorId = floor.activeFloor?.id else { try completion(true); return }
+      if currentFloorId == floorId {
+        try completion(true)
+      } else {
+        guard let rtls = floor.floors.first(where: { $0.id == floorId }) else { return }
+        onValidateFloorCompletion = { try completion(false); self.onValidateFloorCompletion = nil }
+        floor.switchFloorPublisher.send((rtlsOptions: rtls, point: nil))
+      }
     }
 }
 
@@ -39,7 +61,15 @@ public extension Navigation {
     func start(startPosition: CGPoint, startAngle: Double) throws {
         guard !isActive else {
             self.stop()
-            try self.start(startPosition: startPosition)
+            var err: Error?
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+              do {
+                try self.start(startPosition: startPosition, startAngle: startAngle)
+              } catch {
+                err = error
+              }
+            }
+            if let error = err { throw error }
             return
         }
 
@@ -54,55 +84,80 @@ public extension Navigation {
     }
 
     func start(code: PositionedCode) throws {
-        try start(startPosition: code.point, startAngle: code.direction)
+        try floor.floors.forEach {
+            guard $0.scanLocations?.first(where: { $0.code == code.code }) != nil else { return }
+            try validateFloorLevel(floorId: $0.id) { [self] (isValid) in
+                try start(startPosition: code.point, startAngle: code.direction)
+                prepareAccuracyUpload(code: code, isFloorSwap: !isValid)
+            }
+        }
     }
 
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
         guard isActive else { return }
 
-        prepareAccuracyUpload(offset: position.offset)
         let angle = atan2(-position.offsetPoint.y, -position.offsetPoint.x)*180.0/Double.pi
-
-        positionKitManager.syncPosition(xPosition: position.point.x, yPosition: position.point.y, startAngle: angle, syncPosition: forceSync, syncAngle: syncRotation, uncertainAngle: false)
+        try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
+            prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
+            positionKitManager.syncPosition(xPosition: position.pointWithOffset.x, yPosition: position.pointWithOffset.y, startAngle: angle, syncPosition: forceSync, syncAngle: syncRotation, uncertainAngle: false)
+        }
     }
 
-    func start(startPosition: CGPoint) throws {
+    func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
         guard let heading = self.heading, !isActive else {
             self.stop()
-            try self.start(startPosition: startPosition)
+            var err: Error?
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+              do {
+                try self.start(startPosition: startPosition, position: position)
+              } catch {
+                err = error
+              }
+            }
+            if let error = err { throw error }
             return
         }
 
         let startWithAngle = self.startWithAngle(startPosition: startPosition)
-        try positionKitManager.start()
-
-        positionKitManager.startNavigation(with: startWithAngle ?? heading.degrees,
-                                           xPosition: startPosition.x,
-                                           yPosition: startPosition.y,
-                                           uncertainAngle: startWithAngle == nil)
-        isActive = true
-        userStartAngle = heading
+        try validateFloorLevel(floorId: position?.floorLevelId) { [self] (isValid) in
+            try positionKitManager.start()
+            positionKitManager.startNavigation(with: startWithAngle ?? heading.degrees,
+                                               xPosition: startPosition.x,
+                                               yPosition: startPosition.y,
+                                               uncertainAngle: startWithAngle == nil)
+            if let position = position {
+                prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
+            }
+            isActive = true
+            userStartAngle = heading
+        }
     }
 
-    func syncPosition(position: ItemPosition) throws  {
+    func syncPosition(position: ItemPosition, forceSync: Bool = false) throws  {
         guard let heading = self.heading, isActive else {
-            try self.start(startPosition: position.point)
+            try self.start(startPosition: position.pointWithOffset, position: position)
             return
         }
 
         let point = position.pointWithOffset
-        prepareAccuracyUpload(offset: position.offset)
-        if let startLocationAngle = self.startWithAngle(startPosition: position.point) {
-            positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: startLocationAngle, syncPosition: true, syncAngle: true, uncertainAngle: false)
-        } else {
-            let syncingWithCompass = doCompassStart(point: position.point) && !hasStartLocationAngle
-            positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)
+        try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
+            prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
+            if let startLocationAngle = self.startWithAngle(startPosition: position.point) {
+                positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: startLocationAngle, syncPosition: true, syncAngle: true, uncertainAngle: false)
+            } else {
+                let syncingWithCompass = forceSync ? forceSync : doCompassStart(point: position.point) && !hasStartLocationAngle
+                positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)
+            }
         }
+    }
+
+    func syncPositionToNearestAccessPoint() throws {
+        try start(startPosition: currentAccessPointPosition)
     }
 
     func stop() {
         positionKitManager.stop()
-        self.hasStartLocationAngle = false
+        hasStartLocationAngle = false
         isActive = false
     }
 
@@ -114,28 +169,45 @@ extension Navigation {
         self.startCodes = startCodes
     }
 
-    func changeFloorStart(startPosition: CGPoint) throws {
-        guard isActive else { return }
+    func changeFloorStart(startPosition: CGPoint?) throws {
+        guard let point = startPosition, isActive else { try onValidateFloorCompletion?(); return }
 
         try positionKitManager.start()
 
         positionKitManager.startNavigation(with: userStartAngle.degrees,
-                                           xPosition: startPosition.x,
-                                           yPosition: startPosition.y,
+                                           xPosition: point.x,
+                                           yPosition: point.y,
                                            uncertainAngle: false)
     }
 
     func changeFloorStop() {
+        guard isActive else { return }
         positionKitManager.stop(stopSensors: false)
+    }
+
+    func startRecording() {
+        positionKitManager.startRecording()
+    }
+
+    func stopRecording() {
+        positionKitManager.stopRecording()
     }
 }
 
 private extension Navigation {
-    func prepareAccuracyUpload(offset: CGVector) {
-        guard let preScanLocation = positionKitManager.positionPublisher.value?.position else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            guard let scanLocation = self.positionKitManager.positionPublisher.value?.position else { return }
-            self.accuracyPublisher.send((preScanLocation: preScanLocation, scanLocation: scanLocation, offset: offset))
+    func prepareAccuracyUpload(position: ItemPosition? = nil, code: PositionedCode? = nil, startDirection: Double? = nil, isFloorSwap: Bool = false) {
+        var event: AccuracySyncEvent.Event?
+        if let position = position {
+            if let startDirection = startDirection {
+                event = .startSyncEvent(AccuracySyncEvent.StartSyncEvent(itemPosition: position, startDirection: startDirection))
+            } else if let preScanLocation = positionKitManager.positionPublisher.value?.position {
+                event = .syncEvent(AccuracySyncEvent.SyncEvent(itemPosition: position, preSyncScanLocation: preScanLocation))
+            }
+        } else if let code = code {
+            event = .startLocationSyncEvent(AccuracySyncEvent.StartLocationSyncEvent(startScanLocation: code))
+        }
+        if let event = event {
+            accuracyPublisher.send((event: event, isFloorSwap: isFloorSwap))
         }
     }
 
@@ -145,7 +217,7 @@ private extension Navigation {
           Int(code.point.x) == Int(startPosition.x),
           Int(code.point.y) == Int(startPosition.y)
         else { return nil }
-        self.hasStartLocationAngle = true
+        hasStartLocationAngle = true
         return code.direction
     }
 
@@ -153,11 +225,5 @@ private extension Navigation {
         guard let userPosition = positionKitManager.positionPublisher.value?.position else { return false }
         let distance = point.distance(to: userPosition)
         return distance > 7
-    }
-}
-
-extension CGPoint {
-    func distance(to point: CGPoint) -> CGFloat {
-        return sqrt(pow(self.x - point.x, 2) + pow(self.y - point.y, 2))
     }
 }

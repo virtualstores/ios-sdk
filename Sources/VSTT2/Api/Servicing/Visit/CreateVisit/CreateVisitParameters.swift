@@ -1,5 +1,5 @@
 //
-// CreateVisitsParameters
+// CreateVisitParameters
 // VSTT2
 //
 // Created by Hripsime on 2022-01-13.
@@ -8,7 +8,7 @@
 import Foundation
 import VSFoundation
 
-public struct CreateVisitsParameters {
+struct CreateVisitParameters {
     private var config: EnvironmentConfig?
     private let requestId: String
     private let storeId: Int64
@@ -18,7 +18,7 @@ public struct CreateVisitsParameters {
     private let tags: [String: String]
     private let metaData: [String: String]
 
-    public init(requestId: String, storeId: Int64, start: String,
+    init(requestId: String, storeId: Int64, start: String,
                 stop: String, deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String], config: EnvironmentConfig?) {
         self.requestId = requestId
         self.storeId = storeId
@@ -31,8 +31,12 @@ public struct CreateVisitsParameters {
     }
 }
 
-extension CreateVisitsParameters: Routing {
+extension CreateVisitParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
+
+    var method: RequestType { .POST }
+
+    var path: String { "/visits" }
 
     var queryItems: [String: String]? {
         let parameters = ["requestId": requestId] as [String: String]
@@ -40,9 +44,7 @@ extension CreateVisitsParameters: Routing {
         return parameters
     }
 
-    var path: String { "/visits" }
-
-    var parameters: [String: Any]? {
+    var parametersDictionary: [String: Any]? {
         let parameters = ["storeId": storeId,
                           "start": start,
                           "stop": stop,

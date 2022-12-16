@@ -22,8 +22,8 @@ public protocol VSTT2Floor {
     /// Zones  in floor
     var zones: Data? { get }
     
-    /// Messages  for showing in floor
-    var messages: [Message]? { get }
+    /// TriggerEvents  for showing in floor
+    var triggerEvents: [TriggerEvent]? { get }
     
     /// Methode for setup Active Floor with options
     func setActiveFloor(with rtlsOptions: RtlsOptions)

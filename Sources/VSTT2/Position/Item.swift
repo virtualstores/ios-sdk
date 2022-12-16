@@ -6,6 +6,7 @@
 // Copyright Virtual Stores - 2022
 
 import Foundation
+import VSFoundation
 
 public class Item {
     public var name: String
