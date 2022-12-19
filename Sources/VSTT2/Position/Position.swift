@@ -48,9 +48,7 @@ public class Position: IPosition {
     }
 
     public func getBy(barcode: String, completion: @escaping (Item?) -> ()) {
-        guard let store = store else { return }
-
-        getPositionByBarcodeUseCase.invoke(storeId: store.id, barcode: barcode) { (item) in
+        getPositionByBarcodeUseCase.invoke(barcode: barcode) { (item) in
             DispatchQueue.main.async { completion(item) }
         }
     }

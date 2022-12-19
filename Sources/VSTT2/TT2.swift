@@ -29,7 +29,7 @@ final public class TT2: ITT2 {
     public var user: UserController { tt2Internal.user }
     public var recording: IRecordingManager { tt2Internal.recording }
 
-    public private(set) var activeStore: TT2Store?
+    public var activeStore: TT2Store? { tt2Internal.activeStore.toTT2Store() }
     public var activeFloor: RtlsOptions? { floor.activeFloor }
     
     public private(set) var coordinateConverter: ICoordinateConverter?
@@ -103,7 +103,6 @@ final public class TT2: ITT2 {
         guard let currentStore = tt2Internal.internalStores.first(where: { $0.id == store.id }) else { return }
 
         self.tt2Internal.setActiveStore(storeId: currentStore.id)
-        self.activeStore = store
         self.floor.setupFloors(with: currentStore.rtlsOptions)
 
         tt2Internal.getSwapLocations(for: currentStore.id, completion: { [weak self] (result) in
@@ -201,18 +200,6 @@ private extension TT2 {
                       }
                       do {
                           try self.navigation.changeFloorStart(startPosition: data.point)
-//                          if self.navigation.isActive {
-//                              let point: CGPoint
-//                              switch data.position {
-//                              case .code(let code): point = code.point
-//                              case .itemPosition(itemPosition: let itemPosition, angle: let angle): point = itemPosition.pointWithOffset
-//                              case .point(let p): point = p
-//                              }
-//                              try self.navigation.changeFloorStart(startPosition: point)
-//                          } else if let position = data.position.itemPosition() {
-//                          } else {
-//                              throw NSError()
-//                          }
                           self.floorChangePublisher.send(data.rtlsOptions.name)
                       } catch {
                           Logger(verbosity: .critical).log(message: "Starting on new floor failed")
@@ -247,7 +234,7 @@ private extension TT2 {
         let rtls = activeFloor,
         let mapData = mapData,
         let converter = coordinateConverter,
-        let navData = floor.navgraph,
+        let navData = floor.navgraph[rtls.id],
         let start = floor.startCode,
         let stop = floor.stopCode,
         let zones = mapZonesTree?.getZonesFor(floorLevelId: rtls.id)

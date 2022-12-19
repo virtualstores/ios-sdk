@@ -31,5 +31,6 @@ public protocol TT2Analytics {
 }
 
 enum TT2AnalyticsError: Error {
+    case visitAlreadyStarted
     case visitNotStarted
 }

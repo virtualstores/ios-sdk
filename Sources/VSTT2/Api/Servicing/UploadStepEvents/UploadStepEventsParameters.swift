@@ -42,16 +42,16 @@ extension UploadStepEventsParameters: Routing {
       }
       parameters.append([
         "rtlsOptionsId" : event.rtlsOptionsId,
-        "type" : event.type,
+        "type" : event.type as Any,
         "timestamp" : event.timestamp,
         "success" : event.success,
         "duration" : event.duration,
-        "direction" : event.direction,
-        "directionCertainty" : event.directionCertainty,
-        "relativeDirection" : event.relativeDirection,
+        "direction" : event.direction as Any,
+        "directionCertainty" : event.directionCertainty as Any,
+        "relativeDirection" : event.relativeDirection as Any,
         "stepCertainty" : event.stepCertainty,
-        "speed" : event.speed,
-        "mlAdjustment" : mlAdjustmens?.asDictionary(),
+        "speed" : event.speed as Any,
+        "mlAdjustment" : mlAdjustmens?.asDictionary() as Any,
         "quaternion" : event.quaternion
       ])
     }

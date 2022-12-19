@@ -25,42 +25,14 @@ public class VSTT2FloorManager: VSTT2Floor {
     public var triggerEvents: [TriggerEvent]?
     public var zoneData: [Int64 : ZoneData] = [:]
     public var offsetZones: Data?
-    public var navgraph: Data?
 
     public var switchFloorPublisher: CurrentValueSubject<(rtlsOptions: RtlsOptions, point: CGPoint?)?, Never> = .init(nil)
-    //public var switchFloorPublisher: CurrentValueSubject<(rtlsOptions: RtlsOptions, position: SwitchFloorPosition)?, Never> = .init(nil)
 
     public var startCode: PositionedCode? { activeFloor?.scanLocations?.first(where: { $0.type == .start }) }
     public var stopCode: PositionedCode? { activeFloor?.scanLocations?.first(where: { $0.type == .stop }) ?? startCode }
 
-    //public enum SwitchFloorPosition {
-    //    case code(PositionedCode)
-    //    case itemPosition(itemPosition: ItemPosition, angle: Double)
-    //    case point(CGPoint)
-    //
-    //    func code() -> PositionedCode? {
-    //        switch self {
-    //        case .code(let code): return code
-    //        default: return nil
-    //        }
-    //    }
-    //
-    //    func itemPosition() -> (itemPosition: ItemPosition, angle: Double)? {
-    //        switch self {
-    //        case .itemPosition(let position, let angle): return (itemPosition: position, angle: angle)
-    //        default: return nil
-    //        }
-    //    }
-    //
-    //    func point() -> CGPoint? {
-    //        switch self {
-    //        case .point(let point): return point
-    //        default: return nil
-    //        }
-    //    }
-    //}
-
     var mapFence: [Int64: MapFence] = [:]
+    var navgraph: [Int64: Data] = [:]
 
     private var cancellable = Set<AnyCancellable>()
     private let dispatchGroup = DispatchGroup()
@@ -117,6 +89,9 @@ public class VSTT2FloorManager: VSTT2Floor {
 
 private extension VSTT2FloorManager {
     private func getFloorData(completion: @escaping ((mapFence: MapFence?, zoneData: [Int64: ZoneData]?)) -> ()) {
+        mapFence.removeAll()
+        zoneData.removeAll()
+        navgraph.removeAll()
         getMapFenceData()
         getMapZones()
         getNavGraph()
@@ -174,16 +149,19 @@ private extension VSTT2FloorManager {
     }
     
     private func getNavGraph() {
-        guard let navGraphUrl = self.activeFloor?.navGraphUrl, let url = URL(string: navGraphUrl) else { return }
-        dispatchGroup.enter()
+        guard navgraph.isEmpty else { return }
+        floors.forEach { (rtls) in
+            guard let navGraphUrl = rtls.navGraphUrl, let url = URL(string: navGraphUrl) else { return }
+            dispatchGroup.enter()
 
-        downloadManager.loadData(from: url) { result in
-            switch result {
-            case .success(let data):
-                self.navgraph = data
-                self.dispatchGroup.leave()
-            case .failure(let error):
-                Logger.init().log(message: error.localizedDescription)
+            downloadManager.loadData(from: url) { result in
+                switch result {
+                case .success(let data):
+                    self.navgraph[rtls.id] = data
+                    self.dispatchGroup.leave()
+                case .failure(let error):
+                    Logger.init().log(message: error.localizedDescription)
+                }
             }
         }
     }

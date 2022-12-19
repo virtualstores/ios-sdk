@@ -196,15 +196,19 @@ struct VSTT2Config: Config {
         }
 
         injector.map(FetchStoreUseCase.self) {
-            FetchStoreUseCase(repo: storeRepository)
+            FetchStoreUseCase(repository: storeRepository)
         }
 
         injector.map(SetActiveStoreUseCase.self) {
-            SetActiveStoreUseCase(repo: storeRepository)
+            SetActiveStoreUseCase(repository: storeRepository)
         }
 
         injector.map(GetCachedStoreUseCase.self) {
-            GetCachedStoreUseCase(repo: storeRepository)
+            GetCachedStoreUseCase(repository: storeRepository)
+        }
+
+        injector.map(GetActiveStoreUseCase.self) {
+            GetActiveStoreUseCase(repository: storeRepository)
         }
     }
 

@@ -8,17 +8,17 @@
 import Foundation
 
 class FetchStoreUseCase {
-  let repo: IStoreRepository
+  let repository: IStoreRepository
 
-  init(repo: IStoreRepository) {
-    self.repo = repo
+  init(repository: IStoreRepository) {
+    self.repository = repository
   }
 
   func invoke(clientId: Int64, completion: @escaping (Error?) -> Void) {
-    repo.getStores(clientId: clientId) { (result) in
+    repository.getStores(clientId: clientId) { (result) in
       switch result {
       case .success(let stores):
-        self.repo.setCachedStores(stores: stores)
+        self.repository.setCachedStores(stores: stores)
         completion(nil)
       case .failure(let error): completion(error)
       }

@@ -7,16 +7,14 @@
 
 import Foundation
 
-import Foundation
-
 class GetCachedStoreUseCase {
-  let repo: IStoreRepository
+  let repository: IStoreRepository
 
-  init(repo: IStoreRepository) {
-    self.repo = repo
+  init(repository: IStoreRepository) {
+    self.repository = repository
   }
 
   func invoke(filterOnlyActive: Bool = true) -> [Store] {
-    filterOnlyActive ? repo.getCachedStores().filter({ $0.active }) : repo.getCachedStores()
+    filterOnlyActive ? repository.getCachedStores().filter({ $0.active }) : repository.getCachedStores()
   }
 }

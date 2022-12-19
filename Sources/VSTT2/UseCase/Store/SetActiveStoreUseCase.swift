@@ -8,14 +8,14 @@
 import Foundation
 
 class SetActiveStoreUseCase {
-  let repo: IStoreRepository
+  let repository: IStoreRepository
 
-  init(repo: IStoreRepository) {
-    self.repo = repo
+  init(repository: IStoreRepository) {
+    self.repository = repository
   }
 
   func invoke(storeId: Int64) {
-    guard let store = repo.getCachedStores().first(where: { $0.id == storeId }) else { fatalError("Could not find active stores") }
-    repo.setActiveStore(store: store)
+    guard let store = repository.getCachedStores().first(where: { $0.id == storeId }) else { fatalError("Could not find active stores") }
+    repository.setActiveStore(store: store)
   }
 }

@@ -48,21 +48,26 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func startVisit(deviceInformation: DeviceInformation, tags: [String:String] = [:], metaData: [String:String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
-        guard let storeId = store?.statServerConnection.storeId, visitId == nil else { return }
+        guard
+            let storeId = store?.statServerConnection.storeId,
+            visitId == nil
+        else { completion(.failure(TT2AnalyticsError.visitAlreadyStarted)); return }
 
         var editedTags = tags
         tt2VisitStartTags.forEach { editedTags[$0.key] = $0.value }
         (tt2VPSSettingsTags ?? tt2VPSSettingsDefaultTags).forEach { editedTags[$0.key] = $0.value }
 
         let date = DateFormatter.standardFormatter.string(from: Date())
-        let parameters = CreateVisitParameters(requestId: UUID().uuidString.uppercased(),
-                                                storeId: storeId,
-                                                start: date,
-                                                stop: date,
-                                                deviceInformation: deviceInformation,
-                                                tags: editedTags,
-                                                metaData: metaData,
-                                                config: config)
+        let parameters = CreateVisitParameters(
+            requestId: UUID().uuidString.uppercased(),
+            storeId: storeId,
+            start: date,
+            stop: date,
+            deviceInformation: deviceInformation,
+            tags: editedTags,
+            metaData: metaData,
+            config: config
+        )
         createVisitService
             .call(with: parameters)
             .sink(receiveCompletion: { (subscriberCompletion) in

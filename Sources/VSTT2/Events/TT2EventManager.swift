@@ -39,6 +39,7 @@ public class TT2EventManager: TT2Event {
         self.config = config
         
         zoneEventDetector.setup(with: zones)
+        latestMessageLoad = nil
         loadMessagesIfNeeded()
         bindPublishers()
     }

@@ -25,6 +25,7 @@ internal class TT2Internal {
     @Inject var clientListService : ClientsListService
     @Inject var fetchStoreUseCase: FetchStoreUseCase
     @Inject var getCachedStoreUseCase: GetCachedStoreUseCase
+    @Inject var getActiveStoreUseCase: GetActiveStoreUseCase
     @Inject var setActiveStoreUseCase: SetActiveStoreUseCase
     @Inject var swapLocationsService: SwapLocationsService
     @Inject var ordersService: OrdersService
@@ -43,6 +44,7 @@ internal class TT2Internal {
     var internalClients: [Client] = []
     var internalStores: [Store] { getCachedStoreUseCase.invoke(filterOnlyActive: false) }
     var internalStoresActive: [Store] { getCachedStoreUseCase.invoke() }
+    var activeStore: Store { getActiveStoreUseCase.invoke() }
     var shelfGroups: [Int64: [ShelfGroup]] = [:]
     
     public init(config: EnvironmentConfig) {
