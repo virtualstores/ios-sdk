@@ -97,6 +97,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
         guard let visitId = visitId, let points = positionUploadWorker.getPoints() else { return }
         uploadData(recordedPositions: points)
         stepEventUploader?.upload()
+        if let point = currentPosition {
+            zoneManager.stopped(currentPosition: point)
+            currentPosition = nil
+        }
         let parameters = StopVisitParameters(
           config: config,
           requestId: UUID().uuidString.uppercased(),
@@ -120,10 +124,11 @@ final public class TT2AnalyticsManager: TT2Analytics {
         self.rtlsOptionId = rtlsOptionId
     }
 
+    var currentPosition: CGPoint?
     internal func onNewPositionBundle(point: CGPoint) {
         guard Date().timeIntervalSince(latestRecordedPosition) > 0.2 else { return }
         self.latestRecordedPosition = Date()
-
+        currentPosition = point
         if let id = rtlsOptionId, isRecording {
             recordPosition(rtlsOptionId: id, point: point)
             zoneManager.onNewPosition(currentPosition: point)

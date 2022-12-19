@@ -122,6 +122,7 @@ public class TT2ZoneManager: TT2Zone {
             
             zoneExitedPublisher.send(event)
             self.activeInside.removeAll(where: { $0 == polygon })
+            self.insideZones.removeValue(forKey: key)
         }
     }
 }

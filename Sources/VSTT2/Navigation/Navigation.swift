@@ -161,7 +161,7 @@ public extension Navigation {
         isActive = false
     }
 
-    func prepareAngle() { }
+    func prepareAngle() { positionKitManager.prepareAngle() }
 }
 
 extension Navigation {
