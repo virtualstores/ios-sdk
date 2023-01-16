@@ -115,15 +115,17 @@ internal class TT2Internal {
     
     private func bindPublishers() {
         navigation.isActivePublisher
-            .sink { [weak self] (isActive) in
-                if isActive {
+          .sink { [weak self] (isActive) in
+              if isActive {
                   self?.mapController?.start()
                   if self?.awsS3UploadManager.hasSensorRecordingActive ?? false {
-                    print("Recording")
-                      self?.recording.start()
+                    self?.awsS3UploadManager.removeAllRecordObjects()
+                    self?.recording.start()
                   }
-                }
-            }.store(in: &cancellable)
+              } else {
+                  self?.mapController?.stop()
+              }
+          }.store(in: &cancellable)
 
         navigation.positionKitManager.positionPublisher
             .compactMap{ $0 }
@@ -201,7 +203,6 @@ internal class TT2Internal {
                 self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
 
                 if self?.awsS3UploadManager.hasSensorRecordingActive ?? false {
-                  print("Uploading")
                     self?.sendAWSData(nil)
                 }
             }).store(in: &cancellable)

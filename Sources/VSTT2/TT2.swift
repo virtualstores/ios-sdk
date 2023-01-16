@@ -98,7 +98,7 @@ final public class TT2: ITT2 {
         bindWiFiPublishers()
     }
     
-    public func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ()) {
+    public func initiate(store: TT2Store, completion: @escaping (Error?) -> ()) {
         ///check
         guard let currentStore = tt2Internal.internalStores.first(where: { $0.id == store.id }) else { return }
 
@@ -160,9 +160,9 @@ final public class TT2: ITT2 {
     }
 
     public func stop() {
-        navigation.stop()
+        analytics.stopCollectingHeatMapData()
         analytics.stopVisit()
-        tt2Internal.mapController?.stop()
+        navigation.stop()
     }
 
     public func setActiveFloor(rtls: RtlsOptions) {

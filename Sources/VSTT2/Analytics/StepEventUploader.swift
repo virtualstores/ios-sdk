@@ -25,7 +25,8 @@ class StepEventUploader {
   func upload() {
     guard
       let visitId = analytics.visitId,
-      let rtlsOptionId = analytics.rtlsOptionId
+      let rtlsOptionId = analytics.rtlsOptionId,
+      !events.isEmpty
     else { return }
     let events: [StepEvent] = events.map { $0.asStepEvent(rtlsOptionsId: rtlsOptionId) }
     let parameters = UploadStepEventsParameters(
@@ -50,7 +51,7 @@ class StepEventUploader {
       .sink { (result) in
         switch result {
         case .finished: break
-        case .failure(let error): print("UploadStepEventsParametersError", error.localizedDescription)
+        case .failure(let error): Logger(verbosity: .debug).log(message: "UploadStepEventsParametersError \(error)")
         }
       } receiveValue: { (_) in
         let persistence = parameters.asPersistence

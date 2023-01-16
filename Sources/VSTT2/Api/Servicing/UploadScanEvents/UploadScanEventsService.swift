@@ -10,6 +10,6 @@ import Combine
 
 final class UploadScanEventsService: DataFetchingManager {
     func call(with parameters: UploadScanEventsParameters) -> AnyPublisher<Void, Error> {
-        return self.executeEmptyBody(parameters, errorType: Error.self)
+        executeEmptyBody(parameters, errorType: Error.self)
     }
 }

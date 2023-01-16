@@ -93,7 +93,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func stopVisit() {
-        stopCollectingHeatMapData()
         guard let visitId = visitId, let points = positionUploadWorker.getPoints() else { return }
         uploadData(recordedPositions: points)
         stepEventUploader?.upload()
@@ -140,13 +139,30 @@ final public class TT2AnalyticsManager: TT2Analytics {
         let event = postTriggerEvent(for: event)
         uploadTriggerEvents(request: event)
     }
+
+    public func postScanEvents(position: ItemPosition) {
+        guard let visitId = visitId, let apiKey = config?.centralServerConnection.apiKey else { return }
+        
+        let parameters = UploadScanEventsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), barcode: position.identifier, shelfId: position.shelfId ?? -1, point: position.point, timeStamp: DateFormatter.standardFormatter.string(from: Date()), type: .unknown, config: config)
+
+        uploadScanEventsService
+            .call(with: parameters)
+            .sink(receiveCompletion: { (completion) in
+                switch completion {
+                case .finished: break
+                case .failure(let error): Logger(verbosity: .warning).log(message: error.localizedDescription)
+                }
+            }, receiveValue: { (_) in
+                /// No data returned
+            }).store(in: &cancellable)
+    }
     
-    public func bindPublishers() {
+    private func bindPublishers() {
        zoneManager.zoneEnteredPublisher
             .compactMap { $0 }
             .sink { _ in
                 Logger.init().log(message: "zoneEnteredPublisher error")
-            } receiveValue: { [weak self] data in
+            } receiveValue: { [weak self] (data) in
                 guard let event = self?.postTriggerEvent(for: data) else { return }
                 
                 self?.uploadTriggerEvents(request: event)
@@ -157,7 +173,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
             .compactMap { $0 }
             .sink { _ in
                 Logger.init().log(message: "zoneExitedPublisher error")
-            } receiveValue: { [weak self] data in
+            } receiveValue: { [weak self] (data) in
                 guard let event = self?.postTriggerEvent(for: data) else { return }
                 
                 self?.uploadTriggerEvents(request: event)
@@ -180,10 +196,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
         .sink { (result) in
           switch result {
           case .finished: break
-          case .failure(let error): print("UpdateVisitWithMLTagsError", error)
+          case .failure(let error): Logger(verbosity: .debug).log(message: "UpdateVisitWithMLTagsError \(error)")
           }
         } receiveValue: { (_) in
-          print("UpdateVisitWithMLTags", "Updated")
+
         }
         .store(in: &cancellable)
     }
@@ -275,25 +291,6 @@ private extension TT2AnalyticsManager {
                 }
             }, receiveValue: { (_) in
                 Logger(verbosity: .debug).log(message: "\(request.name), uploadTriggerEvents success")
-            }).store(in: &cancellable)
-    }
-
-    private func uploadScanEvents() {
-        guard let visitId = visitId, let apiKey = config?.centralServerConnection.apiKey else { return }
-        // Receive all this data from app
-        let parameters = UploadScanEventsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), barcode: "", shelfId: 1, point: CGPoint(), timeStamp: "", type: .shelf, config: config)
-
-        uploadScanEventsService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
-                }
-            }, receiveValue: { (_) in
-                /// use data
             }).store(in: &cancellable)
     }
 }

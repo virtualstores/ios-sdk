@@ -44,8 +44,8 @@ extension UploadSyncEventsParameters: Routing {
         "errorAngleInDegrees" : event.errorAngleInDegrees,
         "timestamp" : DateFormatter.standardFormatter.string(from: event.timestamp),
         "userPositionInMeters" : [
-          "x" : event.userPositionInMeters?.x,
-          "y" : event.userPositionInMeters?.y
+          "x" : event.userPositionInMeters.x,
+          "y" : event.userPositionInMeters.y
         ],
         "syncPositionInMeters" : [
           "x" : event.syncPositionInMeters.x,
@@ -55,7 +55,7 @@ extension UploadSyncEventsParameters: Routing {
           "x" : event.syncPositionOffsetsInMeters.dx,
           "y" : event.syncPositionOffsetsInMeters.dy
         ],
-        "tags" : event.tags.asDictionary(),
+        "tags" : event.tags.asDictionary()
       ]
     ]
   }
@@ -72,7 +72,7 @@ struct SyncEvent {
   let userToSyncPositionDistanceInMeters: Double
   let errorAngleInDegrees: Double
   let timestamp: Date
-  let userPositionInMeters: CGPoint?
+  let userPositionInMeters: CGPoint
   let syncPositionInMeters: CGPoint
   let syncPositionOffsetsInMeters: CGVector
   let tags: [String:String]

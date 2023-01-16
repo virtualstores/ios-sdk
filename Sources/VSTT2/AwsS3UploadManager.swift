@@ -112,8 +112,6 @@ public class AWSS3UploadManager {
     DispatchQueue.global(qos: .background).async {
       sleep(self.getWaitTimeExp(retryCount: numberOfTimes))
       if numberOfTimes < AWSS3UploadManager.MAX_TRIES {
-
-
         self.retry(numberOfTimes + 1)
       } else {
         self.retry()
@@ -173,7 +171,18 @@ public class AWSS3UploadManager {
       do {
         try persistence.delete(object)
       } catch {
-        Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+        Logger(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+                                            message: "Remove Points After Uploading SQLite error")
+      }
+    }
+  }
+
+  func removeAllRecordObjects() {
+    getAllRecordedObject().forEach {
+      do {
+        try persistence.delete($0)
+      } catch {
+        Logger(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
                                             message: "Remove Points After Uploading SQLite error")
       }
     }
@@ -202,7 +211,7 @@ public class AWSS3UploadManager {
     getPreSignedURLRequest.contentType = fileContentTypeStr
     AWSS3PreSignedURLBuilder.default().getPreSignedURL(getPreSignedURLRequest).continueWith { (task:AWSTask<NSURL>) -> Any? in
       if let error = task.error as NSError? {
-        Logger(verbosity: .critical).log(message: "Uploading error: \(error.localizedDescription)")
+        /*Logger(verbosity: .error)*/Logger().log(message: "Uploading error: \(error.localizedDescription)")
         self.updateRecordsAfter(uploadingFailed: true, identifier: identifier, key: key)
         return nil
       }
@@ -214,10 +223,10 @@ public class AWSS3UploadManager {
       request.setValue(fileContentTypeStr, forHTTPHeaderField: "Content-Type")
       URLSession.shared.uploadTask(with: request, from: data) { (responseData, response, error) in
         if let error = error {
-          Logger(verbosity: .critical).log(message: "Failed to upload \(identifier), trying again: \(error.localizedDescription)")
+          /*Logger(verbosity: .error)*/Logger().log(message: "Failed to upload \(identifier), trying again: \(error.localizedDescription)")
           self.updateRecordsAfter(uploadingFailed: true, identifier: identifier, key: key)
         } else {
-          Logger(verbosity: .info).log(message: "Successfully uploaded \(identifier) to S3")
+          /*Logger(verbosity: .info)*/Logger().log(message: "Successfully uploaded \(identifier) to S3")
           self.updateRecordsAfter(uploadingFailed: false, identifier: identifier, key: key)
           if self.getAllRecordedObject().filter({ $0.status == AWSRecordObject.Status.inProgress.rawValue }).count == 0 {
             DispatchQueue.main.async { self.dataUploadedPublisher.send(true) }

@@ -91,7 +91,7 @@ extension Routing {
             }
         }
 
-        if let parameters = self.parametersDictionary {
+        if let parameters = parametersDictionary {
             do {
                 urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
             } catch {

@@ -22,7 +22,7 @@ struct UploadScanEventsParameters {
 
     enum ScanType: String {
         case shelf = "SHELF"
-        case unknown = "UNKOWN"
+        case unknown = "UNKNOWN"
     }
 
     init(apiKey: String, visitId: Int64, requestId: String, barcode: String, shelfId: Int64,
@@ -52,16 +52,16 @@ extension UploadScanEventsParameters: Routing {
         return parameters
     }
 
-    var parametersDictionary: [String: Any]? {
-        let parameters = ["barcode": barcode,
-                          "shelfId": shelfId,
-                          "x": Double(point.x),
-                          "y": Double(point.y),
-                          "timestamp": timeStamp,
-                          "type": type.rawValue] as [String: Any]
-
-        return parameters
+    var parameters: Any? {
+        [
+            [
+                "barcode": barcode,
+                "shelfId": shelfId,
+                "x": Double(point.x),
+                "y": Double(point.y),
+                "timestamp": timeStamp,
+                "type": type.rawValue
+            ]
+        ]
     }
-
-    var headers: [String: String]? { ["apiKey": apiKey ] }
 }

@@ -54,7 +54,7 @@ public protocol ITT2 {
     func initialize(clientId: Int64, positionKitParams: ParameterPackage, completion: @escaping (Error?) -> ())
     
     /// Method for initiate selected Store data
-    func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ())
+    func initiate(store: TT2Store, completion: @escaping (Error?) -> ())
     
     /// Setup the Map
     func set(map: IMapController)

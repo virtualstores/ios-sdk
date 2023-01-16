@@ -115,8 +115,7 @@ private extension VSTT2FloorManager {
                     switch completion {
                     case .finished:
                         break
-                    case .failure(let error):
-                        print(error)
+                    case .failure(let error): Logger(verbosity: .debug).log(message: "GetMapFenceDataError \(error)")
                     }
                 }, receiveValue: { [weak self] (data) in
                     self?.mapFence[rtls.id] = data

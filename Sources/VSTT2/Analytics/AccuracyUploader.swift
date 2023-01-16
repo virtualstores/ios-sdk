@@ -191,7 +191,7 @@ class AccuracyUploader {
       userToSyncPositionDistanceInMeters: (preScanLocation ?? point).distance(to: point),
       errorAngleInDegrees: 0,
       timestamp: Date(),
-      userPositionInMeters: preScanLocation,
+      userPositionInMeters: preScanLocation ?? .zero,
       syncPositionInMeters: point,
       syncPositionOffsetsInMeters: offset ?? .zero,
       tags: tags
