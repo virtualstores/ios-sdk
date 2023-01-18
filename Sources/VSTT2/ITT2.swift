@@ -55,6 +55,9 @@ public protocol ITT2 {
     
     /// Method for initiate selected Store data
     func initiate(store: TT2Store, completion: @escaping (Error?) -> ())
+
+    /// Convenience method to initiate selected Store data
+    func initiate(storeId: Int64, completion: @escaping (Error?) -> Void)
     
     /// Setup the Map
     func set(map: IMapController)

@@ -25,7 +25,6 @@ final public class TT2: ITT2 {
     public var floor: VSTT2FloorManager { tt2Internal.floorManager }
     public var position: Position { tt2Internal.position }
     public var events: TT2EventManager { analytics.eventManager }
-//    public var userSettings: UserSettings { tt2Internal.user }
     public var user: UserController { tt2Internal.user }
     public var recording: IRecordingManager { tt2Internal.recording }
 
@@ -88,16 +87,6 @@ final public class TT2: ITT2 {
         })
     }
     
-    public func set(map: IMapController) {
-        tt2Internal.mapController = map
-        setupMap()
-    }
-
-    public func set(wifi: IWiFiController) {
-        tt2Internal.wifiController = wifi
-        bindWiFiPublishers()
-    }
-    
     public func initiate(store: TT2Store, completion: @escaping (Error?) -> ()) {
         ///check
         guard let currentStore = tt2Internal.internalStores.first(where: { $0.id == store.id }) else { return }
@@ -154,9 +143,24 @@ final public class TT2: ITT2 {
 
         setupAnalytics(for: currentStore)
     }
+
+    public func initiate(storeId: Int64, completion: @escaping (Error?) -> Void) {
+        guard let store = stores.first(where: { $0.id == storeId }) else { completion(VSTT2Error.missingData); return }
+        initiate(store: store, completion: completion)
+    }
+
+    public func set(map: IMapController) {
+        tt2Internal.mapController = map
+        setupMap()
+    }
+
+    public func set(wifi: IWiFiController) {
+        tt2Internal.wifiController = wifi
+        bindWiFiPublishers()
+    }
     
     public func getMapData() -> MapData? {
-        return self.mapData
+        mapData
     }
 
     public func stop() {
