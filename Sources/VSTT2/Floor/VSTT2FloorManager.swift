@@ -150,7 +150,7 @@ private extension VSTT2FloorManager {
     private func getNavGraph() {
         guard navgraph.isEmpty else { return }
         floors.forEach { (rtls) in
-            guard let navGraphUrl = rtls.navGraphUrl, let url = URL(string: navGraphUrl) else { return }
+          guard let navGraphUrl = rtls.navGraphUrl, let url = URL(string: navGraphUrl.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? navGraphUrl) else { return }
             dispatchGroup.enter()
 
             downloadManager.loadData(from: url) { result in

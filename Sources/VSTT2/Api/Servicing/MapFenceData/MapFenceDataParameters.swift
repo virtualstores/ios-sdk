@@ -24,6 +24,6 @@ extension MapFenceDataParameters: Routing {
     var path: String { "" }
 
     /// should be used url, currently the server is returning also .png files that's why for now it's hardcoded
-    var baseURL: String { url }
+    var baseURL: String { url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? url }
     var headers: [String: String]? { nil }
 }

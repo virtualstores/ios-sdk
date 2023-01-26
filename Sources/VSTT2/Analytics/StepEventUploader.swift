@@ -70,6 +70,7 @@ extension StepEventData {
       rtlsOptionsId: rtlsOptionsId,
       type: type?.rawValue,
       timestamp: timestamp,
+      sensorTimestamp: sensorTimestamp,
       success: success,
       duration: duration,
       direction: direction,

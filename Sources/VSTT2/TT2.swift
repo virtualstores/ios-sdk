@@ -48,7 +48,7 @@ final public class TT2: ITT2 {
     }
 
     private var floorHeightDiff: Double?
-    private var activeClient: Client?
+    private var activeClient: Client? { tt2Internal.activeClient }
 
     private var cancellable = Set<AnyCancellable>()
     private var wifiCancellable = Set<AnyCancellable>()
@@ -76,7 +76,7 @@ final public class TT2: ITT2 {
               return
             }
 
-            self.activeClient = client
+            self.tt2Internal.activeClient = client
             let config = EnvironmentConfig()
             config.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
             self.user.setup(clientId: clientId, config: config)

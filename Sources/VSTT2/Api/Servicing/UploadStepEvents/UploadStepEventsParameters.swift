@@ -44,6 +44,7 @@ extension UploadStepEventsParameters: Routing {
         "rtlsOptionsId" : event.rtlsOptionsId,
         "type" : event.type as Any,
         "timestamp" : event.timestamp,
+        "sensorTimestamp": event.sensorTimestamp,
         "success" : event.success,
         "duration" : event.duration,
         "direction" : event.direction as Any,
@@ -84,6 +85,7 @@ struct StepEvent: Codable {
   let rtlsOptionsId: Int64
   let type: String?
   let timestamp: Int64
+  let sensorTimestamp: Int64
   let success: Bool
   let duration: Int64
   let direction: Double?

@@ -26,6 +26,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     var config: EnvironmentConfig?
     var accuracyUploader: AccuracyUploader?
     var stepEventUploader: StepEventUploader?
+    var tt2Tags: [String:String] = [:]
     private var store: Store?
     private var uploadThreshold = 0
     var visitId: Int64?
@@ -56,6 +57,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         var editedTags = tags
         tt2VisitStartTags.forEach { editedTags[$0.key] = $0.value }
         (tt2VPSSettingsTags ?? tt2VPSSettingsDefaultTags).forEach { editedTags[$0.key] = $0.value }
+        tt2Tags = editedTags.filter { $0.key.lowercased().contains("tt2") }
 
         let date = DateFormatter.standardFormatter.string(from: Date())
         let parameters = CreateVisitParameters(

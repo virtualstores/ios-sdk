@@ -30,6 +30,7 @@ final public class Navigation: INavigation {
 
     private var startCodes: [PositionedCode] = []
     private var hasStartLocationAngle: Bool = false
+    private var certainAngle: Bool = false
 
     private var heading: TT2Course? {
         let north = positionKitManager.rtlsOption?.north ?? 0.0
@@ -74,7 +75,7 @@ public extension Navigation {
         }
 
         try positionKitManager.start()
-
+        certainAngle = true
         positionKitManager.startNavigation(with: startAngle,
                                            xPosition: startPosition.x,
                                            yPosition: startPosition.y,
@@ -104,7 +105,7 @@ public extension Navigation {
     }
 
     func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
-        guard let heading = self.heading, !isActive else {
+        guard let heading = heading, !isActive else {
             self.stop()
             var err: Error?
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -118,7 +119,7 @@ public extension Navigation {
             return
         }
 
-        let startWithAngle = self.startWithAngle(startPosition: startPosition)
+        let startWithAngle = startWithAngle(startPosition: startPosition)
         try validateFloorLevel(floorId: position?.floorLevelId) { [self] (isValid) in
             try positionKitManager.start()
             positionKitManager.startNavigation(with: startWithAngle ?? heading.degrees,
@@ -134,7 +135,7 @@ public extension Navigation {
     }
 
     func syncPosition(position: ItemPosition, forceSync: Bool = false) throws  {
-        guard let heading = self.heading, isActive else {
+        guard let heading = heading, isActive else {
             try self.start(startPosition: position.pointWithOffset, position: position)
             return
         }
@@ -142,8 +143,10 @@ public extension Navigation {
         let point = position.pointWithOffset
         try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
             prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
-            if let startLocationAngle = self.startWithAngle(startPosition: position.point) {
+            if let startLocationAngle = startWithAngle(startPosition: position.point) {
                 positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: startLocationAngle, syncPosition: true, syncAngle: true, uncertainAngle: false)
+            } else if certainAngle {
+                try syncPosition(position: position, syncRotation: false, forceSync: true)
             } else {
                 let syncingWithCompass = forceSync ? forceSync : doCompassStart(point: position.point) && !hasStartLocationAngle
                 positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)

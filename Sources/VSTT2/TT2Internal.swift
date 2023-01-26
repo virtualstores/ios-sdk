@@ -45,6 +45,7 @@ internal class TT2Internal {
     var internalStores: [Store] { getCachedStoreUseCase.invoke(filterOnlyActive: false) }
     var internalStoresActive: [Store] { getCachedStoreUseCase.invoke() }
     var activeStore: Store { getActiveStoreUseCase.invoke() }
+    var activeClient: Client?
     var shelfGroups: [Int64: [ShelfGroup]] = [:]
     
     public init(config: EnvironmentConfig) {
@@ -184,23 +185,14 @@ internal class TT2Internal {
         navigation.positionKitManager.recordingPublisherPartial
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data) in
-                let date = Date()
-                let uploadTimeFormatter = DateFormatter()
-                let uploadDayFormatter = DateFormatter()
-                uploadTimeFormatter.dateFormat = "HHmmss"
-                uploadDayFormatter.dateFormat = "yyMMdd"
-                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
+                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: Date())
+                self?.vpsVisitId = self?.analytics.visitId
             }).store(in: &cancellable)
         navigation.positionKitManager.recordingPublisherEnd
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data) in
                 self?.vpsIdentifier = identifier
-                let date = Date()
-                let uploadTimeFormatter = DateFormatter()
-                let uploadDayFormatter = DateFormatter()
-                uploadTimeFormatter.dateFormat = "HHmmss"
-                uploadDayFormatter.dateFormat = "yyMMdd"
-                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
+                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: Date())
 
                 if self?.awsS3UploadManager.hasSensorRecordingActive ?? false {
                     self?.sendAWSData(nil)
@@ -256,6 +248,7 @@ internal class TT2Internal {
 
     var vpsIdentifier: String?
     var vpsData: String?
+    var vpsVisitId: Int64?
     func sendAWSData(_ metaData: RecordingMetaData?) {
         guard
             let identifier = vpsIdentifier,
@@ -265,21 +258,22 @@ internal class TT2Internal {
         let time = awsData.recordingStringTime
 
         let folderName: String
-        if let id = analytics.visitId, let serverAddress = awsData.serverAddress, awsS3UploadManager.hasSensorRecordingActive {
-          folderName = "\(serverAddress)/\(id)/"
+        if let user = metaData {
+            let name = user.name ?? user.userId ?? "undefined"
+            let activity = user.activity ?? "undefinedMode"
+            let route = user.route ?? "undefinedRoute"
+            let deviceName = user.deviceName ?? UIDevice.current.name
+            folderName = "\(stringDate)/\(name)_\(deviceName)/ios/\(activity)/\(route)/\(time)/"
+        } else if awsS3UploadManager.hasSensorRecordingActive {
+            guard let id = vpsVisitId, let serverAddress = awsData.serverAddress else { return }
+            print("serverAddress", serverAddress)
+            folderName = "\(serverAddress)/\(id)/"
         } else {
-            if let user = metaData {
-                let name = user.name ?? user.userId ?? "undefined"
-                let activity = user.activity ?? "undefinedMode"
-                let route = user.route ?? "undefinedRoute"
-                let deviceName = user.deviceName ?? UIDevice.current.name
-                folderName = "\(stringDate)/\(name)_\(deviceName)/ios/\(activity)/\(route)/\(time)/"
-            } else {
-                folderName = "\(stringDate)/undefined/ios/undefinedMode/undefinedRoute/\(time)/"
-            }
+            folderName = "\(stringDate)/undefined/ios/undefinedMode/undefinedRoute/\(time)/"
         }
         awsS3UploadManager.sendCollectedDataToS3(folderName: folderName)
         vpsIdentifier = nil
+        vpsVisitId = nil
     }
 
     func createAWSData(metaData: RecordingMetaData?, identifier: String) -> (recordingStringDate: String, recordingStringTime: String, serverAddress: String?)? {
@@ -295,8 +289,25 @@ internal class TT2Internal {
         if serverAddress?.hasSuffix("/api/v1") ?? false || serverAddress?.hasSuffix("/api/v2") ?? false {
           serverAddress?.removeLast(7)
         }
-        let csvData = createCSVData(metaData: metaData, date: stringDate, time: time, serverUrl: serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
-        let fileName = "keywords\(time).csv"
+        var dataServerAddress = analytics.config?.centralServerConnection.serverAddress?.trimmingCharacters(in: CharacterSet(charactersIn: "htps:/"))
+        if dataServerAddress?.hasSuffix("/api/v1") ?? false || dataServerAddress?.hasSuffix("/api/v2") ?? false {
+          dataServerAddress?.removeLast(7)
+        }
+        let csvData: String
+        let fileName: String
+        if awsS3UploadManager.hasSensorRecordingActive {
+          guard
+            let serverAddress = serverAddress,
+            let dataServerAddress = dataServerAddress,
+            let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress)
+          else { return nil }
+          csvData = tags
+          print("TAGS", csvData)
+          fileName = "tags.json"
+        } else {
+          csvData = createCSVData(metaData: metaData, date: stringDate, time: time, serverUrl: serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
+          fileName = "keywords\(time).csv"
+        }
         awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: csvData)
         return (recordingStringDate: stringDate, recordingStringTime: time, serverAddress: serverAddress)
     }
@@ -312,6 +323,46 @@ internal class TT2Internal {
         let activity = user.activity ?? ""
         csvData = csvData + "\(date),\(name),ios,\(route),\(time),\(gender),\(age),\(comments),\(serverUrl),\(clientId),\(storeid),\(activity)\n"
         return csvData
+    }
+
+    func createTT2Tags(serverAddress: String, dataServerAddress: String) -> String? {
+        guard
+          let tt2SdkVersion = analytics.tt2Tags["tt2SdkVersion"],
+          let tt2VpsVersion = analytics.tt2Tags["tt2VpsVersion"],
+          let tt2DeviceManufacturer = analytics.tt2Tags["tt2DeviceManufacturer"],
+          let tt2DeviceModel = analytics.tt2Tags["tt2DeviceModel"],
+          let tt2DeviceOs = analytics.tt2Tags["tt2DeviceOs"],
+          let tt2DeviceOsVersion = analytics.tt2Tags["tt2DeviceOsVersion"],
+          let tt2MLActive = analytics.tt2Tags["tt2MLActive"],
+          let tt2SdkVpsSettingUseML = analytics.tt2Tags["tt2SdkVpsSettingUseML"],
+          let tt2SdkVpsSettingUseCoefficientOptimizer = analytics.tt2Tags["tt2SdkVpsSettingUseCoefficientOptimizer"],
+          let tt2SdkVpsSettingUseDriftCompensator = analytics.tt2Tags["tt2SdkVpsSettingUseDriftCompensator"],
+          let tt2RtlsOptionsId = floorManager.activeFloor?.id,
+          let tt2VisitId = vpsVisitId,
+          let tt2ClientId = activeClient?.clientId
+        else { return nil }
+        return """
+              {
+                "tags" : {
+                  "tt2SdkVersion" : \(tt2SdkVersion),
+                  "tt2VpsVersion" : \(tt2VpsVersion),
+                  "tt2DeviceManufacturer" : \(tt2DeviceManufacturer),
+                  "tt2DeviceModel" : \(tt2DeviceModel),
+                  "tt2DeviceOs" : \(tt2DeviceOs),
+                  "tt2DeviceOsVersion" : \(tt2DeviceOsVersion),
+                  "tt2MLActive" : \(tt2MLActive),
+                  "tt2SdkVpsSettingUseML" : \(tt2SdkVpsSettingUseML),
+                  "tt2SdkVpsSettingUseCoefficientOptimizer" : \(tt2SdkVpsSettingUseCoefficientOptimizer),
+                  "tt2SdkVpsSettingUseDriftCompensator" : \(tt2SdkVpsSettingUseDriftCompensator),
+                  "tt2CentralServerURL" : \(serverAddress),
+                  "tt2DataServerURL" : \(dataServerAddress),
+                  "tt2RtlsOptionsId" : \(tt2RtlsOptionsId),
+                  "tt2StoreId" : \(activeStore.id),
+                  "tt2VisitId" : \(tt2VisitId),
+                  "tt2ClientId" : \(tt2ClientId)
+                }
+              }
+              """
     }
     
     private func vpsToMapboxAngle(angle: Double) -> Double {
