@@ -95,9 +95,12 @@ public extension Navigation {
     }
 
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
-        guard isActive else { return }
-
         let angle = atan2(-position.offsetPoint.y, -position.offsetPoint.x)*180.0/Double.pi
+        guard isActive else {
+          try start(startPosition: position.point, startAngle: angle)
+          return
+        }
+
         try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
             prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
             positionKitManager.syncPosition(xPosition: position.pointWithOffset.x, yPosition: position.pointWithOffset.y, startAngle: angle, syncPosition: forceSync, syncAngle: syncRotation, uncertainAngle: false)
