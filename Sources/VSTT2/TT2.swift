@@ -12,11 +12,9 @@ import VSPositionKitTargets
 import CoreGraphics
 import UIKit
 
-let version = "1.0.0"
+let version = "1.1.3"
 
 final public class TT2: ITT2 {
-    private let context: Context
-
     public var initialized: Bool { _tt2Internal != nil }
     public var stores: [TT2Store] { tt2Internal.internalStores.map({ $0.toTT2Store() }) }
     public var activeStores: [TT2Store] { tt2Internal.internalStoresActive.map({ $0.toTT2Store() }) }
@@ -40,6 +38,7 @@ final public class TT2: ITT2 {
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
     
     // MARK: Private members
+    private let context: Context
     private let config = EnvironmentConfig()
     private var _tt2Internal: TT2Internal?
     private var tt2Internal: TT2Internal {
@@ -56,9 +55,17 @@ final public class TT2: ITT2 {
     
     public init(with apiUrl: String, apiKey: String) {
         config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
-        self.context = Context(VSTT2Config(environment: config))
+        context = Context(VSTT2Config(environment: config))
     }
 
+    deinit {
+        Injector.reset()
+        _tt2Internal = nil
+        cancellable.removeAll()
+        wifiCancellable.removeAll()
+    }
+
+    // MARK: Initialize
     public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, completion: @escaping (Error?) -> ()) {
         self._tt2Internal = TT2Internal(config: config)
         self.tt2Internal.getClients(completion: { (error) in
@@ -149,6 +156,7 @@ final public class TT2: ITT2 {
         initiate(store: store, completion: completion)
     }
 
+    // MARK: Setters
     public func set(map: IMapController) {
         tt2Internal.mapController = map
         setupMap()
@@ -181,14 +189,10 @@ final public class TT2: ITT2 {
             }
         }
     }
-    
-    deinit {
-        cancellable.removeAll()
-        wifiCancellable.removeAll()
-    }
 }
 
 private extension TT2 {
+    // MARK: Publishers
     private func bindPublishers() {
         floor.switchFloorPublisher
           .compactMap { $0 }
