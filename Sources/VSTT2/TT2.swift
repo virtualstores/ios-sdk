@@ -12,7 +12,7 @@ import VSPositionKitTargets
 import CoreGraphics
 import UIKit
 
-let version = "1.1.3"
+let version = "1.1.2"
 
 final public class TT2: ITT2 {
     public var initialized: Bool { _tt2Internal != nil }

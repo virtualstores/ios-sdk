@@ -122,8 +122,9 @@ class AccuracyUploader {
       let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     else { return }
     let identifier: String
-    let point: CGPoint
-    let pointWithOffset: CGPoint
+    var didSync: Bool = true
+    var point: CGPoint = .zero
+    var pointWithOffset: CGPoint = .zero
     var preScanLocation: CGPoint?
     var offset: CGVector?
 
@@ -146,6 +147,13 @@ class AccuracyUploader {
       if let shelfId = position.shelfId {
         tags["shelfId"] = String(shelfId)
       }
+    case .syncEventMissingPosition(let event):
+      identifier = event.identifier
+      didSync = false
+      tags = [
+        "identifier": identifier,
+        "isStartSync": String(false)
+      ]
     case .startLocationSyncEvent(let event):
       identifier = event.startScanLocation.code
       point = event.startScanLocation.point
@@ -185,7 +193,7 @@ class AccuracyUploader {
       identifier: identifier,
       isRightAisle: !isFloorSwap ? isRightAisle : false,
       isFloorSwap: isFloorSwap,
-      didSync: true,
+      didSync: didSync,
       rescueModeCountSinceLastSync: numberOfRescueModes,
       stepDataDistanceSinceLastSyncInMeters: distance,
       userToSyncPositionDistanceInMeters: (preScanLocation ?? point).distance(to: point),
@@ -347,26 +355,17 @@ extension UploadSyncEventsPersistence {
 struct AccuracySyncEvent {
   enum Event {
     case syncEvent(SyncEvent)
+    case syncEventMissingPosition(SyncEventMissingPosition)
     case startLocationSyncEvent(StartLocationSyncEvent)
     case startSyncEvent(StartSyncEvent)
-
-    func getEvent() -> (syncEvent: SyncEvent?, startLocationSyncEvent: StartLocationSyncEvent?, startSyncEvent: StartSyncEvent?) {
-      var syncEvent: SyncEvent?
-      var startLocationSyncEvent: StartLocationSyncEvent?
-      var startSyncEvent: StartSyncEvent?
-
-      switch self {
-      case .syncEvent(let event): syncEvent = event
-      case .startLocationSyncEvent(let event): startLocationSyncEvent = event
-      case .startSyncEvent(let event): startSyncEvent = event
-      }
-
-      return (syncEvent, startLocationSyncEvent, startSyncEvent)
-    }
   }
+
   struct SyncEvent {
     let itemPosition: ItemPosition
     let preSyncScanLocation: CGPoint
+  }
+  struct SyncEventMissingPosition {
+    let identifier: String
   }
   struct StartLocationSyncEvent {
     let startScanLocation: PositionedCode

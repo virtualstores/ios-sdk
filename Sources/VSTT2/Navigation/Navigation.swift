@@ -14,6 +14,7 @@ import UIKit
 
 final public class Navigation: INavigation {
     @Inject var floor: VSTT2FloorManager
+    @Inject var positionManager: Position
 
     public var currentPosition: CGPoint? { positionKitManager.positionPublisher.value?.position }
     public private(set) var isActive: Bool = false {
@@ -129,9 +130,7 @@ public extension Navigation {
                                                xPosition: startPosition.x,
                                                yPosition: startPosition.y,
                                                uncertainAngle: startWithAngle == nil)
-            if let position = position {
-                prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
-            }
+            prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
             isActive = true
             userStartAngle = heading
         }
@@ -153,6 +152,24 @@ public extension Navigation {
             } else {
                 let syncingWithCompass = forceSync ? forceSync : doCompassStart(point: position.point) && !hasStartLocationAngle
                 positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)
+            }
+        }
+    }
+
+    func syncPosition(identifier: String, type: SyncTypeEnum, completion: @escaping (Result<Item?,Error>) -> ()) {
+        prepareAngle()
+        positionManager.getBy(barcode: identifier) { (item) in
+            do {
+                guard let position = item?.itemPosition else { self.prepareAccuracyUpload(identifier: identifier); return }
+                switch type {
+                case .compass(forceSync: let forceSync):
+                    try self.syncPosition(position: position, forceSync: forceSync)
+                case .normal(syncRotation: let syncRotation):
+                    try self.syncPosition(position: position, syncRotation: syncRotation, forceSync: true)
+                }
+                completion(.success(item))
+            } catch {
+                completion(.failure(error))
             }
         }
     }
@@ -180,10 +197,12 @@ extension Navigation {
 
         try positionKitManager.start()
 
-        positionKitManager.startNavigation(with: userStartAngle.degrees,
-                                           xPosition: point.x,
-                                           yPosition: point.y,
-                                           uncertainAngle: false)
+        positionKitManager.startNavigation(
+            with: userStartAngle.degrees,
+            xPosition: point.x,
+            yPosition: point.y,
+            uncertainAngle: false
+        )
     }
 
     func changeFloorStop() {
@@ -201,7 +220,7 @@ extension Navigation {
 }
 
 private extension Navigation {
-    func prepareAccuracyUpload(position: ItemPosition? = nil, code: PositionedCode? = nil, startDirection: Double? = nil, isFloorSwap: Bool = false) {
+    func prepareAccuracyUpload(position: ItemPosition? = nil, code: PositionedCode? = nil, startDirection: Double? = nil, identifier: String? = nil, isFloorSwap: Bool = false) {
         var event: AccuracySyncEvent.Event?
         if let position = position {
             if let startDirection = startDirection {
@@ -211,10 +230,12 @@ private extension Navigation {
             }
         } else if let code = code {
             event = .startLocationSyncEvent(AccuracySyncEvent.StartLocationSyncEvent(startScanLocation: code))
+        } else if let identifier = identifier {
+          event = .syncEventMissingPosition(AccuracySyncEvent.SyncEventMissingPosition(identifier: identifier))
         }
-        if let event = event {
-            accuracyPublisher.send((event: event, isFloorSwap: isFloorSwap))
-        }
+
+        guard let event = event else { return }
+        accuracyPublisher.send((event: event, isFloorSwap: isFloorSwap))
     }
 
     func startWithAngle(startPosition: CGPoint) -> Double? {

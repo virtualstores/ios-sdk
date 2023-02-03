@@ -29,10 +29,17 @@ public protocol INavigation {
         
     /// Synchronize the position with compass
     func syncPosition(position: ItemPosition, forceSync: Bool) throws
+
+    func syncPosition(identifier: String, type: SyncTypeEnum, completion: @escaping (Result<Item?,Error>) -> ())
     
     /// This will stop notifying the location publishers.
     func stop()
     
     /// Provide device start angle
     func prepareAngle()
+}
+
+public enum SyncTypeEnum {
+    case compass(forceSync: Bool)
+    case normal(syncRotation: Bool)
 }

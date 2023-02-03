@@ -48,20 +48,6 @@ class PositionBusiness {
   }
 }
 
-//public func test() {
-//  let items = [
-//    ItemPosition(point: CGPoint(x: 33.53869897997127, y: 68.48717115152746), offset: CGVector(dx: 0.9025812149047852, dy: -0.430519700050354), floorLevelId: 74, shelfId: 20111, identifier: "7313130215910"),
-//    ItemPosition(point: CGPoint(x: 33.53869897997127, y: 68.48717115152746), offset: CGVector(dx: 0.9025812149047852, dy: -0.430519700050354), floorLevelId: 74, shelfId: 20111, identifier: "7313130215910"),
-//    ItemPosition(point: CGPoint(x: 33.14517859644789, y: 67.66215872379578), offset: CGVector(dx: 0.9025812149047852, dy: -0.430519700050354), floorLevelId: 74, shelfId: 20113, identifier: "7313130215910")
-//  ]
-//
-//  let ids = items.map { $0.shelfId }.compactMap { $0 }.uniqued()
-//
-//  let shelfId = [20113,20113,20113,20113,20113,20113,20113,20113,20113,20113,20113,20113,20113,20113]
-//  print("Unique", items.uniqued().count)
-//  print("Unique2", shelfId.count, shelfId.uniqued().count)
-//}
-
 extension BarcodePosition {
   var toItemPosition: ItemPosition? {
     guard let point = itemPosition, let offset = itemPositionOffset else { return nil }
