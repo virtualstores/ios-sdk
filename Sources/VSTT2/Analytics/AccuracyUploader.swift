@@ -152,7 +152,16 @@ class AccuracyUploader {
       didSync = false
       tags = [
         "identifier": identifier,
-        "isStartSync": String(false)
+        "isStartSync": String(false),
+        "noItemPosition": String(true)
+      ]
+    case .syncEventMultipleItemPosition(let event):
+      identifier = event.item.externalId
+      didSync = false
+      tags = [
+        "identifier": identifier,
+        "isStartSync": String(false),
+        "multipleItemPosition": String(true)
       ]
     case .startLocationSyncEvent(let event):
       identifier = event.startScanLocation.code
@@ -356,6 +365,7 @@ struct AccuracySyncEvent {
   enum Event {
     case syncEvent(SyncEvent)
     case syncEventMissingPosition(SyncEventMissingPosition)
+    case syncEventMultipleItemPosition(SyncEventMultipleItemPosition)
     case startLocationSyncEvent(StartLocationSyncEvent)
     case startSyncEvent(StartSyncEvent)
   }
@@ -366,6 +376,9 @@ struct AccuracySyncEvent {
   }
   struct SyncEventMissingPosition {
     let identifier: String
+  }
+  struct SyncEventMultipleItemPosition {
+    let item: Item
   }
   struct StartLocationSyncEvent {
     let startScanLocation: PositionedCode
