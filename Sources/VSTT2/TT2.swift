@@ -88,9 +88,7 @@ final public class TT2: ITT2 {
             config.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
             self.user.setup(clientId: clientId, config: config)
             self.positionKitParams = positionKitParams
-            self.tt2Internal.getStores(with: clientId, completion: { error in
-                completion(error)
-            })
+            self.tt2Internal.getStores(with: clientId, completion: completion)
         })
     }
     
@@ -302,15 +300,22 @@ private extension TT2 {
     }
 
     private func setupMapfence(with data: MapFence, floorHeightDiff: Double) {
-        guard let rtlsOption = self.activeFloor, let name = self.activeStore?.name else { return }
+        guard let rtlsOption = activeFloor, let name = activeStore?.name else { return }
         
         let converter = BaseCoordinateConverter(heightInPixels: data.properties.height, widthInPixels: data.properties.width, pixelPerMeter: rtlsOption.pixelsPerMeter, pixelPerLatitude: 1000.0)
-        
-        self.coordinateConverter = converter
+        coordinateConverter = converter
 
         let properties = ZoneProperties(description: nil, id: name, name: name, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
-        self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevelId: rtlsOption.id, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
-        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, parameterPackage: positionKitParams, userController: user)
+        mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevelId: rtlsOption.id, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
+
+        navigation.positionKitManager.setupMapFence(
+            with: data,
+            rtlsOption: rtlsOption,
+            floorheight: floorHeightDiff,
+            parameterPackage: positionKitParams,
+            userController: user,
+            maxRecordingTimePerPartInMillis: tt2Internal.activeStore.positionServiceSettings?.intValues?["maxRecordingTimePerPartInMillis"]?.asLong
+        )
     }
     
     private func setupAnalytics(for store: Store) {
