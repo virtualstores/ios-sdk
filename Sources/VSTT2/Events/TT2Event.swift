@@ -25,8 +25,4 @@ public protocol TT2Event {
 
     /// Method for being able to remove event
     func remove(event id: String)
-    
-    /// Method for receiving new position, for checking  events for that position
-    func onNewPosition(currentPosition: CGPoint)
 }
-

@@ -53,6 +53,8 @@ public class AWSS3UploadManager {
 
   private static let MAX_TRIES = 20
 
+  private var serialDispatch = DispatchQueue(label: "AWSS3UploadManagerSerial")
+
   func setup(_ hasSensorRecordingActive: Bool) {
     self.hasSensorRecordingActive = hasSensorRecordingActive
     let region: AWSRegionType
@@ -94,13 +96,17 @@ public class AWSS3UploadManager {
 
   func sendCollectedDataToS3(status: AWSRecordObject.Status = .pending, folderName: String? = nil) {
     let objects = getAllRecordedObject()
-    let arr = objects.filter { $0.status == status.rawValue } + objects.filter { $0.status == AWSRecordObject.Status.inProgress.rawValue } + objects.filter { $0.status == AWSRecordObject.Status.failed.rawValue }
+    var arr = objects.filter { $0.status == status.rawValue }
+    if status != .failed {
+      arr.append(contentsOf: objects.filter { $0.status == AWSRecordObject.Status.failed.rawValue })
+    }
     arr.forEach { (object) in
-      if let id = object.identifier, let convertedData = object.data?.data(using: .utf8) {
-        self.sendToS3(AWSS3Key: .dataAnalyze, key: object.folderName ?? folderName, identifier: id, data: convertedData)
+      guard let id = object.identifier, let convertedData = object.data?.data(using: .utf8) else { return }
+      sendToS3(AWSS3Key: .dataAnalyze, key: object.folderName ?? folderName, identifier: id, data: convertedData)
+      if folderName != nil {
         object.folderName = folderName
-        self.updateStatus(object: object, status: .inProgress)
       }
+      updateStatus(object: object, status: .inProgress)
     }
   }
 
@@ -109,7 +115,7 @@ public class AWSS3UploadManager {
   }
 
   func retry(_ numberOfTimes: Int = 0) {
-    DispatchQueue.global(qos: .background).async {
+    serialDispatch.async {
       sleep(self.getWaitTimeExp(retryCount: numberOfTimes))
       if numberOfTimes < AWSS3UploadManager.MAX_TRIES {
         self.retry(numberOfTimes + 1)
@@ -134,7 +140,6 @@ public class AWSS3UploadManager {
 
   private func updateRecordsAfter(uploadingFailed: Bool, identifier: String, key: String) {
     guard let object = getAllRecordedObject().filter({ $0.status == AWSRecordObject.Status.inProgress.rawValue }).first(where: { $0.identifier == identifier && key.contains($0.folderName ?? "") }) else { return }
-//    self.updateStatus(objects: filteredArr, status: uploadingFailed ? .failed : .succeded)
     updateStatus(object: object, status: uploadingFailed ? .failed : .succeded)
   }
 
@@ -153,21 +158,34 @@ public class AWSS3UploadManager {
     switch status {
     case .pending: break
     case .inProgress: break
-    case .failed: self.retryFailed()
-    case .succeded: self.removeRecordedObject()
+    case .failed: retryFailed()
+    case .succeded: removeRecordedObject(where: .status(.succeded))
     }
   }
 
   private func updateStatus(objects: [AWSRecordObject], status: AWSRecordObject.Status) {
     objects.forEach { (object) in
-      self.updateStatus(object: object, status: status)
+      updateStatus(object: object, status: status)
     }
   }
 
-  private func removeRecordedObject() {
-    let arr = getAllRecordedObject()
-    let filteredPositions = arr.filter { $0.status == AWSRecordObject.Status.succeded.rawValue }
-    for object in filteredPositions {
+  enum RemoveRecordedObjectOptions {
+    case all
+    case folderIsMissing
+    case identifier(String)
+    case status(AWSRecordObject.Status)
+  }
+
+  func removeRecordedObject(where option: RemoveRecordedObjectOptions) {
+    let objects: [AWSRecordObject]
+    switch option {
+    case .all: objects = getAllRecordedObject()
+    case .folderIsMissing: objects = getAllRecordedObject().filter { $0.folderName == nil }
+    case .identifier(let identifier): objects = getAllRecordedObject().filter { $0.identifier == identifier }
+    case .status(let status): objects = getAllRecordedObject().filter { $0.status == status.rawValue }
+    }
+
+    objects.forEach { (object) in
       do {
         try persistence.delete(object)
       } catch {
@@ -177,19 +195,8 @@ public class AWSS3UploadManager {
     }
   }
 
-  func removeAllRecordObjects() {
-    getAllRecordedObject().forEach {
-      do {
-        try persistence.delete($0)
-      } catch {
-        Logger(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
-                                            message: "Remove Points After Uploading SQLite error")
-      }
-    }
-  }
-
   private func sendToS3(AWSS3Key: AWSS3Keys, key: String?, identifier: String, data: Data) {
-    guard let key = key else { return }
+    guard let key = key else { removeRecordedObject(where: .identifier(identifier)); return }
     let splitIdentifier = identifier.split(separator: ".")
     let strippedIdentifier = splitIdentifier[0]
     var fileExtension = ".json"

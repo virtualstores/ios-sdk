@@ -34,6 +34,8 @@ class RecordingManager: IRecordingManager {
   var sendDataPublisher: CurrentValueSubject<RecordingMetaData?, Never> = .init(nil)
   var dataUploadedPublisher: CurrentValueSubject<Bool, Never> = .init(false)
 
+  var allowAutomaticSensorRecording: Bool = true
+
   private var cancellable = Set<AnyCancellable>()
 
   init() {
@@ -51,6 +53,11 @@ class RecordingManager: IRecordingManager {
   }
 
   func start() {
+    start(automatic: false)
+  }
+
+  func start(automatic: Bool) {
+    allowAutomaticSensorRecording = automatic
     navigation.startRecording()
   }
 

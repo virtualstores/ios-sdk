@@ -160,7 +160,10 @@ public extension Navigation {
         prepareAngle()
         positionManager.getBy(barcode: identifier) { (item) in
             do {
-                guard let position = item?.itemPosition else { self.prepareAccuracyUpload(identifier: identifier); return }
+                guard let position = item?.itemPosition else {
+                  self.prepareAccuracyUpload(identifier: identifier)
+                  completion(.success(nil))
+                  return }
                 switch type {
                 case .compass(forceSync: let forceSync):
                     try self.syncPosition(position: position, forceSync: forceSync)

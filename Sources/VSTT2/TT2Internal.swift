@@ -16,21 +16,22 @@ internal class TT2Internal {
     @Inject var analytics: TT2AnalyticsManager
     @Inject var floorManager: VSTT2FloorManager
     @Inject var position: Position
-//    @Inject var user: UserSettings
     @Inject var user: UserController
     @Inject var recording: RecordingManager
     @Inject var awsS3UploadManager: AWSS3UploadManager
     
     /// Services for getting the api data
     @Inject var clientListService : ClientsListService
-    @Inject var fetchStoreUseCase: FetchStoreUseCase
-    @Inject var getCachedStoreUseCase: GetCachedStoreUseCase
-    @Inject var getActiveStoreUseCase: GetActiveStoreUseCase
-    @Inject var setActiveStoreUseCase: SetActiveStoreUseCase
     @Inject var swapLocationsService: SwapLocationsService
     @Inject var ordersService: OrdersService
     @Inject var itemPositionService: ItemPositionService
     @Inject var shelfGroupService: ShelfGroupService
+
+    /// Usecases
+    @Inject var fetchStoreUseCase: FetchStoreUseCase
+    @Inject var getCachedStoreUseCase: GetCachedStoreUseCase
+    @Inject var getActiveStoreUseCase: GetActiveStoreUseCase
+    @Inject var setActiveStoreUseCase: SetActiveStoreUseCase
     
     var deviceOrientationUploader: DeviceOrientationUploader?
     var mapController: IMapController?
@@ -47,11 +48,16 @@ internal class TT2Internal {
     var activeStore: Store { getActiveStoreUseCase.invoke() }
     var activeClient: Client?
     var shelfGroups: [Int64: [ShelfGroup]] = [:]
+    var automaticSensorRecording: Bool { recording.allowAutomaticSensorRecording && awsS3UploadManager.hasSensorRecordingActive }
     
     public init(config: EnvironmentConfig) {
         self.config = config
         offset = 0.0
         bindPublishers()
+    }
+
+    deinit {
+        cancellable.removeAll()
     }
     
     func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence, coordinateConverter: ICoordinateConverter?) -> MapData? {
@@ -119,9 +125,9 @@ internal class TT2Internal {
           .sink { [weak self] (isActive) in
               if isActive {
                   self?.mapController?.start()
-                  if self?.awsS3UploadManager.hasSensorRecordingActive ?? false {
-                    self?.awsS3UploadManager.removeAllRecordObjects()
-                    self?.recording.start()
+                  self?.awsS3UploadManager.removeRecordedObject(where: .folderIsMissing)
+                  if self?.automaticSensorRecording ?? false {
+                      self?.recording.start(automatic: true)
                   }
               } else {
                   self?.mapController?.stop()
@@ -194,7 +200,7 @@ internal class TT2Internal {
                 self?.vpsIdentifier = identifier
                 self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: Date())
 
-                if self?.awsS3UploadManager.hasSensorRecordingActive ?? false {
+                if self?.automaticSensorRecording ?? false {
                     self?.sendAWSData(nil)
                 }
             }).store(in: &cancellable)
@@ -264,9 +270,8 @@ internal class TT2Internal {
             let route = user.route ?? "undefinedRoute"
             let deviceName = user.deviceName ?? UIDevice.current.name
             folderName = "\(stringDate)/\(name)_\(deviceName)/ios/\(activity)/\(route)/\(time)/"
-        } else if awsS3UploadManager.hasSensorRecordingActive {
+        } else if automaticSensorRecording {
             guard let id = vpsVisitId, let serverAddress = awsData.serverAddress else { return }
-            print("serverAddress", serverAddress)
             folderName = "\(serverAddress)/\(id)/"
         } else {
             folderName = "\(stringDate)/undefined/ios/undefinedMode/undefinedRoute/\(time)/"
@@ -274,6 +279,7 @@ internal class TT2Internal {
         awsS3UploadManager.sendCollectedDataToS3(folderName: folderName)
         vpsIdentifier = nil
         vpsVisitId = nil
+        recording.allowAutomaticSensorRecording = true
     }
 
     func createAWSData(metaData: RecordingMetaData?, identifier: String) -> (recordingStringDate: String, recordingStringTime: String, serverAddress: String?)? {
@@ -293,22 +299,21 @@ internal class TT2Internal {
         if dataServerAddress?.hasSuffix("/api/v1") ?? false || dataServerAddress?.hasSuffix("/api/v2") ?? false {
           dataServerAddress?.removeLast(7)
         }
-        let csvData: String
+        let data: String
         let fileName: String
-        if awsS3UploadManager.hasSensorRecordingActive {
+        if automaticSensorRecording {
           guard
             let serverAddress = serverAddress,
             let dataServerAddress = dataServerAddress,
             let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress)
           else { return nil }
-          csvData = tags
-          print("TAGS", csvData)
+          data = tags
           fileName = "tags.json"
         } else {
-          csvData = createCSVData(metaData: metaData, date: stringDate, time: time, serverUrl: serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
+          data = createCSVData(metaData: metaData, date: stringDate, time: time, serverUrl: serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
           fileName = "keywords\(time).csv"
         }
-        awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: csvData)
+        awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: data)
         return (recordingStringDate: stringDate, recordingStringTime: time, serverAddress: serverAddress)
     }
     
@@ -385,29 +390,5 @@ internal class TT2Internal {
             }, receiveValue: { (swapLocations) in
                 completion(.success(swapLocations))
             }).store(in: &cancellable)
-    }
-    
-    
-    /// move this methode in manager where needed
-    /// now it's here just for testing the API
-    func postOrders(storeId: Int64, orderIds: [String], device: DeviceInformation) {
-        let parameters = OrdersParameters(storeId: storeId, orderIds: orderIds, deviceInformation: device, config: config)
-        
-        ordersService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
-                }
-            }, receiveValue: {_ in
-                
-            }).store(in: &cancellable)
-    }
-    
-    deinit {
-        cancellable.removeAll()
     }
 }
