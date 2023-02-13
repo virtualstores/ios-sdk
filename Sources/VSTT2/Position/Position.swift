@@ -47,19 +47,28 @@ public class Position: IPosition {
         DispatchQueue.main.async { completion(position) }
     }
 
+    @available(*, deprecated, message: "Use -getBy(barcode: String, completion: @escaping (Result<Item, Error>) -> ())")
     public func getBy(barcode: String, completion: @escaping (Item?) -> ()) {
-        getPositionByBarcodeUseCase.invoke(barcode: barcode) { (item) in
-            DispatchQueue.main.async { completion(item) }
+        getPositionByBarcodeUseCase.invoke(barcode: barcode) { (result) in
+          switch result {
+          case .success(let item): completion(item)
+          case .failure(_): completion(nil)
+          }
         }
     }
 
+    public func getBy(barcode: String, completion: @escaping (Result<Item, Error>) -> ()) {
+        getPositionByBarcodeUseCase.invoke(barcode: barcode, completion: completion)
+    }
+
+    @available(*, deprecated, message: "Use -getBy(barcodes: [String], completion: @escaping (Result<[Item], Error>) -> ())")
     public func getBy(barcodes: [String], completion: @escaping ([Item]) -> ()) {
         let group = DispatchGroup()
         var positions: [Item] = []
 
         group.enter()
         barcodes.forEach { (barcode) in
-            self.getBy(barcode: barcode) { data in
+            getBy(barcode: barcode) { data in
                 if let data = data {
                     positions.append(data)
                 }
@@ -72,6 +81,39 @@ public class Position: IPosition {
         group.notify(queue: .main) {
             DispatchQueue.main.async { completion(positions) }
         }
+    }
+
+    public func getBy(barcodes: [String], completion: @escaping (Result<[Item], Error>) -> ()) {
+      let group = DispatchGroup()
+      var items: [Item] = []
+      var savedError: Error?
+
+      group.enter()
+      barcodes.forEach { (barcode) in
+        getBy(barcode: barcode) { (result) in
+          switch result {
+          case .success(let item): items.append(item)
+          case .failure(let error): savedError = error
+          }
+          if let last = barcodes.last, barcode == last {
+              group.leave()
+          }
+        }
+      }
+
+      group.notify(queue: .main) {
+        DispatchQueue.main.async {
+          if items.isEmpty {
+            if let error = savedError {
+              completion(.failure(error))
+            } else {
+              completion(.failure(NSError()))
+            }
+          } else {
+            completion(.success(items))
+          }
+        }
+      }
     }
     
     deinit {

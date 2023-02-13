@@ -14,8 +14,16 @@ public protocol IPosition {
     func getBy(shelfName: String, completion: @escaping (ItemPosition?) -> ())
     
     /// Method will return Item for barcode
+    @available(*, deprecated, message: "Use -getBy(barcode: String, completion: @escaping (Result<Item, Error>) -> ())")
     func getBy(barcode: String, completion: @escaping (Item?) -> ())
+
+    /// Method will return Item for barcode
+    func getBy(barcode: String, completion: @escaping (Result<Item, Error>) -> ())
     
     /// Method will return Items for barcodes
+    @available(*, deprecated, message: "Use -getBy(barcodes: [String], completion: @escaping (Result<[Item], Error>) -> ())")
     func getBy(barcodes: [String], completion: @escaping ([Item]) -> ())
+
+    /// Method will return Items for barcodes
+    func getBy(barcodes: [String], completion: @escaping (Result<[Item], Error>) -> ())
 }

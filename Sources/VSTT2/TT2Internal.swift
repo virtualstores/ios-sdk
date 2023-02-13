@@ -193,6 +193,7 @@ internal class TT2Internal {
             .sink(receiveValue: { [weak self] (identifier, data) in
                 self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: Date())
                 self?.vpsVisitId = self?.analytics.visitId
+                self?.sendAWSData(nil, reset: false)
             }).store(in: &cancellable)
         navigation.positionKitManager.recordingPublisherEnd
             .compactMap { $0 }
@@ -255,10 +256,9 @@ internal class TT2Internal {
     var vpsIdentifier: String?
     var vpsData: String?
     var vpsVisitId: Int64?
-    func sendAWSData(_ metaData: RecordingMetaData?) {
+    func sendAWSData(_ metaData: RecordingMetaData?, reset: Bool = true) {
         guard
-            let identifier = vpsIdentifier,
-            let awsData = createAWSData(metaData: metaData, identifier: identifier)
+            let awsData = createAWSData(metaData: metaData, identifier: vpsIdentifier)
         else { return }
         let stringDate = awsData.recordingStringDate
         let time = awsData.recordingStringTime
@@ -277,12 +277,14 @@ internal class TT2Internal {
             folderName = "\(stringDate)/undefined/ios/undefinedMode/undefinedRoute/\(time)/"
         }
         awsS3UploadManager.sendCollectedDataToS3(folderName: folderName)
-        vpsIdentifier = nil
-        vpsVisitId = nil
-        recording.allowAutomaticSensorRecording = true
+        if reset {
+            vpsIdentifier = nil
+            vpsVisitId = nil
+            recording.allowAutomaticSensorRecording = true
+        }
     }
 
-    func createAWSData(metaData: RecordingMetaData?, identifier: String) -> (recordingStringDate: String, recordingStringTime: String, serverAddress: String?)? {
+    func createAWSData(metaData: RecordingMetaData?, identifier: String?) -> (recordingStringDate: String, recordingStringTime: String, serverAddress: String?)? {
         guard let store = position.store else { return nil }
         let date = Date()
         let uploadTimeFormatter = DateFormatter()
@@ -313,7 +315,9 @@ internal class TT2Internal {
           data = createCSVData(metaData: metaData, date: stringDate, time: time, serverUrl: serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
           fileName = "keywords\(time).csv"
         }
-        awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: data)
+        if let identifier = identifier {
+            awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: data)
+        }
         return (recordingStringDate: stringDate, recordingStringTime: time, serverAddress: serverAddress)
     }
     

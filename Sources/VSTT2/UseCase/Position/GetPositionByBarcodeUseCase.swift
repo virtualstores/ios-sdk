@@ -17,19 +17,17 @@ class GetPositionByBarcodeUseCase {
     self.itemsRepository = itemsRepository
   }
 
-  func invoke(barcode: String, completion: @escaping (Item?) -> Void) {
+  func invoke(barcode: String, completion: @escaping (Result<Item, Error>) -> Void) {
     if let item = itemsRepository.getCachedItems(by: barcode) {
-      completion(item)
+      completion(.success(item))
     } else {
       itemsRepository.getBy(storeId: storeRepository.activeStore.id, barcode: barcode) { (result) in
         switch result {
         case .success(let data):
           let item = PositionBusiness().handleSuccesResult(barcode: barcode, data: data)
-          if let item = item {
-            self.itemsRepository.addCachedItem(item: item)
-          }
-          completion(item)
-        case .failure(_): completion(nil)
+          self.itemsRepository.addCachedItem(item: item)
+          DispatchQueue.main.async { completion(.success(item)) }
+        case .failure(let error): DispatchQueue.main.async { completion(.failure(error)) }
         }
       }
     }
@@ -37,21 +35,16 @@ class GetPositionByBarcodeUseCase {
 }
 
 class PositionBusiness {
-  func handleSuccesResult(barcode: String, data: [BarcodePosition]) -> Item? {
+  func handleSuccesResult(barcode: String, data: [BarcodePosition]) -> Item {
     let itemPositions = data.map { $0.toItemPosition }.compactMap { $0 }
-    guard checkForMaxAllowedDistinctItemPositions(positions: itemPositions, max: 1) else { return nil }
     return Item(name: "", externalId: barcode, itemPositions: itemPositions)
-  }
-
-  func checkForMaxAllowedDistinctItemPositions(positions: [ItemPosition], max: Int) -> Bool {
-    positions.map { $0.shelfId }.compactMap { $0 }.uniqued().count == max
   }
 }
 
 extension BarcodePosition {
   var toItemPosition: ItemPosition? {
     guard let point = itemPosition, let offset = itemPositionOffset else { return nil }
-    return ItemPosition(point: point, offset: offset, floorLevelId: rtlsOptionsId, shelfId: shelfId, identifier: barcode)
+    return ItemPosition(point: point, offset: offset, floorLevelId: rtlsOptionsId, shelfId: shelfId, identifier: barcode, isDisabled: isDisabled)
   }
 }
 

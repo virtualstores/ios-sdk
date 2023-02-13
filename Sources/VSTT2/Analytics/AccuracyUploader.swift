@@ -137,6 +137,7 @@ class AccuracyUploader {
       pointWithOffset = position.pointWithOffset
       preScanLocation = event.preSyncScanLocation
       offset = position.offset
+      didSync = event.didSync
       upload(id: String(visitId), preScanLocation: event.preSyncScanLocation, position: position, errorHandler: { (error) in
         Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
       })
@@ -178,6 +179,7 @@ class AccuracyUploader {
       point = position.point
       pointWithOffset = position.pointWithOffset
       offset = position.offset
+      didSync = event.didSync
       tags = [
         "identifier": identifier,
         "isStartSync": String(true),
@@ -373,6 +375,7 @@ struct AccuracySyncEvent {
   struct SyncEvent {
     let itemPosition: ItemPosition
     let preSyncScanLocation: CGPoint
+    let didSync: Bool
   }
   struct SyncEventMissingPosition {
     let identifier: String
@@ -386,6 +389,7 @@ struct AccuracySyncEvent {
   struct StartSyncEvent {
     let itemPosition: ItemPosition
     let startDirection: Double
+    let didSync: Bool
   }
 }
 

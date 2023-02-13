@@ -104,7 +104,7 @@ public extension Navigation {
 
         try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
             prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
-            positionKitManager.syncPosition(xPosition: position.pointWithOffset.x, yPosition: position.pointWithOffset.y, startAngle: angle, syncPosition: forceSync, syncAngle: syncRotation, uncertainAngle: false)
+            positionKitManager.syncPosition(xPosition: position.pointWithOffset.x, yPosition: position.pointWithOffset.y, startAngle: angle, syncPosition: !position.isDisabled, syncAngle: syncRotation, uncertainAngle: false)
         }
     }
 
@@ -146,33 +146,41 @@ public extension Navigation {
         try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
             prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
             if let startLocationAngle = startWithAngle(startPosition: position.point) {
-                positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: startLocationAngle, syncPosition: true, syncAngle: true, uncertainAngle: false)
+                positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: startLocationAngle, syncPosition: !position.isDisabled, syncAngle: true, uncertainAngle: false)
             } else if certainAngle {
                 try syncPosition(position: position, syncRotation: false, forceSync: true)
             } else {
                 let syncingWithCompass = forceSync ? forceSync : doCompassStart(point: position.point) && !hasStartLocationAngle
-                positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: true, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)
+                positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: !position.isDisabled, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)
             }
         }
     }
 
-    func syncPosition(identifier: String, type: SyncTypeEnum, completion: @escaping (Result<Item?,Error>) -> ()) {
-        prepareAngle()
-        positionManager.getBy(barcode: identifier) { (item) in
-            do {
-                guard let position = item?.itemPosition else {
-                  self.prepareAccuracyUpload(identifier: identifier)
-                  completion(.success(nil))
-                  return }
-                switch type {
-                case .compass(forceSync: let forceSync):
-                    try self.syncPosition(position: position, forceSync: forceSync)
-                case .normal(syncRotation: let syncRotation):
-                    try self.syncPosition(position: position, syncRotation: syncRotation, forceSync: true)
+    func syncPosition(identifier: String, type: SyncTypeEnum, completion: @escaping (Result<Item,Error>) -> ()) {
+        if let syncRotation = type.get().normal, syncRotation {
+            prepareAngle()
+        }
+        positionManager.getBy(barcode: identifier) { (result) in
+            switch result {
+            case .success(let item):
+                do {
+                    if item.uniquePositions.isEmpty {
+                        self.prepareAccuracyUpload(identifier: identifier)
+                    } else if item.uniquePositions.count > 1 {
+                        self.prepareAccuracyUpload(item: item)
+                    } else if let position = item.itemPosition {
+                        switch type {
+                        case .compass(let forceSync):
+                            try self.syncPosition(position: position, forceSync: forceSync)
+                        case .normal(let syncRotation):
+                            try self.syncPosition(position: position, syncRotation: syncRotation, forceSync: true)
+                        }
+                    }
+                    completion(.success(item))
+                } catch {
+                    completion(.failure(error))
                 }
-                completion(.success(item))
-            } catch {
-                completion(.failure(error))
+            case .failure(let error): completion(.failure(error))
             }
         }
     }
@@ -223,18 +231,20 @@ extension Navigation {
 }
 
 private extension Navigation {
-    func prepareAccuracyUpload(position: ItemPosition? = nil, code: PositionedCode? = nil, startDirection: Double? = nil, identifier: String? = nil, isFloorSwap: Bool = false) {
+    func prepareAccuracyUpload(position: ItemPosition? = nil, code: PositionedCode? = nil, startDirection: Double? = nil, identifier: String? = nil, item: Item? = nil, isFloorSwap: Bool = false) {
         var event: AccuracySyncEvent.Event?
         if let position = position {
             if let startDirection = startDirection {
-                event = .startSyncEvent(AccuracySyncEvent.StartSyncEvent(itemPosition: position, startDirection: startDirection))
+                event = .startSyncEvent(AccuracySyncEvent.StartSyncEvent(itemPosition: position, startDirection: startDirection, didSync: !position.isDisabled))
             } else if let preScanLocation = positionKitManager.positionPublisher.value?.position {
-                event = .syncEvent(AccuracySyncEvent.SyncEvent(itemPosition: position, preSyncScanLocation: preScanLocation))
+                event = .syncEvent(AccuracySyncEvent.SyncEvent(itemPosition: position, preSyncScanLocation: preScanLocation, didSync: !position.isDisabled))
             }
         } else if let code = code {
             event = .startLocationSyncEvent(AccuracySyncEvent.StartLocationSyncEvent(startScanLocation: code))
         } else if let identifier = identifier {
-          event = .syncEventMissingPosition(AccuracySyncEvent.SyncEventMissingPosition(identifier: identifier))
+            event = .syncEventMissingPosition(AccuracySyncEvent.SyncEventMissingPosition(identifier: identifier))
+        } else if let item = item {
+            event = .syncEventMultipleItemPosition(AccuracySyncEvent.SyncEventMultipleItemPosition(item: item))
         }
 
         guard let event = event else { return }

@@ -13,6 +13,7 @@ public struct BarcodePosition: Codable {
     public let shelfId: Int64?
     public let shelfTierId: Int64?
     public let barcode: String?
+    public let isDisabled: Bool?
     public let itemPositionX: Double?
     public let itemPositionY: Double?
     public let itemPositionOffsetX: Double?
@@ -30,11 +31,12 @@ public struct BarcodePosition: Codable {
         return CGVector(dx: x, dy: y)
     }
 
-    public init(rtlsOptionsId: Int64?, shelfId: Int64?, shelfTierId: Int64?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, barcode: String?) {
+    public init(rtlsOptionsId: Int64?, shelfId: Int64?, shelfTierId: Int64?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, barcode: String?, isDisabled: Bool? = nil) {
         self.rtlsOptionsId = rtlsOptionsId
         self.shelfId = shelfId
         self.shelfTierId = shelfTierId
         self.barcode = barcode
+        self.isDisabled = isDisabled
         self.itemPositionX = itemPositionX
         self.itemPositionY = itemPositionY
         self.itemPositionOffsetX = itemPositionOffsetX

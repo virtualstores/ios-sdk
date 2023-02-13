@@ -30,7 +30,7 @@ public protocol INavigation {
     /// Synchronize the position with compass
     func syncPosition(position: ItemPosition, forceSync: Bool) throws
 
-    func syncPosition(identifier: String, type: SyncTypeEnum, completion: @escaping (Result<Item?,Error>) -> ())
+    func syncPosition(identifier: String, type: SyncTypeEnum, completion: @escaping (Result<Item,Error>) -> ())
     
     /// This will stop notifying the location publishers.
     func stop()
@@ -42,4 +42,11 @@ public protocol INavigation {
 public enum SyncTypeEnum {
     case compass(forceSync: Bool)
     case normal(syncRotation: Bool)
+
+    internal func get() -> (compass: (Bool)?, normal: (Bool)?) {
+        switch self {
+        case .compass(let forceSync): return (compass: (forceSync), normal: nil)
+        case .normal(let syncRotation): return (compass: nil, normal: (syncRotation))
+        }
+    }
 }
