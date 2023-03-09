@@ -13,13 +13,14 @@ import VSFoundation
 final class PositionUploadWorker {
     @Inject var persistence: Persistence
 
-    func insert(id: String, xPosition: Double, yPosition: Double, time: String, uploadStatus: PointStatus) {
+    func insert(id: String, xPosition: Double, yPosition: Double, time: String, uploadStatus: PointStatus, visitId: Int64) {
         var object = PositionObject()
         object.key = id
         object.xPosition = xPosition
         object.yPosition = yPosition
         object.timeStamp = time
         object.status = uploadStatus.rawValue
+        object.visitId = visitId
 
         do {
             try persistence.save(&object)
@@ -30,20 +31,23 @@ final class PositionUploadWorker {
     }
 
     /// Will return filtered points
-    func getPoints() -> [String: [RecordedPosition]]? {
-        var pointsList: [String: [RecordedPosition]] = [:]
+    func getPoints() -> [Int64: [String: [RecordedPosition]]] {
+        var pointsList: [Int64: [String: [RecordedPosition]]] = [:]
         let positions = persistence.get(arrayOf: PositionObject.self)
         let filteredPositions = positions.filter { $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
         
         self.updateObjectStatus(objects: filteredPositions, status: PointStatus.inProgress)
         
         for object in filteredPositions {
-            if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key {
+            if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key, let id = object.visitId {
                 let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timeStamp: timeStamp)
-                if pointsList[key] == nil {
-                    pointsList[key] = []
+                if pointsList[id] == nil {
+                    pointsList[id] = [:]
                 }
-                pointsList[key]?.append(recordedPosition)
+                if pointsList[id]?[key] == nil {
+                    pointsList[id]?[key] = []
+                }
+                pointsList[id]?[key]?.append(recordedPosition)
             }
         }
         
@@ -51,17 +55,20 @@ final class PositionUploadWorker {
     }
     
     /// Will return all points
-    func getAllPoints() -> [String: [RecordedPosition]]? {
-        var pointsList: [String: [RecordedPosition]] = [:]
+    func getAllPoints() -> [Int64: [String: [RecordedPosition]]] {
+        var pointsList: [Int64: [String: [RecordedPosition]]] = [:]
         let positions = persistence.get(arrayOf: PositionObject.self)
                 
         for object in positions {
-            if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key {
+            if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key, let id = object.visitId {
                 let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timeStamp: timeStamp)
-                if pointsList[key] == nil {
-                    pointsList[key] = []
+                if pointsList[id] == nil {
+                    pointsList[id] = [:]
                 }
-                pointsList[key]?.append(recordedPosition)
+                if pointsList[id]?[key] == nil {
+                    pointsList[id]?[key] = []
+                }
+                pointsList[id]?[key]?.append(recordedPosition)
             }
         }
         

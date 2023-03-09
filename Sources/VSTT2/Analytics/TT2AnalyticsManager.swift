@@ -95,8 +95,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func stopVisit() {
-        guard let visitId = visitId, let points = positionUploadWorker.getPoints() else { return }
-        uploadData(recordedPositions: points)
+        guard let visitId = visitId else { return }
+        positionUploadWorker.getPoints().forEach { (key, value) in
+          uploadData(visitId: key, recordedPositions: value)
+        }
         stepEventUploader?.upload()
         if let point = currentPosition {
             zoneManager.stopped(currentPosition: point)
@@ -231,22 +233,16 @@ final public class TT2AnalyticsManager: TT2Analytics {
 private extension TT2AnalyticsManager {
     // MARK: Heatmap data
     func recordPosition(rtlsOptionId: Int64, point: CGPoint) {
-        let id = String(rtlsOptionId)
-
         recordedPositionsCount += 1
         let time = DateFormatter.standardFormatter.string(from: Date())
-        positionUploadWorker.insert(id: id, xPosition: Double(point.x), yPosition: Double(point.y), time: time, uploadStatus: .pending)
-
+        if let id = visitId {
+            positionUploadWorker.insert(id: String(rtlsOptionId), xPosition: Double(point.x), yPosition: Double(point.y), time: time, uploadStatus: .pending, visitId: id)
+        }
         if self.checkIfPartialUpload() {
-//            do {
-                guard let points = positionUploadWorker.getPoints() else { return }
-
-                self.uploadData(recordedPositions: points)
-                self.recordedPositionsCount = 0
-//            } catch {
-//                Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
-//                                                    message: "GetPoints from SQLite error")
-//            }
+            positionUploadWorker.getPoints().forEach { (key, value) in
+                self.uploadData(visitId: key, recordedPositions: value)
+            }
+            self.recordedPositionsCount = 0
         }
     }
 
@@ -255,11 +251,8 @@ private extension TT2AnalyticsManager {
     }
     
     ///Uploading Heatmap data, config: <#EnvironmentConfig#>
-    private func uploadData(recordedPositions: [String: [RecordedPosition]]) {
-        guard let visitId = visitId else { return }
-
+    private func uploadData(visitId: Int64, recordedPositions: [String: [RecordedPosition]]) {
         let parameters = UploadPositionsParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions, config: config)
-
         uploadPositionsService
             .call(with: parameters)
             .sink(receiveCompletion: { [weak self] (completion) in

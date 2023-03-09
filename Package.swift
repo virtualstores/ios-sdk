@@ -21,6 +21,7 @@ let package = Package(
         .package(url: "https://github.com/virtualstores/ios-position-kit.git", .exact("0.0.17")),
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", .exact("0.13.1")),
         .package(url: "https://github.com/aws-amplify/aws-sdk-ios-spm.git", .exact("2.27.4")),
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", .exactItem("0.9.16")),
     ],
     targets: [
         .target(
@@ -29,7 +30,8 @@ let package = Package(
                 .product(name: "SQLite", package: "SQLite.swift"),
                 .product(name: "VSFoundation", package: "ios-foundation"),
                 .product(name: "VSPositionKit", package: "ios-position-kit"),
-                .product(name: "AWSS3", package: "aws-sdk-ios-spm")
+                .product(name: "AWSS3", package: "aws-sdk-ios-spm"),
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ]),
         .testTarget(
             name: "VSTT2Tests",

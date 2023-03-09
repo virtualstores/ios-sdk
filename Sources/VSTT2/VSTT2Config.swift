@@ -178,6 +178,10 @@ struct VSTT2Config: Config {
         injector.map(RecordingManager.self) {
             RecordingManager()
         }
+
+        injector.map(VSMLModelManager.self) {
+            VSMLModelManager()
+        }
     }
 
     private func configureRepositories(_ injector: Injector) {

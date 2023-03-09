@@ -28,4 +28,5 @@ final class PositionObject: IPersistenceModel {
     var yPosition: Double?
     var timeStamp: String?
     var status: String?
+    var visitId: Int64?
 }

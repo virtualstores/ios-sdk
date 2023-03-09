@@ -214,7 +214,7 @@ public class AWSS3UploadManager {
     getPreSignedURLRequest.expires = Date(timeIntervalSinceNow: 3600)
 
     //Important: set contentType for a PUT request.
-    let fileContentTypeStr = "text/plain"
+    let fileContentTypeStr = "application/json"
     getPreSignedURLRequest.contentType = fileContentTypeStr
     AWSS3PreSignedURLBuilder.default().getPreSignedURL(getPreSignedURLRequest).continueWith { (task:AWSTask<NSURL>) -> Any? in
       if let error = task.error as NSError? {

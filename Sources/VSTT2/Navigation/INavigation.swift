@@ -40,7 +40,7 @@ public protocol INavigation {
 }
 
 public enum SyncTypeEnum {
-    case compass(forceSync: Bool)
+    case compass(forceSync: Bool = false)
     case normal(syncRotation: Bool)
 
     internal func get() -> (compass: (Bool)?, normal: (Bool)?) {

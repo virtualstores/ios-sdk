@@ -19,6 +19,7 @@ internal class TT2Internal {
     @Inject var user: UserController
     @Inject var recording: RecordingManager
     @Inject var awsS3UploadManager: AWSS3UploadManager
+    @Inject var mlModelManager: VSMLModelManager
     
     /// Services for getting the api data
     @Inject var clientListService : ClientsListService
@@ -353,22 +354,22 @@ internal class TT2Internal {
         return """
               {
                 "tags" : {
-                  "tt2SdkVersion" : \(tt2SdkVersion),
-                  "tt2VpsVersion" : \(tt2VpsVersion),
-                  "tt2DeviceManufacturer" : \(tt2DeviceManufacturer),
-                  "tt2DeviceModel" : \(tt2DeviceModel),
-                  "tt2DeviceOs" : \(tt2DeviceOs),
-                  "tt2DeviceOsVersion" : \(tt2DeviceOsVersion),
-                  "tt2MLActive" : \(tt2MLActive),
-                  "tt2SdkVpsSettingUseML" : \(tt2SdkVpsSettingUseML),
-                  "tt2SdkVpsSettingUseCoefficientOptimizer" : \(tt2SdkVpsSettingUseCoefficientOptimizer),
-                  "tt2SdkVpsSettingUseDriftCompensator" : \(tt2SdkVpsSettingUseDriftCompensator),
-                  "tt2CentralServerURL" : \(serverAddress),
-                  "tt2DataServerURL" : \(dataServerAddress),
-                  "tt2RtlsOptionsId" : \(tt2RtlsOptionsId),
-                  "tt2StoreId" : \(activeStore.id),
-                  "tt2VisitId" : \(tt2VisitId),
-                  "tt2ClientId" : \(tt2ClientId)
+                  "tt2SdkVersion" : "\(tt2SdkVersion)",
+                  "tt2VpsVersion" : "\(tt2VpsVersion)",
+                  "tt2DeviceManufacturer" : "\(tt2DeviceManufacturer)",
+                  "tt2DeviceModel" : "\(tt2DeviceModel)",
+                  "tt2DeviceOs" : "\(tt2DeviceOs)",
+                  "tt2DeviceOsVersion" : "\(tt2DeviceOsVersion)",
+                  "tt2MLActive" : "\(tt2MLActive)",
+                  "tt2SdkVpsSettingUseML" : "\(tt2SdkVpsSettingUseML)",
+                  "tt2SdkVpsSettingUseCoefficientOptimizer" : "\(tt2SdkVpsSettingUseCoefficientOptimizer)",
+                  "tt2SdkVpsSettingUseDriftCompensator" : "\(tt2SdkVpsSettingUseDriftCompensator)",
+                  "tt2CentralServerURL" : "\(serverAddress)",
+                  "tt2DataServerURL" : "\(dataServerAddress)",
+                  "tt2RtlsOptionsId" : "\(tt2RtlsOptionsId)",
+                  "tt2StoreId" : "\(activeStore.id)",
+                  "tt2VisitId" : "\(tt2VisitId)",
+                  "tt2ClientId" : "\(tt2ClientId)"
                 }
               }
               """
