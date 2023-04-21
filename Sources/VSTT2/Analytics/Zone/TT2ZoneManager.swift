@@ -9,7 +9,6 @@ import Foundation
 import CoreGraphics
 import Combine
 import VSFoundation
-import VSPositionKit
 
 ///ZoneManager is helping handle in-out events
 public class TT2ZoneManager: TT2Zone {

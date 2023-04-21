@@ -9,7 +9,6 @@ import Foundation
 import VSFoundation
 import Combine
 import CoreGraphics
-import VSPositionKit
 
 public class VSTT2FloorManager: VSTT2Floor {
     @Inject var downloadManager: DownloadManager
@@ -195,7 +194,7 @@ class GraphDeserializer: NSObject {
     let spacing = json["spacing"] as! Double
     var output = VertexMap()
     let polygons = json["vertices"] as! [JsonData]
-    for object in polygons{
+    polygons.forEach { (object) in
       let id = object["id"] as! String
       let x = object["x"] as! CGFloat
       let y = object["y"] as! CGFloat

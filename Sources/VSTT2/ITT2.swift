@@ -16,6 +16,7 @@ import CoreGraphics
 ///  1- To get the SDK ready to work first Call initialize method. This will prepare the SDK for  all other purposes.
 ///  2- To initialize your store, call initStore
 public protocol ITT2 {
+    var initialized: Bool { get }
     /// Navigation manager
     var navigation: Navigation { get }
     
@@ -44,6 +45,8 @@ public protocol ITT2 {
     
     /// List of active stores
     var activeStores: [TT2Store] { get }
+
+    var activeFloor: RtlsOptions? { get }
     
     /// List of available stores
     var stores: [TT2Store] { get }

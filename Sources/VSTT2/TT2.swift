@@ -228,7 +228,7 @@ private extension TT2 {
           guard
             let zones = self?.mapZonesTree?.getZonesForCurrentFloorLevel(),
             let zone = zones.first(where: { $0.navigationPoints[info.bssid] != nil }),
-            let point = zone.navigationPoints.first(where: { $0.key == info.bssid })?.value
+            let point = zone.navigationPoints.first(where: { $0.key == info.bssid })?.value.point
           else { return }
 
           self?.navigation.currentAccessPointPosition = point

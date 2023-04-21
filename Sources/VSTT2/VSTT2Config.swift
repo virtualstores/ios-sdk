@@ -7,7 +7,6 @@
 
 import Foundation
 import VSFoundation
-import VSPositionKit
 import VSPositionKitTargets
 
 struct VSTT2Config: Config {
@@ -112,6 +111,10 @@ struct VSTT2Config: Config {
 
         injector.map(UploadStepEventsService.self) {
             UploadStepEventsService(with: NetworkManager())
+        }
+
+        injector.map(MLInterfaceVersionsService.self) {
+            MLInterfaceVersionsService(with: NetworkManager())
         }
     }
 

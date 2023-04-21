@@ -23,9 +23,9 @@ public class Position: IPosition {
     
     func setup(with shelfGroups: [ShelfGroup], config: EnvironmentConfig, store: Store) {
         self.shelfGroups = shelfGroups
-        for group in shelfGroups {
-            for shelf in group.shelves {
-                for tier in shelf.shelfTiers {
+        shelfGroups.forEach { (group) in
+            group.shelves.forEach { (shelf) in
+                shelf.shelfTiers.forEach { (tier) in
                     self.shelfTierItemPositions[tier.id] = shelf.itemPosition
                 }
             }
@@ -47,40 +47,8 @@ public class Position: IPosition {
         DispatchQueue.main.async { completion(position) }
     }
 
-    @available(*, deprecated, message: "Use -getBy(barcode: String, completion: @escaping (Result<Item, Error>) -> ())")
-    public func getBy(barcode: String, completion: @escaping (Item?) -> ()) {
-        getPositionByBarcodeUseCase.invoke(barcode: barcode) { (result) in
-          switch result {
-          case .success(let item): completion(item)
-          case .failure(_): completion(nil)
-          }
-        }
-    }
-
     public func getBy(barcode: String, completion: @escaping (Result<Item, Error>) -> ()) {
         getPositionByBarcodeUseCase.invoke(barcode: barcode, completion: completion)
-    }
-
-    @available(*, deprecated, message: "Use -getBy(barcodes: [String], completion: @escaping (Result<[Item], Error>) -> ())")
-    public func getBy(barcodes: [String], completion: @escaping ([Item]) -> ()) {
-        let group = DispatchGroup()
-        var positions: [Item] = []
-
-        group.enter()
-        barcodes.forEach { (barcode) in
-            getBy(barcode: barcode) { data in
-                if let data = data {
-                    positions.append(data)
-                }
-                if let last = barcodes.last, barcode == last {
-                    group.leave()
-                }
-            }
-        }
-
-        group.notify(queue: .main) {
-            DispatchQueue.main.async { completion(positions) }
-        }
     }
 
     public func getBy(barcodes: [String], completion: @escaping (Result<[Item], Error>) -> ()) {

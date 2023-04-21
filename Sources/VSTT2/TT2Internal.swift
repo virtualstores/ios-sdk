@@ -27,6 +27,7 @@ internal class TT2Internal {
     @Inject var ordersService: OrdersService
     @Inject var itemPositionService: ItemPositionService
     @Inject var shelfGroupService: ShelfGroupService
+    @Inject var mlInterfaceVersionService: MLInterfaceVersionsService
 
     /// Usecases
     @Inject var fetchStoreUseCase: FetchStoreUseCase
@@ -55,6 +56,18 @@ internal class TT2Internal {
         self.config = config
         offset = 0.0
         bindPublishers()
+
+      mlInterfaceVersionService
+        .call(with: MLInterfaceVersionsParameters())
+        .sink { (result) in
+          switch result {
+          case .finished: break
+          case .failure(let error):
+            print("MLInterfaceVersionServiceError", error)
+          }
+        } receiveValue: { (versions) in
+          versions.print()
+        }.store(in: &cancellable)
     }
 
     deinit {

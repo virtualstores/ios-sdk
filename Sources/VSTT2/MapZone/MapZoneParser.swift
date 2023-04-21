@@ -23,11 +23,11 @@ public class MapZoneParser: NSObject {
         var mapZones: [MapZone] = []
         var mapZonePoints: [MapZoneCoordinate] = []
 
-        for feature in features {
+        features.forEach { (feature) in
             let properties = feature["properties"] as! NSDictionary
             if let id = feature["id"] as? String {
                 let geometry = feature["geometry"] as! NSDictionary
-                guard let type = geometry["type"] as? String else { continue }
+                guard let type = geometry["type"] as? String else { return }
                 switch type {
                 case "Polygon":
                     let cordinates = geometry["coordinates"] as! [[[Double]]]
@@ -62,9 +62,18 @@ public class MapZoneParser: NSObject {
                     let geometry = feature["geometry"] as! NSDictionary
                     let coordinates = geometry["coordinates"] as! [Double]
                     let parentId = properties["parentId"] as? String
+                    let pointProperties = PointProperties(
+                        textColor: properties["textColor"] as? String,
+                        textColorSelected: properties["textColorSelected"] as? String,
+                        textSize: properties["textSize"] as? Double,
+                        textOpacity: properties["textOpacity"] as? Double,
+                        textAllowOverLap: properties["textAllowOverLap"] as? Bool,
+                        textAnchor: properties["textAnchor"] as? String,
+                        textIgnorePlacement: properties["textIgnorePlacement"] as? Bool
+                    )
 
-                    mapZonePoints.append(MapZoneCoordinate(name: description, coordinate: CLLocationCoordinate2D(latitude: coordinates[1], longitude: coordinates[0]), parentId: parentId))
-                default: continue
+                    mapZonePoints.append(MapZoneCoordinate(description: description, coordinate: CLLocationCoordinate2D(latitude: coordinates[1], longitude: coordinates[0]), parentId: parentId, properties: pointProperties))
+                default: return
                 }
             }
         }
@@ -106,7 +115,7 @@ public class MapZoneParser: NSObject {
                 throw MapZoneParserError.parsingFailed
             }
             
-            for feature in features {
+            try features.forEach { (feature) in
                 guard let properties = feature["properties"] as? NSDictionary,
                       let id = properties["id"] as? Int,
                       let geometry = feature["geometry"] as? NSDictionary,

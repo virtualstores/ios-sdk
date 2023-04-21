@@ -40,8 +40,8 @@ public class Tree {
 
         let root: Zone = getZoneWith(id: floorLevelName) ?? self.root
         let parentId = mapZone.properties.parentId
-        var navigationPoints: [String: CGPoint] = [:] //mapZonePoints.map { $0.coordinate.fromLatLngToMeter(converter: converter) }
-        mapZonePoints.forEach { navigationPoints[$0.name] = $0.coordinate.fromLatLngToMeter(converter: converter) }
+        var navigationPoints: [String : (point: CGPoint, properties: PointProperties)] = [:] //mapZonePoints.map { $0.coordinate.fromLatLngToMeter(converter: converter) }
+        mapZonePoints.forEach { navigationPoints[$0.description] = ($0.coordinate.fromLatLngToMeter(converter: converter), $0.properties) }
         if let id = parentId, let zone = self.getZoneWith(id: id) {
             zone.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, parent: zone, floorLevelId: floorLevelId, converter: converter))
         } else if parentId != nil {
@@ -59,9 +59,8 @@ public class Tree {
     }
     
     public func add(_ rtls: RtlsOptions, _ mapZones: [MapZone], _ mapZonesPoints: [MapZoneCoordinate]) {
-        for mapZone in mapZones {
-            let mapZonePoints = mapZonesPoints.all(where: { $0.parentId == mapZone.id }) //?? mapZonesPoints.all(where: { $0.name.lowercased() == mapZone.properties.name.lowercased() })
-            self.add(rtls, mapZone, mapZonePoints)
+        mapZones.forEach { (mapZone) in
+            add(rtls, mapZone, mapZonesPoints.all(where: { $0.parentId == mapZone.id }))
         }
     }
     

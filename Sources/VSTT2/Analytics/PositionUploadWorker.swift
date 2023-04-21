@@ -12,6 +12,7 @@ import VSFoundation
 
 final class PositionUploadWorker {
     @Inject var persistence: Persistence
+    var positionObjects: [PositionObject] { persistence.get(arrayOf: PositionObject.self) }
 
     func insert(id: String, xPosition: Double, yPosition: Double, time: String, uploadStatus: PointStatus, visitId: Int64) {
         var object = PositionObject()
@@ -33,12 +34,11 @@ final class PositionUploadWorker {
     /// Will return filtered points
     func getPoints() -> [Int64: [String: [RecordedPosition]]] {
         var pointsList: [Int64: [String: [RecordedPosition]]] = [:]
-        let positions = persistence.get(arrayOf: PositionObject.self)
-        let filteredPositions = positions.filter { $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
+        let positions = positionObjects.filter { $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
         
-        self.updateObjectStatus(objects: filteredPositions, status: PointStatus.inProgress)
+        updateObjectStatus(objects: positions, status: .inProgress)
         
-        for object in filteredPositions {
+        positions.forEach { (object) in
             if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key, let id = object.visitId {
                 let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timeStamp: timeStamp)
                 if pointsList[id] == nil {
@@ -57,9 +57,7 @@ final class PositionUploadWorker {
     /// Will return all points
     func getAllPoints() -> [Int64: [String: [RecordedPosition]]] {
         var pointsList: [Int64: [String: [RecordedPosition]]] = [:]
-        let positions = persistence.get(arrayOf: PositionObject.self)
-                
-        for object in positions {
+        positionObjects.forEach { (object) in
             if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key, let id = object.visitId {
                 let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timeStamp: timeStamp)
                 if pointsList[id] == nil {
@@ -76,17 +74,13 @@ final class PositionUploadWorker {
     }
 
     func updatePointsAfter(uploadingFailed: Bool) {
-        let positions = persistence.get(arrayOf: PositionObject.self)
-        let filteredPositions = positions.filter { $0.status == PointStatus.inProgress.rawValue }
-
-        self.updateObjectStatus(objects: filteredPositions, status: uploadingFailed ? PointStatus.fail : PointStatus.complete)
+        let positions = positionObjects.filter { $0.status == PointStatus.inProgress.rawValue }
+        self.updateObjectStatus(objects: positions, status: uploadingFailed ? PointStatus.fail : PointStatus.complete)
     }
 
     func removePoints() {
-        let positions = persistence.get(arrayOf: PositionObject.self)
-        let filteredPositions = positions.filter { $0.status == PointStatus.complete.rawValue }
-
-        for object in filteredPositions {
+        let positions = positionObjects.filter { $0.status == PointStatus.complete.rawValue }
+        positions.forEach { (object) in
             do {
                 try persistence.delete(object)
             } catch {
@@ -97,9 +91,7 @@ final class PositionUploadWorker {
     }
     
     func removeAllPoints() {
-        let positions = persistence.get(arrayOf: PositionObject.self)
-
-        for object in positions {
+        positionObjects.forEach { (object) in
             do {
                 try persistence.delete(object)
             } catch {
@@ -110,7 +102,7 @@ final class PositionUploadWorker {
     }
 
     private func updateObjectStatus(objects: [PositionObject], status: PointStatus) {
-        for object in objects {
+        objects.forEach { (object) in
             var editableObject: PositionObject
             editableObject = object
             editableObject.status = status.rawValue

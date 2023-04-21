@@ -6,7 +6,6 @@
 // Copyright Virtual Stores - 2021
 
 import Foundation
-import VSPositionKit
 import Combine
 import VSFoundation
 import CoreGraphics

@@ -37,22 +37,22 @@ class VSMLModelManager {
   }
 
   init() {
-    if let path = pathDirectory, let pathZip = pathZip, let pathMLModel = pathMLModel {
-      print("File", "Directory", path, path.relativePath)
-      print("File", "Directory", pathZip, pathZip.relativePath)
-      print("File", "Directory", pathMLModel, pathMLModel.relativePath)
-    }
-    if let date = attributes[.creationDate] as? Date {
-      print("File", "AttributeCreationDate", date)
-    }
-    loadVersion { [self] (error) in
+//    if let path = pathDirectory, let pathZip = pathZip, let pathMLModel = pathMLModel {
+//      print("File", "Directory", path, path.relativePath)
+//      print("File", "Directory", pathZip, pathZip.relativePath)
+//      print("File", "Directory", pathMLModel, pathMLModel.relativePath)
+//    }
+//    if let date = attributes[.creationDate] as? Date {
+//      print("File", "AttributeCreationDate", date)
+//    }
+    loadVersion { /*[self]*/ (error) in
       if let error = error {
         print("File", "Error getting Version", error)
         return
       }
 
-      print("File", "Success getting Version")
-      info.forEach { print("File", "INFO", $0) }
+//      print("File", "Success getting Version")
+//      info.forEach { print("File", "INFO", $0) }
     }
     loadModel() { [self] (error) in
       if let error = error {
@@ -62,9 +62,11 @@ class VSMLModelManager {
       compileModel { (result) in
         switch result {
         case .success(let url):
-          print("File", "Success", url)
+//          print("File", "Success", url)
           self._model = try! MLModel(contentsOf: url)
-          print("File", "IT WORKS!!!!!!!!!!!!!!!!!!!!!!!")
+//          let parameter = try! self.model.parameterValue(for: .biases)
+//          print("File", "Parameter", parameter)
+//          print("File", "IT WORKS!!!!!!!!!!!!!!!!!!!!!!!")
         case .failure(let error): print("File", "Error compiling model", error.localizedDescription)
         }
       }
@@ -73,8 +75,8 @@ class VSMLModelManager {
 
   func loadVersion(completion: @escaping (Error?) -> Void) {
     URLSession.shared.dataTask(with: URL(string: s3MlVersionUrlString)!) { (data, response, error) in
-      guard let response = response as? HTTPURLResponse else { return }
-      print("File", "VersionResponse", response.statusCode)
+//      guard let response = response as? HTTPURLResponse else { return }
+//      print("File", "VersionResponse", response.statusCode)
       if error != nil {
         completion(error)
         return
@@ -107,8 +109,8 @@ class VSMLModelManager {
 
   func loadModel(completion: @escaping (Error?) -> Void) {
     URLSession.shared.dataTask(with: URL(string: sMl3UrlString)!) { [self] (data, response, error) in
-      guard let response = response as? HTTPURLResponse else { return }
-      print("File", "MLResponse", response.statusCode)
+//      guard let response = response as? HTTPURLResponse else { return }
+//      print("File", "MLResponse", response.statusCode)
       if error != nil {
         completion(error)
         return
@@ -121,9 +123,9 @@ class VSMLModelManager {
         try fileManager.removeItem(at: path)
         try fileManager.unzipItem(at: pathZip, to: path)
         try fileManager.removeItem(at: pathZip)
-        if let date = attributes[.creationDate] as? Date {
-          print("File", "AttributeCreationDate", date)
-        }
+//        if let date = attributes[.creationDate] as? Date {
+//          print("File", "AttributeCreationDate", date)
+//        }
         completion(nil)
       } catch {
         completion(error)

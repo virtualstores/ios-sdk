@@ -78,15 +78,15 @@ extension Routing {
             return nil
         }
 
-        if let queryItems = self.queryItems {
+        if let queryItems = queryItems {
             urlComponents.queryItems = queryItems.map({ URLQueryItem(name: $0.key, value: $0.value) })
         }
 
         var urlRequest = URLRequest(url: urlComponents.url!)
         urlRequest.httpMethod = method.rawValue
 
-        if let headers = self.headers {
-            for (key, value) in headers {
+        if let headers = headers {
+          headers.forEach { (key, value) in
                 urlRequest.addValue(value, forHTTPHeaderField: key)
             }
         }

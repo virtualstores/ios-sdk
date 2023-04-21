@@ -62,7 +62,7 @@ class FloorPicker {
 
         let tempDir = dir <= -1 ? 2 : 1
         var path: SwapLocation.Path?
-        for item in paths {
+        paths.forEach { (item) in
             path = item.direction.rawValue == tempDir ? item : nil
         }
         return path
