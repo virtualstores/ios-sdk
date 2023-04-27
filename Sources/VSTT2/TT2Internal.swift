@@ -57,17 +57,17 @@ internal class TT2Internal {
         offset = 0.0
         bindPublishers()
 
-      mlInterfaceVersionService
-        .call(with: MLInterfaceVersionsParameters())
-        .sink { (result) in
-          switch result {
-          case .finished: break
-          case .failure(let error):
-            print("MLInterfaceVersionServiceError", error)
-          }
-        } receiveValue: { (versions) in
-          versions.print()
-        }.store(in: &cancellable)
+//      mlInterfaceVersionService
+//        .call(with: MLInterfaceVersionsParameters())
+//        .sink { (result) in
+//          switch result {
+//          case .finished: break
+//          case .failure(let error):
+//            print("MLInterfaceVersionServiceError", error)
+//          }
+//        } receiveValue: { (versions) in
+//          versions.print()
+//        }.store(in: &cancellable)
     }
 
     deinit {
