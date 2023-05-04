@@ -27,7 +27,6 @@ internal class TT2Internal {
     @Inject var ordersService: OrdersService
     @Inject var itemPositionService: ItemPositionService
     @Inject var shelfGroupService: ShelfGroupService
-    @Inject var mlInterfaceVersionService: MLInterfaceVersionsService
 
     /// Usecases
     @Inject var fetchStoreUseCase: FetchStoreUseCase
@@ -50,24 +49,13 @@ internal class TT2Internal {
     var activeStore: Store { getActiveStoreUseCase.invoke() }
     var activeClient: Client?
     var shelfGroups: [Int64: [ShelfGroup]] = [:]
+    var automaticActivationOfUserMark: Bool = true
     var automaticSensorRecording: Bool { recording.allowAutomaticSensorRecording && awsS3UploadManager.hasSensorRecordingActive }
     
     public init(config: EnvironmentConfig) {
         self.config = config
         offset = 0.0
         bindPublishers()
-
-//      mlInterfaceVersionService
-//        .call(with: MLInterfaceVersionsParameters())
-//        .sink { (result) in
-//          switch result {
-//          case .finished: break
-//          case .failure(let error):
-//            print("MLInterfaceVersionServiceError", error)
-//          }
-//        } receiveValue: { (versions) in
-//          versions.print()
-//        }.store(in: &cancellable)
     }
 
     deinit {
@@ -138,7 +126,9 @@ internal class TT2Internal {
         navigation.isActivePublisher
           .sink { [weak self] (isActive) in
               if isActive {
-                  self?.mapController?.start()
+                  if self?.automaticActivationOfUserMark ?? true {
+                      self?.mapController?.start()
+                  }
                   self?.awsS3UploadManager.removeRecordedObject(where: .folderIsMissing)
                   if self?.automaticSensorRecording ?? false {
                       self?.recording.start(automatic: true)

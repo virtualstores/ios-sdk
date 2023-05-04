@@ -25,11 +25,12 @@ struct MLInterfaceVersions: Codable {
       Swift.print("        LatestVersion", value.iOS.latestVersion)
       Swift.print("        Versions")
       value.iOS.versions.forEach { (key, value) in
-        Swift.print("            ", key)
-        Swift.print("                ", value.modelVersion)
-        Swift.print("                ", value.modelUrl)
-        Swift.print("                ", value.name)
-        Swift.print("                ", value.deprecated)
+        Swift.print("            Key", key)
+        Swift.print("                ModelVerion", value.modelVersion)
+        Swift.print("                ID         ", value.id)
+        Swift.print("                ModelURL   ", value.modelUrl)
+        Swift.print("                Name       ", value.name)
+        Swift.print("                Deprecated ", value.deprecated)
       }
     }
   }
@@ -44,6 +45,7 @@ struct MLInterfaceVersions: Codable {
 
       struct Version: Codable {
         let modelVersion: String
+        let id: String
         let modelUrl: String
         let name: String
         let deprecated: Bool

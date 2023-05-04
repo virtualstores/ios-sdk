@@ -67,6 +67,9 @@ public protocol ITT2 {
 
     /// Setup the WiFi
     func set(wifi: IWiFiController)
+
+    /// Settings for TT2
+    func set(automaticActivationOfUserMark: Bool)
     
     /// Methode for creating MapData for MapSdk
     func getMapData() -> MapData?

@@ -164,6 +164,10 @@ final public class TT2: ITT2 {
         tt2Internal.wifiController = wifi
         bindWiFiPublishers()
     }
+
+    public func set(automaticActivationOfUserMark: Bool) {
+        tt2Internal.automaticActivationOfUserMark = automaticActivationOfUserMark
+    }
     
     public func getMapData() -> MapData? {
         mapData
