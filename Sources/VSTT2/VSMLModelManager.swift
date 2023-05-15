@@ -132,7 +132,7 @@ class VSMLModelManager {
   }
 
   func unzipInMemory(data: Data, to destinationURL: URL) throws {
-    let archive = Archive(data: data, accessMode: .read)!
+    guard let archive = Archive(data: data, accessMode: .read) else { throw NSError() } // TODO: Create better error message
     try archive.filter({ !$0.path.contains("__MACOSX/") }).forEach { (entry) in
       //print("PATH", entry.path)
       if entry.path.hasSuffix(".mlpackage/") {

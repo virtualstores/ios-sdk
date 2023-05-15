@@ -19,6 +19,8 @@ class ItemsRepository: IItemsRepository {
 
   var cachedItems: [String:Item] = [:]
 
+  private var serialDispatch = DispatchQueue(label: "TT2ItemsRepository")
+
   init(api: IItemsApi) {
     self.api = api
   }
@@ -28,14 +30,16 @@ class ItemsRepository: IItemsRepository {
   }
 
   func getCachedItems(by barcode: String) -> Item? {
-    cachedItems[barcode]
+    serialDispatch.sync {
+      cachedItems[barcode]
+    }
   }
 
   func addCachedItem(item: Item) {
-    cachedItems[item.externalId] = item
+    serialDispatch.sync { cachedItems[item.externalId] = item }
   }
 
   func reset() {
-    cachedItems.removeAll()
+    serialDispatch.sync { cachedItems.removeAll() }
   }
 }

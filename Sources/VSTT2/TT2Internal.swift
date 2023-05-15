@@ -50,7 +50,7 @@ internal class TT2Internal {
     var activeClient: Client?
     var shelfGroups: [Int64: [ShelfGroup]] = [:]
     var automaticActivationOfUserMark: Bool = true
-    var automaticSensorRecording: Bool { recording.allowAutomaticSensorRecording && awsS3UploadManager.hasSensorRecordingActive }
+    var automaticSensorRecording: Bool { recording.allowAutomaticSensorRecording && activeStore.hasSensorRecordingActive }
     
     public init(config: EnvironmentConfig) {
         self.config = config
@@ -129,7 +129,6 @@ internal class TT2Internal {
                   if self?.automaticActivationOfUserMark ?? true {
                       self?.mapController?.start()
                   }
-                  self?.awsS3UploadManager.removeRecordedObject(where: .folderIsMissing)
                   if self?.automaticSensorRecording ?? false {
                       self?.recording.start(automatic: true)
                   }
@@ -261,9 +260,7 @@ internal class TT2Internal {
     var vpsData: String?
     var vpsVisitId: Int64?
     func sendAWSData(_ metaData: RecordingMetaData?, reset: Bool = true) {
-        guard
-            let awsData = createAWSData(metaData: metaData, identifier: vpsIdentifier)
-        else { return }
+        guard let awsData = createAWSData(metaData: metaData, identifier: vpsIdentifier) else { return }
         let stringDate = awsData.recordingStringDate
         let time = awsData.recordingStringTime
 

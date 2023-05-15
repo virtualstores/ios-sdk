@@ -330,7 +330,6 @@ private extension TT2 {
         if let client = activeClient {
             user.setup(clientId: client.clientId, positionServiceSettings: store.positionServiceSettings, config: analyticsConfig)
         }
-        tt2Internal.awsS3UploadManager.setup(store.hasSensorRecordingActive)
     }
     
     private func setupAnalytics(with zoneData: [Int64: ZoneData]?) {
