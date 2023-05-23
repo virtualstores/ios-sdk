@@ -121,6 +121,7 @@ class AccuracyUploader {
       let mapFence = floorManager.mapFence[rtlsOptionsId],
       let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     else { return }
+    //let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     let identifier: String
     var didSync: Bool = true
     var point: CGPoint = .zero

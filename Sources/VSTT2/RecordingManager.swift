@@ -11,30 +11,19 @@ import Combine
 
 public protocol IRecordingManager {
   var dataUploadedPublisher: CurrentValueSubject<Bool, Never> { get }
+  var recordedObjects: [AWSRecordedObject] { get }
 
-  /**
-   * Starts debug recording.
-   * Resets the recording if already recording.
-   */
-  func start()
-
-  /**
-   * Stops debug recording and uploads.
-   * Recommended to use wifi.
-   */
-  func stop()
-
-  func sendData(metaData: RecordingMetaData)
+  func sendData()
 }
 
 class RecordingManager: IRecordingManager {
   @Inject var navigation: Navigation
   @Inject var uploader: AWSS3UploadManager
 
-  var sendDataPublisher: CurrentValueSubject<RecordingMetaData?, Never> = .init(nil)
+  var sendDataPublisher: CurrentValueSubject<Void, Never> = .init(())
   var dataUploadedPublisher: CurrentValueSubject<Bool, Never> = .init(false)
 
-  var allowAutomaticSensorRecording: Bool = true
+  var recordedObjects: [AWSRecordedObject] { uploader.getAllRecordedObjects }
 
   private var cancellable = Set<AnyCancellable>()
 
@@ -53,11 +42,6 @@ class RecordingManager: IRecordingManager {
   }
 
   func start() {
-    start(automatic: false)
-  }
-
-  func start(automatic: Bool) {
-    allowAutomaticSensorRecording = automatic
     navigation.startRecording()
   }
 
@@ -65,8 +49,8 @@ class RecordingManager: IRecordingManager {
     navigation.stopRecording()
   }
 
-  func sendData(metaData: RecordingMetaData) {
-    sendDataPublisher.send(metaData)
+  func sendData() {
+    sendDataPublisher.send()
   }
 }
 

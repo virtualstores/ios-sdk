@@ -318,7 +318,8 @@ private extension TT2 {
             floorheight: floorHeightDiff,
             parameterPackage: positionKitParams,
             userController: user,
-            maxRecordingTimePerPartInMillis: tt2Internal.activeStore.positionServiceSettings?.intValues?["maxRecordingTimePerPartInMillis"]?.asLong
+            maxRecordingTimePerPartInMillis: tt2Internal.activeStore.positionServiceSettings?.intValues?["maxRecordingTimePerPartInMillis"]?.asLong//,
+            //converter: converter
         )
     }
     

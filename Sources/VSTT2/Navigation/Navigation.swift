@@ -81,6 +81,7 @@ public extension Navigation {
                                            xPosition: startPosition.x,
                                            yPosition: startPosition.y,
                                            uncertainAngle: false)
+        //positionKitManager.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startAngle, uncertainAngle: false)
         isActive = true
         userStartAngle = TT2Course(fromDegrees: startAngle)
     }
@@ -105,6 +106,7 @@ public extension Navigation {
         try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
             prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
             positionKitManager.syncPosition(xPosition: position.pointWithOffset.x, yPosition: position.pointWithOffset.y, startAngle: angle, syncPosition: !position.isDisabled, syncAngle: syncRotation, uncertainAngle: false)
+            //positionKitManager.syncPosition(positions: [position.pointWithOffset], syncPosition: !position.isDisabled, syncAngle: syncRotation, angle: angle, uncertainAngle: false)
         }
     }
 
@@ -130,6 +132,7 @@ public extension Navigation {
                                                xPosition: startPosition.x,
                                                yPosition: startPosition.y,
                                                uncertainAngle: startWithAngle == nil)
+            //positionKitManager.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startWithAngle ?? heading.degrees, uncertainAngle: startWithAngle == nil)
             prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
             isActive = true
             userStartAngle = heading
@@ -147,11 +150,13 @@ public extension Navigation {
             prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
             if let startLocationAngle = startWithAngle(startPosition: position.point) {
                 positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: startLocationAngle, syncPosition: !position.isDisabled, syncAngle: true, uncertainAngle: false)
+                //positionKitManager.syncPosition(positions: [point], syncPosition: !position.isDisabled, syncAngle: true, angle: startLocationAngle, uncertainAngle: false)
             } else if certainAngle {
                 try syncPosition(position: position, syncRotation: false, forceSync: true)
             } else {
                 let syncingWithCompass = forceSync ? forceSync : doCompassStart(point: position.point) && !hasStartLocationAngle
                 positionKitManager.syncPosition(xPosition: point.x, yPosition: point.y, startAngle: heading.degrees, syncPosition: !position.isDisabled, syncAngle: syncingWithCompass, uncertainAngle: syncingWithCompass)
+                //positionKitManager.syncPosition(positions: [point], syncPosition: !position.isDisabled, syncAngle: syncingWithCompass, angle: heading.degrees, uncertainAngle: syncingWithCompass)
             }
         }
     }
@@ -214,6 +219,7 @@ extension Navigation {
             yPosition: point.y,
             uncertainAngle: false
         )
+        //positionKitManager.startNavigation(positions: [point], syncPosition: true, syncAngle: true, angle: userStartAngle.degrees, uncertainAngle: false)
     }
 
     func changeFloorStop() {
