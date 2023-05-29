@@ -9,7 +9,7 @@ import Combine
 import Foundation
 import UIKit
 import VSFoundation
-import VSPositionKitTargets
+import VSPositionKit
 
 class AccuracyUploader {
   @Inject var analytics: TT2AnalyticsManager
@@ -118,10 +118,10 @@ class AccuracyUploader {
     guard
       let visitId = analytics.visitId,
       let rtlsOptionsId = analytics.rtlsOptionId,
-      let mapFence = floorManager.mapFence[rtlsOptionsId],
-      let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
+      let mapFence = floorManager.mapFence[rtlsOptionsId]
+//      let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     else { return }
-    //let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
+    let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     let identifier: String
     var didSync: Bool = true
     var point: CGPoint = .zero
