@@ -10,6 +10,7 @@ import Foundation
 import UIKit
 import VSFoundation
 import VSPositionKit
+import vps
 
 class AccuracyUploader {
   @Inject var analytics: TT2AnalyticsManager
@@ -81,7 +82,7 @@ class AccuracyUploader {
       URLQueryItem(entry: .scanLocationX, value: "\(position.point.x)"),
       URLQueryItem(entry: .scanLocationY, value: "\(position.point.y)"),
       URLQueryItem(entry: .appVersion, value: "\(appVersion) (\(buildNumber)), \(systemName) \(systemVersion), \(modelName)"),
-      URLQueryItem(entry: .positionKitVersion, value: "PositionKit: 0.0.8"),//\(positionKitVersion)"),
+      URLQueryItem(entry: .positionKitVersion, value: VPSConfig.shared.VPS_VERSION),//\(positionKitVersion)"),
       URLQueryItem(entry: .serverUrl, value: "\(serverAddress)"),
       URLQueryItem(entry: .clientId, value: "\(client.clientId), \(clientName)"),
       URLQueryItem(entry: .storeId, value: "\(store.id), \(store.name)"),

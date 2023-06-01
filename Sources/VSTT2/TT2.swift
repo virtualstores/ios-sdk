@@ -319,7 +319,8 @@ private extension TT2 {
             parameterPackage: positionKitParams,
             userController: user,
             maxRecordingTimePerPartInMillis: tt2Internal.activeStore.positionServiceSettings?.intValues?["maxRecordingTimePerPartInMillis"]?.asLong,
-            converter: converter
+            converter: converter,
+            modelManger: tt2Internal.mlModelManager
         )
     }
     
