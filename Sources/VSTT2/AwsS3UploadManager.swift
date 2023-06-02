@@ -98,7 +98,7 @@ public class AWSS3UploadManager {
   func sendCollectedDataToS3(objects: [AWSRecordedObject]) {
     guard objects.count > 0 else { dataUploadedPublisher.send(false); return }
     objects.forEach { (object) in
-      retry { self.sendToS3(AWSS3Key: .test, object: object) }
+      retry { self.sendToS3(AWSS3Key: .dataAnalyze, object: object) }
       updateStatus(object: object, status: .inProgress)
     }
   }

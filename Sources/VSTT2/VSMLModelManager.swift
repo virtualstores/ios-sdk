@@ -54,7 +54,9 @@ class VSMLModelManager {
             switch result {
             case .success(let url):
               //print("File", "Success", url)
-              _model = try! MLModel(contentsOf: url)
+              let config = MLModelConfiguration()
+              config.computeUnits = .cpuOnly
+              _model = try! MLModel(contentsOf: url, configuration: config)
               //let parameter = try! self.model.parameterValue(for: .biases)
               //print("File", "Parameter", parameter)
               if let path = self.pathDirectory {

@@ -195,9 +195,9 @@ internal class TT2Internal {
           dataServerAddress?.removeLast(7)
         }
 
-        guard let serverAddress = serverAddress, let id = visitId else { return nil }
-        let folderName: String = "\(serverAddress)/\(id)/"
-        if additionalData, let dataServerAddress = dataServerAddress, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, visitId: id) {
+        guard let serverAddress = serverAddress, let dataServerAddress = dataServerAddress, let id = visitId else { return nil }
+        let folderName: String = "\(serverAddress)/\(dataServerAddress)/\(id)/"
+        if additionalData, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, visitId: id) {
             awsS3UploadManager.prepareDataToSend(identifier: "tags.json", data: tags, folderName: folderName, date: Date())
         }
         return folderName

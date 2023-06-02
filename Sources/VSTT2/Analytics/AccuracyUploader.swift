@@ -192,8 +192,8 @@ class AccuracyUploader {
       }
     }
 
-    let preScanLocationInPixels = preScanLocation?.fromMeterToPixel(converter: converter)
-    let scanLocationInPixels = pointWithOffset.fromMeterToPixel(converter: converter)
+    let preScanLocationInPixels = preScanLocation?.fromMeterToPixel(converter: converter).flipY(converter: converter)
+    let scanLocationInPixels = pointWithOffset.fromMeterToPixel(converter: converter).flipY(converter: converter)
     let isRightAisle = preScanLocation != nil ? mapFenceData.isRightAisle(p1: preScanLocationInPixels!, p2: scanLocationInPixels) : false
 
     //tags["isWifiResetSync"] = String(false)
