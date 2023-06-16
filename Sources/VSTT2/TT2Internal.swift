@@ -151,9 +151,10 @@ internal class TT2Internal {
               case .position(position: let position):
                 navigation.currentPosition = position.position
                 floorManager.onNewPostion(location: position.position)
-                mapController?.updateUserLocation(newLocation: position.position, std: position.std)
+                //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
                 analytics.onNewPositionBundle(point: position.position)
-              case .ux(position: let position): break
+              case .ux(position: let position):
+                mapController?.updateUserLocation(newLocation: position.position, std: position.std)
               case .ml(position: let position): break
               case .rotation(heading: let heading):
                 let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)

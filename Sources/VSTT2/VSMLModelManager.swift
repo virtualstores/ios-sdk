@@ -19,7 +19,16 @@ class VSMLModelManager {
   private let fileManager = FileManager.default
   private var mlInterfaceVersion: String { "1" } // TODO: Get this from VPS in future
   //private var info: [MLInterfaceInfo] = []
-  private var currentVersion: MLInterfaceVersions.Interface.Device.Version?
+  private var currentVersion: MLInterfaceVersions.Interface.Device.Version? {
+    get {
+      guard let data = UserDefaults.standard.value(forKey: "TT2CURRENTMLINTERFACEVERSION") as? Data else { return nil }
+      return try? JSONDecoder().decode(MLInterfaceVersions.Interface.Device.Version.self, from: data)
+    }
+    set {
+      guard let encoded = try? JSONEncoder().encode(newValue) else { return }
+      UserDefaults.standard.setValue(encoded, forKey: "TT2CURRENTMLINTERFACEVERSION")
+    }
+  }
   private var _model: MLModel?
   private var modelName = ""
   var pathDirectory: URL? {
@@ -46,6 +55,7 @@ class VSMLModelManager {
         }
         guard let version = version else { return }
         loadModel(version: version) { [self] (error) in
+          currentVersion = version
           if let error = error {
             print("File", "Error getting MLModel", error)
             return
@@ -63,7 +73,7 @@ class VSMLModelManager {
                 try? fileManager.removeItem(at: path)
                 try? fileManager.removeItem(at: url)
               }
-              //print("File", "IT WORKS!!!!!!!!!!!!!!!!!!!!!!")
+              print("File", "IT WORKS!!!!!!!!!!!!!!!!!!!!!!")
             case .failure(let error): print("File", "Error compiling model", error.localizedDescription)
             }
           }
@@ -88,28 +98,39 @@ class VSMLModelManager {
   }
 
   func loadModel(version: MLInterfaceVersions.Interface.Device.Version, completion: @escaping (Error?) -> Void) {
-    guard let url = URL(string: version.modelUrl) else { return }
-    URLSession.shared.dataTask(with: url) { [self] (data, response, error) in
-      //guard let response = response as? HTTPURLResponse else { return }
-      //print("File", "MLResponse", response.statusCode)
-      if error != nil {
-        completion(error)
-        return
-      }
-
+    if let currentVersion = currentVersion, currentVersion.modelVersion == version.modelVersion {
+      print("LOADING SAVED MODEL")
       do {
-        guard let data = data, let path = pathDirectory, let pathEncrypted = pathEncrypted else { return }
-        try data.write(to: pathEncrypted, options: .atomic)
+        guard let path = pathDirectory, let pathEncrypted = pathEncrypted else { return }
         guard let decrypted = try decrypt(id: version.id, at: pathEncrypted) else { throw NSError() }
         try unzipInMemory(data: decrypted, to: path)
-        //if let date = attributes[.creationDate] as? Date {
-        //  print("File", "AttributeCreationDate", date)
-        //}
         completion(nil)
       } catch {
         completion(error)
       }
-    }.resume()
+    } else {
+      guard let url = URL(string: version.modelUrl) else { return }
+      //print("VERSION", version.modelVersion)
+      URLSession.shared.dataTask(with: url) { [self] (data, response, error) in
+        print("DOWNLOADING MODEL")
+        //guard let response = response as? HTTPURLResponse else { return }
+        //print("File", "MLResponse", response.statusCode)
+        if error != nil {
+          completion(error)
+          return
+        }
+
+        do {
+          guard let data = data, let path = pathDirectory, let pathEncrypted = pathEncrypted else { return }
+          try data.write(to: pathEncrypted, options: .atomic)
+          guard let decrypted = try decrypt(id: version.id, at: pathEncrypted) else { throw NSError() }
+          try unzipInMemory(data: decrypted, to: path)
+          completion(nil)
+        } catch {
+          completion(error)
+        }
+      }.resume()
+    }
   }
 
   func decrypt(id: String, at sourceURL: URL) throws -> Data? {
@@ -146,8 +167,8 @@ class VSMLModelManager {
 }
 
 extension VSMLModelManager: VPSModelManager {
-  var model: MLModel {
-    guard let model = _model else { fatalError("model not yet loaded") }
+  var model: MLModel? {
+    guard let model = _model else { return nil }
     return model
   }
 }
