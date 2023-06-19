@@ -7,27 +7,22 @@
 
 import Foundation
 import CoreGraphics
+import VSFoundation
 
 struct UploadSyncEventsParameters {
-  let config: EnvironmentConfig?
-
+  var config: EnvironmentConfig
   let visitId: Int64
   let requestId: String
-
   let event: SyncEvent
 }
 
 extension UploadSyncEventsParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-
+  var type: RoutingType { .analytics }
   var method: RequestType { .POST }
-
   var path: String { "/syncevents" }
-
   var queryItems: [String: String]? {
-    let parameters = ["visitId": String(visitId), "requestId": requestId] as [String: String]
-
-    return parameters
+    ["visitId": String(visitId), "requestId": requestId]
   }
 
   var parameters: Any? {

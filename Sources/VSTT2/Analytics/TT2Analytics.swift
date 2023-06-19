@@ -15,7 +15,7 @@ public protocol TT2Analytics {
     func startVisit(deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String], completion: @escaping (Result<Int64, Error>) -> Void)
 
     /// Setup analytics Manager with needed data
-    func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int, config: EnvironmentConfig?)
+    func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int)
 
     /// Start  Collecting Heat Map
     func startCollectingHeatMapData() throws

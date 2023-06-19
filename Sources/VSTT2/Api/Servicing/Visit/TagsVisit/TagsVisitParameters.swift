@@ -6,28 +6,20 @@
 //
 
 import Foundation
+import VSFoundation
 
-public struct TagsVisitParameters {
-  private let config: EnvironmentConfig?
-  private let requestId: String
-  private let visitId: Int64
-  private let tags: [String : String]
-
-  public init(config: EnvironmentConfig?, requestId: String, visitId: Int64, tags: [String : String]) {
-    self.config = config
-    self.requestId = requestId
-    self.visitId = visitId
-    self.tags = tags
-  }
+struct TagsVisitParameters {
+  @Inject var config: EnvironmentConfig
+  let requestId: String
+  let visitId: Int64
+  let tags: [String : String]
 }
 
 extension TagsVisitParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-
+  var type: RoutingType { .analytics }
   var method: RequestType { .PUT }
-
   var path: String { "/visits/tags" }
-
   var queryItems: [String : String]? {
     [
       "requestId": requestId,

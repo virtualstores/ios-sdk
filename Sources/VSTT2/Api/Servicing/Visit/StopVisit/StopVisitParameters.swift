@@ -6,35 +6,25 @@
 //
 
 import Foundation
+import VSFoundation
 
 public struct StopVisitParameters {
-  private let config: EnvironmentConfig?
-  private let requestId: String
-  private let visitId: Int64
-  private let stopTimestamp: String
-
-  init(config: EnvironmentConfig?, requestId: String, visitId: Int64, stopTimestamp: String) {
-    self.config = config
-    self.requestId = requestId
-    self.visitId = visitId
-    self.stopTimestamp = stopTimestamp
-  }
+  @Inject var config: EnvironmentConfig
+  let requestId: String
+  let visitId: Int64
+  let stopTimestamp: String
 }
 
 extension StopVisitParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-
+  var type: RoutingType { .analytics }
+  var method: RequestType { .PUT }
+  var path: String { "/visits/stop" }
   var queryItems: [String : String]? {
-    let parameters: [String : String] = [
+    [
       "requestId": requestId,
       "visitId": String(visitId),
       "timestamp": stopTimestamp
     ]
-
-    return parameters
   }
-
-  var method: RequestType { .PUT }
-
-  var path: String { "/visits/stop" }
 }

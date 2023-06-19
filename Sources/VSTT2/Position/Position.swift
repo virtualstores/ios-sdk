@@ -15,13 +15,12 @@ public class Position: IPosition {
 
     private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
     public internal(set) var shelfGroups: [ShelfGroup]?
-    private var config: EnvironmentConfig?
     var store: Store?
     private var cancellable = Set<AnyCancellable>()
     
     public init() {}
     
-    func setup(with shelfGroups: [ShelfGroup], config: EnvironmentConfig, store: Store) {
+    func setup(with shelfGroups: [ShelfGroup], store: Store) {
         self.shelfGroups = shelfGroups
         shelfGroups.forEach { (group) in
             group.shelves.forEach { (shelf) in
@@ -31,7 +30,6 @@ public class Position: IPosition {
             }
         }
 
-        self.config = config
         self.store = store
         getPositionByBarcodeUseCase.itemsRepository.reset()
     }

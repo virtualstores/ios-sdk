@@ -6,26 +6,19 @@
 //
 
 import Foundation
+import VSFoundation
 
 struct GetUserParameters {
-  private let clientId: Int64
-  private let userid: String
-  private let config: EnvironmentConfig?
-
-  init(clientId: Int64, userid: String, config: EnvironmentConfig?) {
-    self.clientId = clientId
-    self.userid = userid
-    self.config = config
-  }
+  @Inject var config: EnvironmentConfig
+  let clientId: Int64
+  let userid: String
 }
 
 extension GetUserParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-
-  var path: String { "/users/ml" }
-
+  var type: RoutingType { .analytics }
   var method: RequestType { .GET }
-
+  var path: String { "/users/ml" }
   var queryItems: [String : String]? {
     [
       "userid" : userid,

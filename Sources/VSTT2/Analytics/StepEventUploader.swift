@@ -11,6 +11,7 @@ import VSFoundation
 
 class StepEventUploader {
   @Inject var analytics: TT2AnalyticsManager
+  @Inject var config: EnvironmentConfig
   @Inject var stepEventService: UploadStepEventsService
   @Inject var persistence: Persistence
 
@@ -30,7 +31,7 @@ class StepEventUploader {
     else { return }
     let events: [StepEvent] = events.map { $0.asStepEvent(rtlsOptionsId: rtlsOptionId) }
     let parameters = UploadStepEventsParameters(
-      config: analytics.config,
+      config: config,
       visitId: visitId,
       requestId: UUID().uuidString.uppercased(),
       events: events
@@ -90,10 +91,10 @@ extension StepEventData {
 extension UploadStepEventsParameters {
   var asPersistence: UploadStepEventsPersistence {
     let persistence = UploadStepEventsPersistence()
-    persistence.apiKey = config?.centralServerConnection.apiKey
-    persistence.serverAddress = config?.centralServerConnection.serverAddress
-    persistence.mqttAddress = config?.centralServerConnection.mqttAddress
-    persistence.storeId = config?.centralServerConnection.storeId
+    persistence.apiKey = config.analyticsServerConnection.apiKey
+    persistence.serverAddress = config.analyticsServerConnection.serverAddress
+    persistence.mqttAddress = config.analyticsServerConnection.mqttAddress
+    persistence.storeId = config.analyticsServerConnection.storeId
     persistence.visitId = visitId
     persistence.requestId = requestId
     persistence.events = events
@@ -108,7 +109,7 @@ extension UploadStepEventsPersistence {
       let events = events
     else { return nil }
     let config = EnvironmentConfig()
-    config.centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: serverAddress, mqttAddress: mqttAddress, storeId: storeId)
+    config.analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: serverAddress, mqttAddress: mqttAddress, storeId: storeId)
     return UploadStepEventsParameters(config: config, visitId: visitId, requestId: requestId, events: events)
   }
 }

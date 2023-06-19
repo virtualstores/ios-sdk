@@ -9,27 +9,19 @@ import Foundation
 import VSFoundation
 
 struct DeleteUserParameters {
-  private let clientId: Int64
-  private let userId: String
-  private let config: EnvironmentConfig?
-  private let requestId = UUID().uuidString.uppercased()
-
-  init(clientId: Int64, userId: String, config: EnvironmentConfig?) {
-    self.clientId = clientId
-    self.userId = userId
-    self.config = config
-  }
+  @Inject var config: EnvironmentConfig
+  let clientId: Int64
+  let userId: String
+  let requestId = UUID().uuidString.uppercased()
 }
 
 extension DeleteUserParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-
-  var path: String { "/users" }
-
+  var type: RoutingType { .analytics }
   var method: RequestType { .DELETE }
-
+  var path: String { "/users" }
   var queryItems: [String : String]? {
-    return [
+    [
       "userId" : userId,
       "clientId" : String(clientId),
       "hardwareType" : "IOS",

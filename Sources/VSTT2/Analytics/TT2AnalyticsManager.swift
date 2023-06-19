@@ -10,7 +10,7 @@ import VSFoundation
 import Combine
 import CoreGraphics
 import UIKit
-import vps
+import  VSPositionKit
 
 final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var createVisitService: CreateVisitService
@@ -23,7 +23,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var zoneManager: TT2ZoneManager
     @Inject var eventManager: TT2EventManager
 
-    var config: EnvironmentConfig?
     var accuracyUploader: AccuracyUploader?
     var stepEventUploader: StepEventUploader?
     var tt2Tags: [String:String] = [:]
@@ -39,11 +38,10 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
     public init() {}
 
-    public func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int = 100, config: EnvironmentConfig?) {
+    public func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int = 100) {
         self.store = store
         self.uploadThreshold = uploadThreshold
         self.rtlsOptionId = rtlsOptionId
-        self.config = config
         self.stepEventUploader = StepEventUploader()
         bindPublishers()
     }
@@ -67,8 +65,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
             stop: date,
             deviceInformation: deviceInformation,
             tags: editedTags,
-            metaData: metaData,
-            config: config
+            metaData: metaData
         )
         createVisitService
             .call(with: parameters)
@@ -105,7 +102,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
             currentPosition = nil
         }
         let parameters = StopVisitParameters(
-          config: config,
           requestId: UUID().uuidString.uppercased(),
           visitId: visitId,
           stopTimestamp: DateFormatter.standardFormatter.string(from: Date())
@@ -145,9 +141,9 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func postScanEvents(position: ItemPosition) {
-        guard let visitId = visitId, let apiKey = config?.centralServerConnection.apiKey else { return }
+        guard let visitId = visitId else { return }
         
-        let parameters = UploadScanEventsParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), barcode: position.identifier, shelfId: position.shelfId ?? -1, point: position.point, timeStamp: DateFormatter.standardFormatter.string(from: Date()), type: .unknown, config: config)
+        let parameters = UploadScanEventsParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), barcode: position.identifier, shelfId: position.shelfId ?? -1, point: position.point, timeStamp: DateFormatter.standardFormatter.string(from: Date()), type: .unknown)
 
         uploadScanEventsService
             .call(with: parameters)
@@ -194,7 +190,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         "tt2MLSpeedModifier": mlUser.speedModifier.description,
         "tt2MLDirectionModifier": mlUser.directionModifier.description
       ]
-      let parameters = TagsVisitParameters(config: config, requestId: UUID().uuidString.uppercased(), visitId: visitId, tags: tags)
+      let parameters = TagsVisitParameters(requestId: UUID().uuidString.uppercased(), visitId: visitId, tags: tags)
       tagsVisitService
         .call(with: parameters)
         .sink { (result) in
@@ -250,9 +246,9 @@ private extension TT2AnalyticsManager {
         return recordedPositionsCount > self.uploadThreshold
     }
     
-    ///Uploading Heatmap data, config: <#EnvironmentConfig#>
+    ///Uploading Heatmap data
     private func uploadData(visitId: Int64, recordedPositions: [String: [RecordedPosition]]) {
-        let parameters = UploadPositionsParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions, config: config)
+        let parameters = UploadPositionsParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions)
         uploadPositionsService
             .call(with: parameters)
             .sink(receiveCompletion: { [weak self] (completion) in
@@ -271,9 +267,9 @@ private extension TT2AnalyticsManager {
 
     // MARK: Trigger Events
     private func uploadTriggerEvents(request: PostTriggerEventRequest) {
-        guard let visitId = visitId, let apiKey = config?.centralServerConnection.apiKey else { return }
+        guard let visitId = visitId else { return }
 
-        let parameters = UploadTriggersParameters(apiKey: apiKey, visitId: visitId, requestId: UUID().uuidString.uppercased(), request: request, config: config)
+        let parameters = UploadTriggersParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), request: request)
 
         uploadTriggersService
             .call(with: parameters)
@@ -294,7 +290,7 @@ private extension TT2AnalyticsManager {
   var tt2VisitStartTags: [String:String] {
     [
       "tt2SdkVersion" : version,
-      "tt2VpsVersion" : VPSConfig.shared.VPS_VERSION,
+      "tt2VpsVersion" : vpsVersion,
       "tt2DeviceManufacturer" : "Apple",
       "tt2DeviceModel" : UIDevice.current.modelName,
       "tt2DeviceOs" : UIDevice.current.systemName,

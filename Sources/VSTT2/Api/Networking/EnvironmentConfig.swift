@@ -20,29 +20,32 @@ public class EnvironmentConfig {
         set { _centralServerConnection = newValue }
         get {
             guard let config = _centralServerConnection else { fatalError("ServerConnection not initialized") }
-
             return config
         }
     }
     
     private var _analyticsServerConnection: ServerConnection?
     var analyticsServerConnection: ServerConnection {
+        set { _analyticsServerConnection = newValue }
         get {
             guard let config = _analyticsServerConnection else { fatalError("ServerConnection not initialized") }
-
             return config
         }
     }
-     
+
     func initCentralServerConnection(with url: String, endPoint: EndPoints, apiKey: String) {
       if url.last == "/" {
-        self._centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+        centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue, mqttAddress: nil, storeId: nil)
       } else {
-        self._centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + "/" + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+        centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + "/" + endPoint.rawValue, mqttAddress: nil, storeId: nil)
       }
     }
     
-    func initAnalyticsServerConnection(with url: String, apiKey: String) {
-        self._analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url, mqttAddress: nil, storeId: nil)
+    func initAnalyticsServerConnection(with url: String, endPoint: EndPoints, apiKey: String) {
+      if url.last == "/" {
+        analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+      } else {
+        analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + "/" + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+      }
     }
 }

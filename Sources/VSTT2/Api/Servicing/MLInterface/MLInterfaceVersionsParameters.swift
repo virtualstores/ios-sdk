@@ -7,20 +7,17 @@
 
 import Foundation
 
-public struct MLInterfaceVersionsParameters {
-  private let config: EnvironmentConfig
+struct MLInterfaceVersionsParameters {
+  private let config: EnvironmentConfig = EnvironmentConfig()
 
   init() {
-    let config = EnvironmentConfig()
     config.centralServerConnection = ServerConnection(apiKey: "kanelbulle", serverAddress: "https://lmz7vrr223.execute-api.eu-north-1.amazonaws.com", mqttAddress: nil, storeId: nil)
-    self.config = config
   }
 }
 
 extension MLInterfaceVersionsParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-
+  var type: RoutingType { .central }
   var method: RequestType { .GET }
-
   var path: String { "/getSdkAssetsMlInterfaceVersions" }
 }

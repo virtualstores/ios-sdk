@@ -29,17 +29,15 @@ public class TT2EventManager: TT2Event {
     private var zones: [Zone] = []
     
     private var cancellable = Set<AnyCancellable>()
-    private var config: EnvironmentConfig?
 
     deinit {
         cancellable.removeAll()
     }
     
-    func setup(with storeId: Int64, zones: [Zone], rtlsOptionsId: Int64, config: EnvironmentConfig?) {
+    func setup(with storeId: Int64, zones: [Zone], rtlsOptionsId: Int64) {
         self.activeStoreId = storeId
         self.zones = zones
         self.rtlsOptionsId = rtlsOptionsId
-        self.config = config
         
         zoneEventDetector.setup(with: zones)
         latestMessageLoad = nil
@@ -109,7 +107,7 @@ public class TT2EventManager: TT2Event {
     private func loadMessages() {
         guard let storeId = activeStoreId else { return }
 
-        let parameters = TriggerEventsParameters(storeId: storeId, config: config)
+        let parameters = TriggerEventsParameters(storeId: storeId)
         triggerEventsService
             .call(with: parameters)
             .sink { (result) in

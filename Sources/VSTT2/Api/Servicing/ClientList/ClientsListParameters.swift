@@ -9,17 +9,12 @@ import Foundation
 import VSFoundation
 
 struct ClientsListParameters {
-    private var config: EnvironmentConfig
-
-    init(config: EnvironmentConfig) {
-        self.config = config
-    }
+    @Inject var config: EnvironmentConfig
 }
 
 extension ClientsListParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-
-    var path: String { "/clients" }
-
+    var type: RoutingType { .central }
     var method: RequestType { .GET }
+    var path: String { "/clients" }
 }

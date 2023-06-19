@@ -7,27 +7,27 @@
 
 import Foundation
 import UIKit
+import VSFoundation
+import VSPositionKit
 
 class DeviceOrientationUploader {
+  @Inject var config: EnvironmentConfig
   let store: Store
-  let connection: ServerConnection
   let client: Client
 
   public enum Errors: Error {
     case uploadFailure(HTTPURLResponse)
   }
 
-  init(store: Store, connection: ServerConnection, client: Client) {
+  init(store: Store, client: Client) {
     self.store = store
-    self.connection = connection
     self.client = client
   }
 
   func upload(id: String, visitId: Int64, deviceOrientation: String, currentLocation: CGPoint, direction: Double, errorHandler: @escaping (Error) -> Void) {
     guard
-      let serverAddress = connection.serverAddress,
+      let serverAddress = config.analyticsServerConnection.serverAddress,
       let clientName = client.name,
-      //let positionKitVersion = Bundle(identifier: "org.cocoapods.PositionKit")?.infoDictionary?["CFBundleShortVersionString"] as? String,
       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
       let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
     else { return }
@@ -56,7 +56,7 @@ class DeviceOrientationUploader {
       URLQueryItem(entry: .visitId, value: String(visitId)),
       URLQueryItem(entry: .articleId, value: combinedInfo),
       URLQueryItem(entry: .appVersion, value: "\(appVersion) (\(buildNumber)), \(systemName) \(systemVersion), \(modelName)"),
-      URLQueryItem(entry: .positionKitVersion, value: "PositionKit: 0.0.8"),//\(positionKitVersion)"),
+      URLQueryItem(entry: .positionKitVersion, value: vpsVersion),
       URLQueryItem(entry: .serverUrl, value: "\(serverAddress)"),
       URLQueryItem(entry: .clientId, value: "\(client.clientId), \(clientName)"),
       URLQueryItem(entry: .storeId, value: "\(store.id), \(store.name)"),
@@ -65,8 +65,8 @@ class DeviceOrientationUploader {
 
     guard let url = urlComponents.url else { return }
 
-    print(url)
-    let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
+    //print(url)
+    URLSession.shared.dataTask(with: url) {(data, response, error) in
       DispatchQueue.main.async {
         if let response = response as? HTTPURLResponse {
           switch response.statusCode {
@@ -77,8 +77,6 @@ class DeviceOrientationUploader {
           errorHandler(error)
         }
       }
-    }
-
-    task.resume()
+    }.resume()
   }
 }

@@ -10,46 +10,39 @@ import VSFoundation
 import CoreGraphics
 
 struct UploadScanEventsParameters {
-    private let config: EnvironmentConfig?
-    private let apiKey: String
+    @Inject var config: EnvironmentConfig
     private let visitId: Int64
     private let requestId: String
     private let barcode: String
     private let shelfId: Int64
     private let point: CGPoint
     private let timeStamp: String
-    private let type: ScanType
+    private let scanType: ScanType
 
     enum ScanType: String {
         case shelf = "SHELF"
         case unknown = "UNKNOWN"
     }
 
-    init(apiKey: String, visitId: Int64, requestId: String, barcode: String, shelfId: Int64,
-         point: CGPoint, timeStamp: String, type: ScanType, config: EnvironmentConfig?) {
-        self.apiKey = apiKey
+    init(visitId: Int64, requestId: String, barcode: String, shelfId: Int64,
+         point: CGPoint, timeStamp: String, type: ScanType) {
         self.visitId = visitId
         self.requestId = requestId
         self.barcode = barcode
         self.shelfId = shelfId
         self.point = point
         self.timeStamp = timeStamp
-        self.type = type
-        self.config = config
+        self.scanType = type
     }
 }
 
 extension UploadScanEventsParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-
+    var type: RoutingType { .analytics }
     var method: RequestType { .POST }
-
     var path: String { "/scanevents" }
-
     var queryItems: [String: String]? {
-        let parameters = ["visitId": String(visitId), "requestId": requestId] as [String: String]
-
-        return parameters
+        ["visitId": String(visitId), "requestId": requestId]
     }
 
     var parameters: Any? {
@@ -60,7 +53,7 @@ extension UploadScanEventsParameters: Routing {
                 "x": Double(point.x),
                 "y": Double(point.y),
                 "timestamp": timeStamp,
-                "type": type.rawValue
+                "type": scanType.rawValue
             ]
         ]
     }

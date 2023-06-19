@@ -8,21 +8,15 @@
 import Foundation
 import VSFoundation
 
-public struct MapFenceDataParameters {
-    private let url: String
-
-    public init(url: String) {
-        self.url = url
-    }
+struct MapFenceDataParameters {
+    let url: String
 }
 
 extension MapFenceDataParameters: Routing {
     var environmentConfig: EnvironmentConfig? { nil }
-
+    var type: RoutingType { .unknown }
     var method: RequestType { .GET }
-
     var path: String { "" }
-
     /// should be used url, currently the server is returning also .png files that's why for now it's hardcoded
     var baseURL: String { url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? url }
     var headers: [String: String]? { nil }

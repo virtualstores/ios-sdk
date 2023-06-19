@@ -21,7 +21,7 @@ class ItemsApi: IItemsApi {
 
   func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ()) {
     service
-      .call(with: ItemPositionParameters(storeId: storeId, barcode: barcode, config: config))
+      .call(with: ItemPositionParameters(config: config, storeId: storeId, barcode: barcode))
       .sink { (subscriberCompletion) in
         switch subscriberCompletion {
         case .finished: break

@@ -12,6 +12,7 @@ import UIKit
 
 internal class TT2Internal {
     /// Managers for helping VSTT2 to work with separate small modules
+    @Inject var config: EnvironmentConfig
     @Inject var navigation: Navigation
     @Inject var analytics: TT2AnalyticsManager
     @Inject var floorManager: VSTT2FloorManager
@@ -37,8 +38,7 @@ internal class TT2Internal {
     var deviceOrientationUploader: DeviceOrientationUploader?
     var mapController: IMapController?
     var wifiController: IWiFiController?
-    
-    private let config: EnvironmentConfig
+
     private var cancellable = Set<AnyCancellable>()
     
     private var offset: Double
@@ -52,8 +52,7 @@ internal class TT2Internal {
     var automaticActivationOfUserMark: Bool = true
     var automaticSensorRecording: Bool { activeStore.hasSensorRecordingActive }
     
-    public init(config: EnvironmentConfig) {
-        self.config = config
+    public init() {
         offset = 0.0
         bindPublishers()
     }
@@ -64,18 +63,13 @@ internal class TT2Internal {
     
     func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence, coordinateConverter: ICoordinateConverter?) -> MapData? {
         guard let converter = coordinateConverter else { return nil }
-        
-        let mapData = MapData(rtlsOptions: rtlsOptions, converter: converter)
-        
-        return mapData
+        return MapData(rtlsOptions: rtlsOptions, converter: converter)
     }
     
     
     func getClients(completion: @escaping (Error?) -> Void) {
-        let parameters = ClientsListParameters(config: config)
-        
         clientListService
-            .call(with: parameters)
+            .call(with: ClientsListParameters())
             .sink { (result) in
                 switch result {
                 case .finished: break
@@ -100,7 +94,7 @@ internal class TT2Internal {
         let group = DispatchGroup()
         floorManager.floors.forEach { (rtlsOption) in
             group.enter()
-            let shelfGroupParameters = ShelfGroupParameters(storeId: storeId, rtlsOptionsId: rtlsOption.id, config: config)
+            let shelfGroupParameters = ShelfGroupParameters(storeId: storeId, rtlsOptionsId: rtlsOption.id)
             shelfGroupService
                 .call(with: shelfGroupParameters)
                 .sink(receiveCompletion: { (completion) in
@@ -191,7 +185,7 @@ internal class TT2Internal {
         if serverAddress?.hasSuffix("/api/v1") ?? false || serverAddress?.hasSuffix("/api/v2") ?? false {
           serverAddress?.removeLast(7)
         }
-        var dataServerAddress = analytics.config?.centralServerConnection.serverAddress?.trimmingCharacters(in: CharacterSet(charactersIn: "htps:/"))
+        var dataServerAddress = config.analyticsServerConnection.serverAddress?.trimmingCharacters(in: CharacterSet(charactersIn: "htps:/"))
         if dataServerAddress?.hasSuffix("/api/v1") ?? false || dataServerAddress?.hasSuffix("/api/v2") ?? false {
           dataServerAddress?.removeLast(7)
         }
@@ -227,10 +221,8 @@ internal class TT2Internal {
     }
     
     func getSwapLocations(for storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
-        let swapLocationsParameters = SwapLocationsParameters(storeId: storeId, config: config)
-        
         swapLocationsService
-            .call(with: swapLocationsParameters)
+            .call(with: SwapLocationsParameters(storeId: storeId))
             .sink(receiveCompletion: { (result) in
                 switch result {
                 case .finished:

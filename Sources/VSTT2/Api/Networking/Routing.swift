@@ -11,7 +11,7 @@ import VSFoundation
 protocol Routing {
     /// Environment config data
     var environmentConfig: EnvironmentConfig? { get }
-
+    var type: RoutingType { get }
     /// Request type
     var method: RequestType { get }
     /// Base url
@@ -33,10 +33,21 @@ protocol Routing {
     var urlRequest: URLRequest? { get }
 }
 
+enum RoutingType {
+  case central, analytics, unknown
+}
+
 extension Routing {
+    func getServerConnection() -> ServerConnection? {
+        switch type {
+        case .central: return environmentConfig?.centralServerConnection
+        case .analytics: return environmentConfig?.analyticsServerConnection
+        case .unknown: return nil
+        }
+    }
+
     var baseURL: String {
-        guard let url = environmentConfig?.centralServerConnection.serverAddress else { fatalError("baseURL is not exist") }
-        
+        guard let url = getServerConnection()?.serverAddress else { fatalError("baseURL is not exist") }
         return url
     }
 
@@ -49,17 +60,14 @@ extension Routing {
     var encoding: ParameterEncoding { .json }
 
     var headers: [String: String]? {
-        guard let apiKey = environmentConfig?.centralServerConnection.apiKey else { fatalError("apiKey is not exist") }
-
+        guard let apiKey = getServerConnection()?.apiKey else { fatalError("apiKey is not exist") }
         return  ["apiKey" : apiKey]
     }
 
     var urlRequest: URLRequest? {
         @Inject var logger: Logger
 
-        let baseURLStirng = baseURL
-
-        guard var url = URL(string: baseURLStirng) else {
+        guard var url = URL(string: baseURL) else {
             #if DEV
             logger.log(message: "cannot create URL")
             #endif

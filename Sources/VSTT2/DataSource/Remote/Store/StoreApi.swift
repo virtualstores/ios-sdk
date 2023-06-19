@@ -25,20 +25,20 @@ class StoreApi: IStoreApi {
   }
 
   func getStores(clientId: Int64, completion: @escaping (Result<[Store], Error>) -> Void) {
-    let parameters = StoresListParameters(clientId: clientId, config: config)
+    let parameters = StoresListParameters(config: config, clientId: clientId)
 
     service
-        .call(with: parameters)
-        .sink(receiveCompletion: { (result) in
-            switch result {
-            case .finished:
-                break
-            case .failure(let error):
-                completion(.failure(error))
-                Logger(verbosity: .critical).log(message: "No available store")
-            }
-        }, receiveValue: { (data) in
-          completion(.success(data.stores))
-        }).store(in: &cancellable)
+      .call(with: parameters)
+      .sink(receiveCompletion: { (result) in
+        switch result {
+        case .finished:
+          break
+        case .failure(let error):
+          completion(.failure(error))
+          Logger(verbosity: .critical).log(message: "No available store")
+        }
+      }, receiveValue: { (data) in
+        completion(.success(data.stores))
+      }).store(in: &cancellable)
   }
 }

@@ -10,21 +10,19 @@ import Foundation
 import UIKit
 import VSFoundation
 import VSPositionKit
-import vps
 
 class AccuracyUploader {
   @Inject var analytics: TT2AnalyticsManager
+  @Inject var config: EnvironmentConfig
   @Inject var syncEventsService: UploadSyncEventsService
   @Inject var floorManager: VSTT2FloorManager
   @Inject var persistence: Persistence
 
   let store: Store
-  let connection: ServerConnection
   let client: Client
   let converter: ICoordinateConverter
 
   var stepEventUploader: StepEventUploader? { analytics.stepEventUploader }
-  var config: EnvironmentConfig? { analytics.config }
 
   var numberOfRescueModes: Int64 = 0
 
@@ -34,9 +32,8 @@ class AccuracyUploader {
     case uploadFailure(HTTPURLResponse)
   }
 
-  init(store: Store, connection: ServerConnection, client: Client, converter: ICoordinateConverter) {
+  init(store: Store, client: Client, converter: ICoordinateConverter) {
     self.store = store
-    self.connection = connection
     self.client = client
     self.converter = converter
   }
@@ -47,9 +44,8 @@ class AccuracyUploader {
 
   private func upload(id: String, preScanLocation: CGPoint, position: ItemPosition, errorHandler: @escaping (Error) -> Void) {
     guard
-      let serverAddress = connection.serverAddress,
+      let serverAddress = config.analyticsServerConnection.serverAddress,
       let clientName = client.name,
-      //let positionKitVersion = Bundle(identifier: "org.cocoapods.PositionKit")?.infoDictionary?["CFBundleShortVersionString"] as? String,
       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
       let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
     else { return }
@@ -82,7 +78,7 @@ class AccuracyUploader {
       URLQueryItem(entry: .scanLocationX, value: "\(position.point.x)"),
       URLQueryItem(entry: .scanLocationY, value: "\(position.point.y)"),
       URLQueryItem(entry: .appVersion, value: "\(appVersion) (\(buildNumber)), \(systemName) \(systemVersion), \(modelName)"),
-      URLQueryItem(entry: .positionKitVersion, value: VPSConfig.shared.VPS_VERSION),//\(positionKitVersion)"),
+      URLQueryItem(entry: .positionKitVersion, value: vpsVersion),
       URLQueryItem(entry: .serverUrl, value: "\(serverAddress)"),
       URLQueryItem(entry: .clientId, value: "\(client.clientId), \(clientName)"),
       URLQueryItem(entry: .storeId, value: "\(store.id), \(store.name)"),
@@ -120,7 +116,6 @@ class AccuracyUploader {
       let visitId = analytics.visitId,
       let rtlsOptionsId = analytics.rtlsOptionId,
       let mapFence = floorManager.mapFence[rtlsOptionsId]
-//      let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     else { return }
     let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     let identifier: String
@@ -293,10 +288,10 @@ extension URLQueryItem {
 extension UploadSyncEventsParameters {
   var asPersistence: UploadSyncEventsPersistence {
     let event = UploadSyncEventsPersistence()
-    event.apiKey = config?.centralServerConnection.apiKey
-    event.serverAddress = config?.centralServerConnection.serverAddress
-    event.mqttAddress = config?.centralServerConnection.mqttAddress
-    event.storeId = config?.centralServerConnection.storeId
+    event.apiKey = config.analyticsServerConnection.apiKey
+    event.serverAddress = config.analyticsServerConnection.serverAddress
+    event.mqttAddress = config.analyticsServerConnection.mqttAddress
+    event.storeId = config.analyticsServerConnection.storeId
 
     event.visitId = visitId
     event.requestId = requestId
@@ -340,7 +335,7 @@ extension UploadSyncEventsPersistence {
       let tags = tags
     else { return nil }
     let config = EnvironmentConfig()
-    config.centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: serverAddress, mqttAddress: mqttAddress, storeId: storeId)
+    config.analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: serverAddress, mqttAddress: mqttAddress, storeId: storeId)
     return UploadSyncEventsParameters(
       config: config,
       visitId: visitId,

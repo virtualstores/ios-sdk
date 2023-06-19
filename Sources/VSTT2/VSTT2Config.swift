@@ -11,9 +11,10 @@ import VSPositionKit
 
 struct VSTT2Config: Config {
     let environment: EnvironmentConfig
-  let itemsRepository: ItemsRepository
+    let itemsRepository: ItemsRepository
     let storeRepository: StoreRepository
-    public init(environment: EnvironmentConfig) {
+
+    init(environment: EnvironmentConfig) {
         self.environment = environment
 
         itemsRepository = ItemsRepository(api: ItemsApi(config: environment))

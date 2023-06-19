@@ -35,7 +35,6 @@ public class UserController {
   var vpsProfile: [String:String]?
   var mlData: [VPSProfileDto2]?
 
-  private var config: EnvironmentConfig?
   private var positionServiceSettings: PositionServiceSettings?
   private var cancellable = Set<AnyCancellable>()
 
@@ -80,15 +79,14 @@ public extension UserController {
 }
 
 extension UserController {
-  func setup(clientId: Int64, positionServiceSettings: PositionServiceSettings? = nil, config: EnvironmentConfig?) {
-    self.config = config
+  func setup(clientId: Int64, positionServiceSettings: PositionServiceSettings? = nil) {
     self.clientId = clientId
     self.positionServiceSettings = positionServiceSettings
   }
 
   func updateUserML(_ userId: String, mlData: PersonalMLDataDTO, completion: @escaping (Error?) -> Void) {
     guard let clientId = clientId else { return }
-    let parameters = PutUserParameters(clientId: clientId, userId: userId, mlData: [mlData], config: config)
+    let parameters = PutUserParameters(clientId: clientId, userId: userId, mlData: [mlData])
     putUserService
       .call(with: parameters)
       .sink { (result) in
@@ -105,7 +103,7 @@ extension UserController {
 
   func getUser(userId: String, completion: @escaping (Error?) -> Void) {
     guard let clientId = clientId else { return }
-    let parameters = GetUserParameters(clientId: clientId, userid: userId, config: config)
+    let parameters = GetUserParameters(clientId: clientId, userid: userId)
     getUserService
       .call(with: parameters)
       .sink { (result) in
@@ -123,7 +121,7 @@ extension UserController {
 
   func deleteUser(_ userId: String, completion: @escaping (Error?) -> Void) {
     guard let clientId = clientId else { return }
-    let parameters = DeleteUserParameters(clientId: clientId, userId: userId, config: config)
+    let parameters = DeleteUserParameters(clientId: clientId, userId: userId)
     deleteUserService
       .call(with: parameters)
       .sink { (result) in

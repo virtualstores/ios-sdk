@@ -56,6 +56,7 @@ final public class TT2: ITT2 {
     public init(with apiUrl: String, apiKey: String) {
         config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
         context = Context(VSTT2Config(environment: config))
+        _tt2Internal = TT2Internal()
     }
 
     deinit {
@@ -67,28 +68,23 @@ final public class TT2: ITT2 {
 
     // MARK: Initialize
     public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, completion: @escaping (Error?) -> ()) {
-        self._tt2Internal = TT2Internal(config: config)
-        self.tt2Internal.getClients(completion: { (error) in
+        tt2Internal.getClients(completion: { [self] (error) in
             if let error = error {
                 completion(error)
                 return
             }
 
             guard
-              let client = self.tt2Internal.internalClients.first(where: { $0.clientId == clientId }),
+              let client = tt2Internal.internalClients.first(where: { $0.clientId == clientId }),
               let serverAddress = client.dataServerUrl,
               let apiKey = client.dataServerApiKey
-            else {
-              completion(VSTT2Error.missingData)
-              return
-            }
+            else { completion(VSTT2Error.missingData); return }
 
-            self.tt2Internal.activeClient = client
-            let config = EnvironmentConfig()
-            config.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
-            self.user.setup(clientId: clientId, config: config)
+            tt2Internal.activeClient = client
+            config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
+            user.setup(clientId: clientId)
             self.positionKitParams = positionKitParams
-            self.tt2Internal.getStores(with: clientId, completion: completion)
+            tt2Internal.getStores(with: clientId, completion: completion)
         })
     }
     
@@ -130,16 +126,15 @@ final public class TT2: ITT2 {
 
               group.enter()
               self.tt2Internal.getShelfGroups(for: currentStore.id, activeFloor: self.activeFloor) { [weak self] shelfGroups in
-                  guard let config = self?.config else { return }
-                  self?.position.setup(with: shelfGroups, config: config, store: currentStore)
+                  self?.position.setup(with: shelfGroups, store: currentStore)
                   group.leave()
               }
 
               group.notify(queue: .main) {
                   self.setupMap()
                   if let client = self.tt2Internal.internalClients.first(where: { $0.clientId == currentStore.clientId }), let converter = self.coordinateConverter {
-                      self.tt2Internal.analytics.accuracyUploader = AccuracyUploader(store: currentStore, connection: self.config.centralServerConnection, client: client, converter: converter)
-                      self.tt2Internal.deviceOrientationUploader = DeviceOrientationUploader(store: currentStore, connection: self.config.centralServerConnection, client: client)
+                      self.tt2Internal.analytics.accuracyUploader = AccuracyUploader(store: currentStore, client: client, converter: converter)
+                      self.tt2Internal.deviceOrientationUploader = DeviceOrientationUploader(store: currentStore, client: client)
                   }
               }
             case .failure(let error): completion(error)
@@ -326,11 +321,10 @@ private extension TT2 {
     
     private func setupAnalytics(for store: Store) {
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
-        let analyticsConfig = EnvironmentConfig()
-        analyticsConfig.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
-        analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id, config: analyticsConfig)
+        config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
+        analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id)
         if let client = activeClient {
-            user.setup(clientId: client.clientId, positionServiceSettings: store.positionServiceSettings, config: analyticsConfig)
+            user.setup(clientId: client.clientId, positionServiceSettings: store.positionServiceSettings)
         }
     }
     
@@ -346,6 +340,6 @@ private extension TT2 {
 
         analytics.update(rtlsOptionId: rtlsOption.id)
         analytics.zoneManager.setup(with: mapZones, rtlsOptions: rtlsOption)
-        analytics.eventManager.setup(with: store.id, zones: mapZones, rtlsOptionsId: rtlsOption.id, config: config)
+        analytics.eventManager.setup(with: store.id, zones: mapZones, rtlsOptionsId: rtlsOption.id)
     }
 }

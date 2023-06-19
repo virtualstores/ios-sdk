@@ -6,7 +6,6 @@
 //
 
 import Foundation
-
 import Combine
 import CoreML
 import VSFoundation

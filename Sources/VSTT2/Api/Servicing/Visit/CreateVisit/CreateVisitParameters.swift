@@ -9,54 +9,36 @@ import Foundation
 import VSFoundation
 
 struct CreateVisitParameters {
-    private var config: EnvironmentConfig?
-    private let requestId: String
-    private let storeId: Int64
-    private let start: String
-    private let stop: String
-    private let deviceInformation: DeviceInformation
-    private let tags: [String: String]
-    private let metaData: [String: String]
-
-    init(requestId: String, storeId: Int64, start: String,
-                stop: String, deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String], config: EnvironmentConfig?) {
-        self.requestId = requestId
-        self.storeId = storeId
-        self.start = start
-        self.stop = stop
-        self.deviceInformation = deviceInformation
-        self.tags = tags
-        self.metaData = metaData
-        self.config = config
-    }
+    @Inject var config: EnvironmentConfig
+    let requestId: String
+    let storeId: Int64
+    let start: String
+    let stop: String
+    let deviceInformation: DeviceInformation
+    let tags: [String: String]
+    let metaData: [String: String]
 }
 
 extension CreateVisitParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-
+    var type: RoutingType { .analytics }
     var method: RequestType { .POST }
-
     var path: String { "/visits" }
-
-    var queryItems: [String: String]? {
-        let parameters = ["requestId": requestId] as [String: String]
-
-        return parameters
-    }
+    var queryItems: [String: String]? { ["requestId": requestId] as [String: String] }
 
     var parametersDictionary: [String: Any]? {
-        let parameters = ["storeId": storeId,
-                          "start": start,
-                          "stop": stop,
-                          "deviceInformation": [
-                              "operatingSystem": deviceInformation.operatingSystem,
-                              "osVersion":deviceInformation.osVersion,
-                              "appVersion": deviceInformation.appVersion,
-                              "deviceModel": deviceInformation.deviceModel
-                          ],
-                          "tags": tags,
-                          "metadata": metaData] as [String: Any]
-
-        return parameters
+        [
+            "storeId": storeId,
+            "start": start,
+            "stop": stop,
+            "deviceInformation": [
+                "operatingSystem": deviceInformation.operatingSystem,
+                "osVersion":deviceInformation.osVersion,
+                "appVersion": deviceInformation.appVersion,
+                "deviceModel": deviceInformation.deviceModel
+            ],
+            "tags": tags,
+            "metadata": metaData
+        ]
     }
 }
