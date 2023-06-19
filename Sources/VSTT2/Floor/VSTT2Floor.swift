@@ -16,9 +16,6 @@ public protocol VSTT2Floor {
     /// All available floors which user can have
     var floors: [RtlsOptions] { get }
     
-    /// PathFinder for floor
-    var pathFinder: VSPathFinder? { get }
-    
     /// Zones  in floor
     var zones: Data? { get }
     

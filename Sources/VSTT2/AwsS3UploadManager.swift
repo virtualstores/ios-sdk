@@ -41,7 +41,7 @@ public final class AWSRecordedObject: IPersistenceModel {
   }
 }
 
-public class AWSS3UploadManager {
+class AWSS3UploadManager {
   @Inject var persistence: Persistence
 
   var getAllRecordedObjects: [AWSRecordedObject] { persistence.get(arrayOf: AWSRecordedObject.self) }

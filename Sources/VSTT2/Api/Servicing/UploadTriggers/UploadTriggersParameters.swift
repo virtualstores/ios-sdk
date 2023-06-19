@@ -9,7 +9,7 @@ import Foundation
 import VSFoundation
 import CoreGraphics
 
-public struct UploadTriggersParameters {
+struct UploadTriggersParameters {
     @Inject var config: EnvironmentConfig
     let visitId: Int64
     let requestId: String

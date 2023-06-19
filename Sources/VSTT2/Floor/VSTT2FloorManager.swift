@@ -19,7 +19,6 @@ public class VSTT2FloorManager: VSTT2Floor {
 
     public var activeFloor: RtlsOptions?
     public var floors: [RtlsOptions] = []
-    public var pathFinder: VSPathFinder?
     public var zones: Data?
     public var triggerEvents: [TriggerEvent]?
     public var zoneData: [Int64 : ZoneData] = [:]

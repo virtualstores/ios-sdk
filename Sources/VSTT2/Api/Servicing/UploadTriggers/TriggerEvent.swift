@@ -187,7 +187,7 @@ public class TriggerEvent {
         public let shelfGroupId: Int?
         public let shelfId: Int?
         public let shelfTierId: Int?
-        
+
         var asPostTrigger: PostTriggerEventRequest.ShelfTrigger {
             PostTriggerEventRequest.ShelfTrigger(shelfGroupId: shelfGroupId, shelfId: shelfId, shelfTierId: shelfTierId)
         }

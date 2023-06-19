@@ -8,7 +8,7 @@
 import Foundation
 import VSFoundation
 
-public struct StopVisitParameters {
+struct StopVisitParameters {
   @Inject var config: EnvironmentConfig
   let requestId: String
   let visitId: Int64

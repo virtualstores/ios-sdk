@@ -13,6 +13,7 @@ import CoreGraphics
 import UIKit
 
 final public class Navigation: INavigation {
+    @Inject var positionKitManager: PositionManager
     @Inject var floor: VSTT2FloorManager
     @Inject var positionManager: Position
 
@@ -23,7 +24,6 @@ final public class Navigation: INavigation {
         }
     }
 
-    let positionKitManager: PositionManager
     var isActivePublisher: CurrentValueSubject<Bool, Never> = .init(false)
     var accuracyPublisher: CurrentValueSubject<(event: AccuracySyncEvent.Event, isFloorSwap: Bool)?,Never> = .init(nil)
 
@@ -41,10 +41,6 @@ final public class Navigation: INavigation {
     }
 
     private var userStartAngle: TT2Course = TT2Course(fromRadians: 0.0)
-
-    init(positionManager: PositionManager) {
-        self.positionKitManager = positionManager
-    }
 
     var onValidateFloorCompletion: (() throws -> ())?
     func validateFloorLevel(floorId: Int64?, completion: @escaping (Bool) throws -> Void) throws {

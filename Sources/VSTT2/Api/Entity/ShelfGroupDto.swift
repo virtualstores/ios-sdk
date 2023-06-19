@@ -8,18 +8,18 @@
 import Foundation
 import VSFoundation
 
-public struct ShelfGroupDto: Codable {
-    public var shelfGroupId: Int64?
-    public var name: String?
-    public var itemPositionX: Double?
-    public var itemPositionY: Double?
-    public var itemPositionOffsetX: Double?
-    public var itemPositionOffsetY: Double?
-    public var points: [PointDto]?
-    public var shelves: [ShelfDto]?
-    public var floorLevelId: Int64?
+struct ShelfGroupDto: Codable {
+    var shelfGroupId: Int64?
+    var name: String?
+    var itemPositionX: Double?
+    var itemPositionY: Double?
+    var itemPositionOffsetX: Double?
+    var itemPositionOffsetY: Double?
+    var points: [PointDto]?
+    var shelves: [ShelfDto]?
+    var floorLevelId: Int64?
 
-    public init(shelfGroupId: Int64?, name: String?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, points: [PointDto]?, shelves: [ShelfDto]?) {
+    init(shelfGroupId: Int64?, name: String?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, points: [PointDto]?, shelves: [ShelfDto]?) {
         self.shelfGroupId = shelfGroupId
         self.name = name
         self.itemPositionX = itemPositionX
@@ -42,7 +42,7 @@ public struct ShelfGroupDto: Codable {
     }
 }
 
-public extension ShelfGroupDto {
+extension ShelfGroupDto {
     static func add(floorLevelId: Int64, _ dtos: [ShelfGroupDto]) -> [ShelfGroupDto] {
         var modifiedShelfGroupDtos: [ShelfGroupDto] = []
         dtos.forEach { shelfGroup in

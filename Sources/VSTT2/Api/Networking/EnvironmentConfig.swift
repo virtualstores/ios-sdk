@@ -8,14 +8,13 @@
 import Foundation
 
 /// Here we can have all setups depended what we need to use for each environment
-public class EnvironmentConfig {
-    private var _centralServerConnection: ServerConnection?
-
+class EnvironmentConfig {
     enum EndPoints: String {
         case v1 = "api/v1"
         case v2 = "api/v2"
     }
 
+    private var _centralServerConnection: ServerConnection?
     var centralServerConnection: ServerConnection {
         set { _centralServerConnection = newValue }
         get {

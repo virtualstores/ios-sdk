@@ -9,19 +9,19 @@ import Foundation
 import CoreGraphics
 import VSFoundation
 
-public struct ShelfDto: Codable {
-    public var shelfId: Int64?
-    public var shelfGroupId: Int64?
-    public var name: String?
-    public var itemPositionX: Double?
-    public var itemPositionY: Double?
-    public var itemPositionOffsetX: Double?
-    public var itemPositionOffsetY: Double?
-    public var points: [PointDto]?
-    public var shelfTiers: [ShelfTierDto]?
-    public var floorLevelId: Int64?
+struct ShelfDto: Codable {
+    var shelfId: Int64?
+    var shelfGroupId: Int64?
+    var name: String?
+    var itemPositionX: Double?
+    var itemPositionY: Double?
+    var itemPositionOffsetX: Double?
+    var itemPositionOffsetY: Double?
+    var points: [PointDto]?
+    var shelfTiers: [ShelfTierDto]?
+    var floorLevelId: Int64?
 
-    public init(shelfId: Int64?, shelfGroupId: Int64?, name: String?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, points: [PointDto]?, shelfTiers: [ShelfTierDto]?) {
+    init(shelfId: Int64?, shelfGroupId: Int64?, name: String?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, points: [PointDto]?, shelfTiers: [ShelfTierDto]?) {
         self.shelfId = shelfId
         self.shelfGroupId = shelfGroupId
         self.name = name
@@ -46,7 +46,7 @@ public struct ShelfDto: Codable {
     }
 }
 
-public extension ShelfDto {
+extension ShelfDto {
     static func toShelf(_ dto: ShelfDto) -> Shelf {
         let itemPosition = ItemPosition(
             xPosition: dto.itemPositionX ?? 0.0, yPosition: dto.itemPositionY ?? 0.0,

@@ -38,7 +38,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
     public init() {}
 
-    public func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int = 100) {
+    func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int = 100) {
         self.store = store
         self.uploadThreshold = uploadThreshold
         self.rtlsOptionId = rtlsOptionId

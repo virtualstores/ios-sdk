@@ -120,8 +120,12 @@ struct VSTT2Config: Config {
     }
 
     private func configureManagers(_ injector: Injector) {
+        injector.map(PositionManager.self) {
+            PositionManager()
+        }
+
         injector.map(Navigation.self) {
-            Navigation(positionManager: PositionManager())
+            Navigation()
         }
         
         injector.map(DownloadManager.self) {
