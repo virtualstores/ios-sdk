@@ -12,7 +12,7 @@ struct CommonCryptoAES {
   let key: String
   let data: Data
 
-  func decrypt() throws -> Data? {
+  func decrypt() -> Data? {
     var outputBuffer = [UInt8](repeating: 0, count: data.count)
     var numBytesEncrypted = 0
     let dataPart = data.dataPart

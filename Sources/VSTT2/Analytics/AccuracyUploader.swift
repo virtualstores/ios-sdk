@@ -9,7 +9,8 @@ import Combine
 import Foundation
 import UIKit
 import VSFoundation
-import VSPositionKitTargets
+import VSPositionKit
+import vps
 
 class AccuracyUploader {
   @Inject var analytics: TT2AnalyticsManager
@@ -81,7 +82,7 @@ class AccuracyUploader {
       URLQueryItem(entry: .scanLocationX, value: "\(position.point.x)"),
       URLQueryItem(entry: .scanLocationY, value: "\(position.point.y)"),
       URLQueryItem(entry: .appVersion, value: "\(appVersion) (\(buildNumber)), \(systemName) \(systemVersion), \(modelName)"),
-      URLQueryItem(entry: .positionKitVersion, value: "PositionKit: 0.0.8"),//\(positionKitVersion)"),
+      URLQueryItem(entry: .positionKitVersion, value: VPSConfig.shared.VPS_VERSION),//\(positionKitVersion)"),
       URLQueryItem(entry: .serverUrl, value: "\(serverAddress)"),
       URLQueryItem(entry: .clientId, value: "\(client.clientId), \(clientName)"),
       URLQueryItem(entry: .storeId, value: "\(store.id), \(store.name)"),
@@ -118,10 +119,10 @@ class AccuracyUploader {
     guard
       let visitId = analytics.visitId,
       let rtlsOptionsId = analytics.rtlsOptionId,
-      let mapFence = floorManager.mapFence[rtlsOptionsId],
-      let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
+      let mapFence = floorManager.mapFence[rtlsOptionsId]
+//      let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     else { return }
-    //let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
+    let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     let identifier: String
     var didSync: Bool = true
     var point: CGPoint = .zero
@@ -191,8 +192,8 @@ class AccuracyUploader {
       }
     }
 
-    let preScanLocationInPixels = preScanLocation?.fromMeterToPixel(converter: converter)
-    let scanLocationInPixels = pointWithOffset.fromMeterToPixel(converter: converter)
+    let preScanLocationInPixels = preScanLocation?.fromMeterToPixel(converter: converter).flipY(converter: converter)
+    let scanLocationInPixels = pointWithOffset.fromMeterToPixel(converter: converter).flipY(converter: converter)
     let isRightAisle = preScanLocation != nil ? mapFenceData.isRightAisle(p1: preScanLocationInPixels!, p2: scanLocationInPixels) : false
 
     //tags["isWifiResetSync"] = String(false)

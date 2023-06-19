@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 import VSFoundation
-import VSPositionKitTargets
+import VSPositionKit
 import CoreGraphics
 import UIKit
 
@@ -318,8 +318,9 @@ private extension TT2 {
             floorheight: floorHeightDiff,
             parameterPackage: positionKitParams,
             userController: user,
-            maxRecordingTimePerPartInMillis: tt2Internal.activeStore.positionServiceSettings?.intValues?["maxRecordingTimePerPartInMillis"]?.asLong//,
-            //converter: converter
+            maxRecordingTimePerPartInMillis: tt2Internal.activeStore.positionServiceSettings?.intValues?["maxRecordingTimePerPartInMillis"]?.asLong,
+            converter: converter,
+            modelManger: tt2Internal.mlModelManager
         )
     }
     

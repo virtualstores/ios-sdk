@@ -19,17 +19,23 @@ class VSMLModelManager {
   private let fileManager = FileManager.default
   private var mlInterfaceVersion: String { "1" } // TODO: Get this from VPS in future
   //private var info: [MLInterfaceInfo] = []
-  private var currentVersion: MLInterfaceVersions.Interface.Device.Version?
-  private var _model: MLModel?
-  var model: MLModel {
-    guard let model = _model else { fatalError("model not yet saved") }
-    return model
+  private var currentVersion: MLInterfaceVersions.Interface.Device.Version? {
+    get {
+      guard let data = UserDefaults.standard.value(forKey: "TT2CURRENTMLINTERFACEVERSION") as? Data else { return nil }
+      return try? JSONDecoder().decode(MLInterfaceVersions.Interface.Device.Version.self, from: data)
+    }
+    set {
+      guard let encoded = try? JSONEncoder().encode(newValue) else { return }
+      UserDefaults.standard.setValue(encoded, forKey: "TT2CURRENTMLINTERFACEVERSION")
+    }
   }
+  private var _model: MLModel?
+  private var modelName = ""
   var pathDirectory: URL? {
     try? fileManager.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
       .appendingPathComponent("MLModel")
   }
-  var pathMLModel: URL? { pathDirectory?.appendingPathComponent("newmodel").appendingPathExtension("mlpackage") }
+  var pathMLModel: URL? { pathDirectory?.appendingPathComponent(modelName).appendingPathExtension("mlpackage") }
   var pathEncrypted: URL? { pathDirectory?.appendingPathExtension("encrypted") }
 
   init() {
@@ -48,7 +54,8 @@ class VSMLModelManager {
           version = v.value
         }
         guard let version = version else { return }
-        loadModel(url: version.modelUrl) { [self] (error) in
+        loadModel(version: version) { [self] (error) in
+          currentVersion = version
           if let error = error {
             print("File", "Error getting MLModel", error)
             return
@@ -57,14 +64,16 @@ class VSMLModelManager {
             switch result {
             case .success(let url):
               //print("File", "Success", url)
-              _model = try! MLModel(contentsOf: url)
+              let config = MLModelConfiguration()
+              config.computeUnits = .cpuOnly
+              _model = try! MLModel(contentsOf: url, configuration: config)
               //let parameter = try! self.model.parameterValue(for: .biases)
               //print("File", "Parameter", parameter)
               if let path = self.pathDirectory {
                 try? fileManager.removeItem(at: path)
                 try? fileManager.removeItem(at: url)
               }
-              //print("File", "IT WORKS!!!!!!!!!!!!!!!!!!!!!!")
+              print("File", "IT WORKS!!!!!!!!!!!!!!!!!!!!!!")
             case .failure(let error): print("File", "Error compiling model", error.localizedDescription)
             }
           }
@@ -88,34 +97,45 @@ class VSMLModelManager {
       }.store(in: &cancellable)
   }
 
-  func loadModel(url: String, completion: @escaping (Error?) -> Void) {
-    guard let url = URL(string: url) else { return }
-    URLSession.shared.dataTask(with: url) { [self] (data, response, error) in
-      //guard let response = response as? HTTPURLResponse else { return }
-      //print("File", "MLResponse", response.statusCode)
-      if error != nil {
-        completion(error)
-        return
-      }
-
+  func loadModel(version: MLInterfaceVersions.Interface.Device.Version, completion: @escaping (Error?) -> Void) {
+    if let currentVersion = currentVersion, currentVersion.modelVersion == version.modelVersion {
+      print("LOADING SAVED MODEL")
       do {
-        guard let data = data, let path = pathDirectory, let pathEncrypted = pathEncrypted else { return }
-        try data.write(to: pathEncrypted, options: .atomic)
-        guard let decrypted = try decrypt(at: pathEncrypted) else { throw NSError() }
+        guard let path = pathDirectory, let pathEncrypted = pathEncrypted else { return }
+        guard let decrypted = try decrypt(id: version.id, at: pathEncrypted) else { throw NSError() }
         try unzipInMemory(data: decrypted, to: path)
-        //if let date = attributes[.creationDate] as? Date {
-        //  print("File", "AttributeCreationDate", date)
-        //}
         completion(nil)
       } catch {
         completion(error)
       }
-    }.resume()
+    } else {
+      guard let url = URL(string: version.modelUrl) else { return }
+      //print("VERSION", version.modelVersion)
+      URLSession.shared.dataTask(with: url) { [self] (data, response, error) in
+        print("DOWNLOADING MODEL")
+        //guard let response = response as? HTTPURLResponse else { return }
+        //print("File", "MLResponse", response.statusCode)
+        if error != nil {
+          completion(error)
+          return
+        }
+
+        do {
+          guard let data = data, let path = pathDirectory, let pathEncrypted = pathEncrypted else { return }
+          try data.write(to: pathEncrypted, options: .atomic)
+          guard let decrypted = try decrypt(id: version.id, at: pathEncrypted) else { throw NSError() }
+          try unzipInMemory(data: decrypted, to: path)
+          completion(nil)
+        } catch {
+          completion(error)
+        }
+      }.resume()
+    }
   }
 
-  func decrypt(at sourceURL: URL) throws -> Data? {
+  func decrypt(id: String, at sourceURL: URL) throws -> Data? {
     guard let data = fileManager.contents(atPath: sourceURL.relativePath) else { throw NSError(domain: "Gunnis did not like this", code: 500) }
-    return try CommonCryptoAES(key: "006438fb-cf23-4023-8bd3-064ee0b4".gunnis, data: data).decrypt()
+    return CommonCryptoAES(key: id.gunnis, data: data).decrypt()
   }
 
   func compileModel(completion: @escaping (Result<URL, Error>) -> Void) {
@@ -136,12 +156,20 @@ class VSMLModelManager {
     try archive.filter({ !$0.path.contains("__MACOSX/") }).forEach { (entry) in
       //print("PATH", entry.path)
       if entry.path.hasSuffix(".mlpackage/") {
-        var test = entry.path
-        test.removeLast(".mlpackage/".count)
-        //print("SAVE PATH COMPONENT", test)
+        var modelName = entry.path
+        modelName.removeLast(".mlpackage/".count)
+        //print("SAVE PATH COMPONENT", modelName)
+        self.modelName = modelName
       }
       _ = try archive.extract(entry, to: destinationURL.appendingPathComponent(entry.path))
     }
+  }
+}
+
+extension VSMLModelManager: VPSModelManager {
+  var model: MLModel? {
+    guard let model = _model else { return nil }
+    return model
   }
 }
 

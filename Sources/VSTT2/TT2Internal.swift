@@ -137,91 +137,30 @@ internal class TT2Internal {
               }
           }.store(in: &cancellable)
 
-        navigation.positionKitManager.positionPublisher
-            .compactMap{ $0 }
-            .sink { error in
-                Logger.init().log(message: "PositionKitError noData")
-            } receiveValue: { [weak self] positionBundle in
-                self?.floorManager.onNewPostion(location: positionBundle.position)
-                self?.mapController?.updateUserLocation(newLocation: positionBundle.position, std: positionBundle.std)
-                self?.analytics.onNewPositionBundle(point: positionBundle.position)
-            }.store(in: &cancellable)
-        
-        navigation.positionKitManager.changedFloorPublisher
+        navigation.positionKitManager.recordingPublisher
             .compactMap { $0 }
-            .sink { [weak self] (data) in
-                self?.floorManager.onNewFloor(floor: data)
-            }.store(in: &cancellable)
-        
-        navigation.positionKitManager.directionPublisher
+            .sink(receiveValue: { [weak self] (identifier, data, sessionId, lastFile) in
+                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderName: self?.generateAWSFolderPath(visitId: self?.analytics.visitId, additionalData: lastFile), date: Date())
+                self?.awsS3UploadManager.sendCollectedDataToS3()
+            }).store(in: &cancellable)
+
+        navigation.positionKitManager.outputSignalPublisher
             .compactMap { $0 }
-            .sink { error in
-                Logger.init().log(message: "DirectionPublisher noData")
-            } receiveValue: { direction in
-                let heading = (self.vpsToMapboxAngle(angle: direction.angle + self.offset)).remainder(dividingBy: 360.0)
+            .sink { [self] (signal) in
+              switch signal {
+              case .position(position: let position):
+                navigation.currentPosition = position.position
+                floorManager.onNewPostion(location: position.position)
+                //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
+                analytics.onNewPositionBundle(point: position.position)
+              case .ux(position: let position):
+                mapController?.updateUserLocation(newLocation: position.position, std: position.std)
+              case .ml(position: let position): break
+              case .rotation(heading: let heading):
+                let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
                 self.mapController?.updateUserDirection(newDirection: heading)
+              }
             }.store(in: &cancellable)
-        
-        navigation.positionKitManager.realWorldOffsetPublisher
-            .compactMap { $0 }
-            .sink { error in
-                Logger.init().log(message: "RealWorldOffsetPublisher noData")
-            } receiveValue: { direction in
-                self.offset = direction.angle
-            }.store(in: &cancellable)
-
-        navigation.positionKitManager.deviceOrientationPublisher
-            .compactMap { $0 }
-            .sink { (error) in
-              Logger(verbosity: .info).log(message: "DeviceOrientationError: \(error)")
-            } receiveValue: { [weak self] (orientation) in
-                guard
-                    let id = self?.analytics.visitId,
-                    let position = self?.navigation.positionKitManager.positionPublisher.value?.position,
-                    let direction = self?.navigation.positionKitManager.directionPublisher.value?.angle
-                else { return }
-                self?.deviceOrientationUploader?.upload(id: "", visitId: id, deviceOrientation: orientation.rawValue, currentLocation: position, direction: direction, errorHandler: { (error) in
-                    Logger(verbosity: .info).log(message: "DeviceOrientationUploaderError: \(error.localizedDescription)")
-                })
-            }.store(in: &cancellable)
-
-        navigation.positionKitManager.recordingPublisherPartial
-            .compactMap { $0 }
-            //.sink(receiveValue: { [weak self] (identifier, data, sessionId) in
-            .sink(receiveValue: { [weak self] (identifier, data) in
-                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderName: self?.generateAWSFolderPath(visitId: self?.analytics.visitId), date: Date())
-                self?.awsS3UploadManager.sendCollectedDataToS3()
-            }).store(in: &cancellable)
-        navigation.positionKitManager.recordingPublisherEnd
-            .compactMap { $0 }
-            //.sink(receiveValue: { [weak self] (identifier, data, sessionId) in
-            .sink(receiveValue: { [weak self] (identifier, data) in
-                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderName: self?.generateAWSFolderPath(visitId: self?.analytics.visitId, additionalData: true), date: Date())
-                self?.awsS3UploadManager.sendCollectedDataToS3()
-            }).store(in: &cancellable)
-
-        navigation.positionKitManager.rescueModePublisher
-          .compactMap { $0 }
-          .sink { [weak self] (_) in
-            self?.analytics.accuracyUploader?.numberOfRescueModes += 1
-          }.store(in: &cancellable)
-
-        navigation.positionKitManager.mlDataPublisher
-            .compactMap { $0 }
-            .sink { [weak self] (mlData) in
-              guard let id = self?.user.userId else { return }
-              self?.user.updateUserML(id, mlData: mlData, completion: { (_) in })
-            }.store(in: &cancellable)
-        navigation.positionKitManager.onMlCalibrationPublisher
-            .compactMap { $0 }
-            .sink { [weak self] (mlUser) in
-              self?.analytics.updateVisitWithMLTags(mlUser: mlUser)
-            }.store(in: &cancellable)
-
-        navigation.positionKitManager.stepEventDataPublisher
-            .compactMap { $0 }
-            .sink(receiveValue: { [weak self] in self?.analytics.stepEventUploader?.events.append($0) })
-            .store(in: &cancellable)
         
         navigation.accuracyPublisher
             .compactMap { $0 }
@@ -257,9 +196,9 @@ internal class TT2Internal {
           dataServerAddress?.removeLast(7)
         }
 
-        guard let serverAddress = serverAddress, let id = visitId else { return nil }
-        let folderName: String = "\(serverAddress)/\(id)/"
-        if additionalData, let dataServerAddress = dataServerAddress, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, visitId: id) {
+        guard let serverAddress = serverAddress, let dataServerAddress = dataServerAddress, let id = visitId else { return nil }
+        let folderName: String = "\(serverAddress)/\(dataServerAddress)/\(id)/"
+        if additionalData, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, visitId: id) {
             awsS3UploadManager.prepareDataToSend(identifier: "tags.json", data: tags, folderName: folderName, date: Date())
         }
         return folderName

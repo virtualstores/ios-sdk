@@ -7,7 +7,7 @@
 
 import Foundation
 import VSFoundation
-import VSPositionKitTargets
+import VSPositionKit
 
 struct VSTT2Config: Config {
     let environment: EnvironmentConfig
