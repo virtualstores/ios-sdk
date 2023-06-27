@@ -262,9 +262,9 @@ public class TriggerEvent {
 public extension TriggerEvent {
     var toMessageShown: TriggerEvent? {
         guard let id = tags[.id] else { return nil }
-        var tags: [String : String] = tags
+        var tags: [String:String] = tags
         tags[.messageShown] = id
-        let event = TriggerEvent(
+        return TriggerEvent(
             rtlsOptionsId: rtlsOptionsId,
             name: name,
             description: description,
@@ -275,13 +275,12 @@ public extension TriggerEvent {
             metaData: metaData,
             hasBeenTriggered: hasBeenTriggered
         )
-        return event
     }
 
     func toPollResponse(option: Message.Poll.Option) -> TriggerEvent {
-        var tags: [String : String] = tags
+        var tags: [String:String] = tags
         tags[.pollResponse] = option.description
-        let event = TriggerEvent(
+        return TriggerEvent(
             rtlsOptionsId: rtlsOptionsId,
             name: name,
             description: description,
@@ -292,7 +291,6 @@ public extension TriggerEvent {
             metaData: metaData,
             hasBeenTriggered: hasBeenTriggered
         )
-        return event
     }
 }
 

@@ -124,7 +124,7 @@ internal class TT2Internal {
                       self?.mapController?.start()
                   }
                   if self?.automaticSensorRecording ?? false {
-                      self?.recording.start()
+                      //self?.recording.start()
                   }
               } else {
                   self?.mapController?.stop()
@@ -145,10 +145,10 @@ internal class TT2Internal {
               case .position(position: let position):
                 navigation.currentPosition = position.position
                 floorManager.onNewPostion(location: position.position)
-                //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
-                analytics.onNewPositionBundle(point: position.position)
-              case .ux(position: let position):
                 mapController?.updateUserLocation(newLocation: position.position, std: position.std)
+                analytics.onNewPositionBundle(point: position.position)
+              case .ux(position: let position): break
+                //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
               case .ml(position: let position): break
               case .rotation(heading: let heading):
                 let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
@@ -181,16 +181,11 @@ internal class TT2Internal {
     }
 
     func generateAWSFolderPath(visitId: Int64?, additionalData: Bool = false) -> String? {
-        var serverAddress = config.centralServerConnection.serverAddress?.trimmingCharacters(in: CharacterSet(charactersIn: "htps:/"))
-        if serverAddress?.hasSuffix("/api/v1") ?? false || serverAddress?.hasSuffix("/api/v2") ?? false {
-          serverAddress?.removeLast(7)
-        }
-        var dataServerAddress = config.analyticsServerConnection.serverAddress?.trimmingCharacters(in: CharacterSet(charactersIn: "htps:/"))
-        if dataServerAddress?.hasSuffix("/api/v1") ?? false || dataServerAddress?.hasSuffix("/api/v2") ?? false {
-          dataServerAddress?.removeLast(7)
-        }
-
-        guard let serverAddress = serverAddress, let dataServerAddress = dataServerAddress, let id = visitId else { return nil }
+        guard
+            let serverAddress = config.centralServerConnection.serverAddress?.trimServerAddress,
+            let dataServerAddress = config.analyticsServerConnection.serverAddress?.trimServerAddress,
+            let id = visitId
+        else { return nil }
         let folderName: String = "\(serverAddress)/\(dataServerAddress)/\(id)/"
         if additionalData, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, visitId: id) {
             awsS3UploadManager.prepareDataToSend(identifier: "tags.json", data: tags, folderName: folderName, date: Date())
@@ -199,23 +194,21 @@ internal class TT2Internal {
     }
 
     func createTT2Tags(serverAddress: String, dataServerAddress: String, visitId: Int64) -> String? {
-        guard
-          let tt2SdkVersion = analytics.tt2Tags["tt2SdkVersion"],
-          let tt2VpsVersion = analytics.tt2Tags["tt2VpsVersion"],
-          let tt2DeviceManufacturer = analytics.tt2Tags["tt2DeviceManufacturer"],
-          let tt2DeviceModel = analytics.tt2Tags["tt2DeviceModel"],
-          let tt2DeviceOs = analytics.tt2Tags["tt2DeviceOs"],
-          let tt2DeviceOsVersion = analytics.tt2Tags["tt2DeviceOsVersion"],
-          let tt2MLActive = analytics.tt2Tags["tt2MLActive"],
-          let tt2SdkVpsSettingUseML = analytics.tt2Tags["tt2SdkVpsSettingUseML"],
-          let tt2SdkVpsSettingUseCoefficientOptimizer = analytics.tt2Tags["tt2SdkVpsSettingUseCoefficientOptimizer"],
-          let tt2SdkVpsSettingUseDriftCompensator = analytics.tt2Tags["tt2SdkVpsSettingUseDriftCompensator"],
-          let tt2RtlsOptionsId = floorManager.activeFloor?.id,
-          let tt2ClientId = activeClient?.clientId
-        else { return nil }
-        return "{\"tags\":{\"tt2SdkVersion\":\"\(tt2SdkVersion)\",\"tt2VpsVersion\":\"\(tt2VpsVersion)\",\"tt2DeviceManufacturer\":\"\(tt2DeviceManufacturer)\",\"tt2DeviceModel\":\"\(tt2DeviceModel)\",\"tt2DeviceOs\":\"\(tt2DeviceOs)\",\"tt2DeviceOsVersion\":\"\(tt2DeviceOsVersion)\",\"tt2MLActive\":\"\(tt2MLActive)\",\"tt2SdkVpsSettingUseML\":\"\(tt2SdkVpsSettingUseML)\",\"tt2SdkVpsSettingUseCoefficientOptimizer\":\"\(tt2SdkVpsSettingUseCoefficientOptimizer)\",\"tt2SdkVpsSettingUseDriftCompensator\":\"\(tt2SdkVpsSettingUseDriftCompensator)\",\"tt2CentralServerURL\":\"\(serverAddress)\",\"tt2DataServerURL\":\"\(dataServerAddress)\",\"tt2RtlsOptionsId\":\"\(tt2RtlsOptionsId)\",\"tt2StoreId\":\"\(activeStore.id)\",\"tt2VisitId\":\"\(visitId)\",\"tt2ClientId\":\"\(tt2ClientId)\"}}"
+        analytics.tt2Tags["tt2CentralServerURL"] = serverAddress
+        analytics.tt2Tags["tt2DataServerURL"] = dataServerAddress
+        analytics.tt2Tags["tt2RtlsOptionsId"] = floorManager.activeFloor?.id.description
+        analytics.tt2Tags["tt2StoreId"] = activeStore.id.description
+        analytics.tt2Tags["tt2VisitId"] = visitId.description
+        analytics.tt2Tags["tt2ClientId"] = activeClient?.clientId.description
+        let tags = TT2Tags(tags: analytics.tt2Tags)
+        guard let data = try? JSONEncoder().encode(tags) else { return nil }
+        return String(data: data, encoding: .utf8)
     }
-    
+
+    private struct TT2Tags: Codable {
+      let tags: [String:String]
+    }
+
     private func vpsToMapboxAngle(angle: Double) -> Double {
         90.0 - angle
     }
@@ -235,4 +228,14 @@ internal class TT2Internal {
                 completion(.success(swapLocations))
             }).store(in: &cancellable)
     }
+}
+
+private extension String {
+  var trimServerAddress: String {
+    var modified = self
+    if hasPrefix("http://") { modified.removeFirst(7) }
+    if hasPrefix("https://") { modified.removeFirst(8) }
+    if hasSuffix("/api/v1") || hasSuffix("/api/v2") { modified.removeLast(7) }
+    return modified
+  }
 }
