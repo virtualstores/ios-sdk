@@ -72,7 +72,7 @@ class VSMLModelManager {
                 try? fileManager.removeItem(at: path)
                 try? fileManager.removeItem(at: url)
               }
-              print("File", "IT WORKS!!!!!!!!!!!!!!!!!!!!!!")
+              //print("File", "IT WORKS!!!!!!!!!!!!!!!!!!!!!!")
             case .failure(let error): print("File", "Error compiling model", error.localizedDescription)
             }
           }
@@ -98,7 +98,7 @@ class VSMLModelManager {
 
   func loadModel(version: MLInterfaceVersions.Interface.Device.Version, completion: @escaping (Error?) -> Void) {
     if let currentVersion = currentVersion, currentVersion.modelVersion == version.modelVersion {
-      print("LOADING SAVED MODEL")
+      //print("LOADING SAVED MODEL")
       do {
         guard let path = pathDirectory, let pathEncrypted = pathEncrypted else { return }
         guard let decrypted = try decrypt(id: version.id, at: pathEncrypted) else { throw NSError() }
@@ -111,7 +111,7 @@ class VSMLModelManager {
       guard let url = URL(string: version.modelUrl) else { return }
       //print("VERSION", version.modelVersion)
       URLSession.shared.dataTask(with: url) { [self] (data, response, error) in
-        print("DOWNLOADING MODEL")
+        //print("DOWNLOADING MODEL")
         //guard let response = response as? HTTPURLResponse else { return }
         //print("File", "MLResponse", response.statusCode)
         if error != nil {
