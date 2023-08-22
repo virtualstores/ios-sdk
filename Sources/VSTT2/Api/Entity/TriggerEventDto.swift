@@ -49,7 +49,7 @@ struct TriggerEventDto: Codable {
 
 extension TriggerEventDto {
   func toTriggerEvent(mapZones: [Zone]) -> [TriggerEvent] {
-    guard let name = tags["@message.name"] else { return [] }
+    guard let name = tags[TriggerEvent.DefaultTags.name] else { return [] }
     var events: [TriggerEvent] = []
     if let coordinates = coordinatesTrigger?.values.flatMap({ $0 }) {
       coordinates.forEach { events.append(TriggerEvent(rtlsOptionsId: $0.rtlsOptionsId, name: name, description: "", eventType: .coordinateTrigger($0.asTriggerEventCoordinate), tags: tags, metaData: metadata)) }

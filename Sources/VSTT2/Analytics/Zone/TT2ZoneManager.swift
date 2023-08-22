@@ -104,8 +104,7 @@ public class TT2ZoneManager: TT2Zone {
         insideZones[groupId] = zone.polygon
         
         let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: groupId, type: .enter))
-        return TriggerEvent(rtlsOptionsId: rtlsOptions.id, name: zone.name, description: "", timestamp: Date(),
-                            userPosition: currentPosition, eventType: zoneTrigger)
+        return TriggerEvent(rtlsOptionsId: rtlsOptions.id, name: zone.name, description: "", eventType: zoneTrigger, timestamp: Date(), userPosition: currentPosition)
     }
     
     private func exitZone(for currentPosition: CGPoint, polygon: [CGPoint]) {
@@ -115,9 +114,7 @@ public class TT2ZoneManager: TT2Zone {
             guard value == zone.polygon else { return }
             
             let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: key, type: .exit))
-            
-            let event = TriggerEvent(rtlsOptionsId: rtlsOptions.id,name: zone.name, description: "", timestamp: Date(),
-                                     userPosition: currentPosition, eventType: zoneTrigger)
+            let event = TriggerEvent(rtlsOptionsId: rtlsOptions.id,name: zone.name, description: "", eventType: zoneTrigger, timestamp: Date(), userPosition: currentPosition)
             
             zoneExitedPublisher.send(event)
             self.activeInside.removeAll(where: { $0 == polygon })

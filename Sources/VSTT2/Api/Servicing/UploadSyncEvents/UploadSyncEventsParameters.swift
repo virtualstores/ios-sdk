@@ -51,7 +51,7 @@ extension UploadSyncEventsParameters: Routing {
           "y" : event.syncPositionOffsetsInMeters.dy
         ],
         "tags" : event.tags.asDictionary()
-      ]
+      ] as [String : Any]
     ]
   }
 }

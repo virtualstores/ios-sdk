@@ -49,6 +49,8 @@ struct MLInterfaceVersions: Codable {
         let modelUrl: String
         let name: String
         let deprecated: Bool
+        let frameSize: Int32
+        let smoothing: Bool
       }
     }
   }

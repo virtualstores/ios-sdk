@@ -36,10 +36,10 @@ internal class ZoneEventDetector: EventDetector {
     func updateInAndOut() {
         var triggers: [InAndOutZone.Trigger] = []
 
-        events.forEach { event in
-            guard let trigger = event.eventType.getTrigger().zoneTrigger, let zone = zones?.first(where: { $0.name == trigger.zoneId }) else { return }
-            triggers.append(InAndOutZone.Trigger(id: trigger.zoneId, polygon: zone.points))
-            triggersAndEvents[trigger.zoneId] = (event, trigger)
+        events.forEach { (event) in
+            guard let id = event.id, let trigger = event.eventType.getTrigger().zoneTrigger, let zone = zones?.first(where: { $0.name == trigger.zoneId }) else { return }
+            triggers.append(InAndOutZone.Trigger(id: id, polygon: zone.points))
+            triggersAndEvents[id] = (event, trigger)
         }
 
         inAndOut = InAndOutZone(triggers: triggers)

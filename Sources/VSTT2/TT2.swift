@@ -53,10 +53,12 @@ final public class TT2: ITT2 {
     private var wifiCancellable = Set<AnyCancellable>()
     private var positionKitParams: ParameterPackage = .retail
     
-    public init(with apiUrl: String, apiKey: String) {
+    public init(with apiUrl: String, apiKey: String, settings: MLModelDownloadSettings? = nil) {
         config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
         context = Context(VSTT2Config(environment: config))
         _tt2Internal = TT2Internal()
+        tt2Internal.mlModelManager.setup(settings: settings)
+        URLCache().removeAllCachedResponses()
     }
 
     deinit {
@@ -190,7 +192,7 @@ final public class TT2: ITT2 {
 
 private extension TT2 {
     // MARK: Publishers
-    private func bindPublishers() {
+    func bindPublishers() {
         floor.switchFloorPublisher
           .compactMap { $0 }
           .sink(receiveValue: { (data) in
@@ -214,7 +216,7 @@ private extension TT2 {
           }).store(in: &cancellable)
     }
 
-    private func bindWiFiPublishers() {
+    func bindWiFiPublishers() {
       wifiCancellable.removeAll()
       tt2Internal.wifiController?.wifiInfoPublisher
         .compactMap { $0 }
@@ -234,7 +236,7 @@ private extension TT2 {
         }).store(in: &wifiCancellable)
     }
 
-    private func setupMap(changedFloor: Bool = false) {
+    func setupMap(changedFloor: Bool = false) {
       guard
         let rtls = activeFloor,
         let mapData = mapData,
@@ -265,27 +267,15 @@ private extension TT2 {
       tt2Internal.mapController?.setup(pathfinder: pathfinder, zones: zones, sharedProperties: sharedProperties, shelves: position.shelfGroups ?? [], changedFloor: changedFloor)
     }
 
-    private func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {
-        var diff: Double = 0.0
-        swapLocations.forEach { (swapLocation) in
-            swapLocation.paths.forEach { (path) in
-                diff = path.heightDiffInMeters > diff ? path.heightDiffInMeters : diff
-            }
-        }
-        return diff
+    func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {
+      swapLocations.map { $0.paths.map { $0.heightDiffInMeters } }.flatMap { $0 }.max() ?? 0.0
     }
 
-    private func getLowestHeightDiff(swapLocations: [SwapLocation]) -> Double {
-        var diff: Double = .greatestFiniteMagnitude
-        swapLocations.forEach { (swapLocation) in
-            swapLocation.paths.forEach { (path) in
-                diff = path.heightDiffInMeters < diff ? path.heightDiffInMeters : diff
-            }
-        }
-        return diff
+    func getLowestHeightDiff(swapLocations: [SwapLocation]) -> Double {
+      swapLocations.map { $0.paths.map { $0.heightDiffInMeters } }.flatMap { $0 }.min() ?? 0.0
     }
 
-    private func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
+    func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
         guard let floorHeightDiff = floorHeightDiff else { return }
         self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zoneData) in
             if let mapFence = mapFence {
@@ -298,7 +288,7 @@ private extension TT2 {
         }
     }
 
-    private func setupMapfence(with data: MapFence, floorHeightDiff: Double) {
+    func setupMapfence(with data: MapFence, floorHeightDiff: Double) {
         guard let rtlsOption = activeFloor, let name = activeStore?.name else { return }
         
         let converter = BaseCoordinateConverter(heightInPixels: data.properties.height, widthInPixels: data.properties.width, pixelPerMeter: rtlsOption.pixelsPerMeter, pixelPerLatitude: 1000.0)
@@ -313,13 +303,13 @@ private extension TT2 {
             floorheight: floorHeightDiff,
             parameterPackage: positionKitParams,
             userController: user,
-            maxRecordingTimePerPartInMillis: tt2Internal.activeStore.positionServiceSettings?.intValues?["maxRecordingTimePerPartInMillis"]?.asLong,
+            positionServiceSettings: tt2Internal.activeStore.positionServiceSettings,
             converter: converter,
             modelManger: tt2Internal.mlModelManager
         )
     }
     
-    private func setupAnalytics(for store: Store) {
+    func setupAnalytics(for store: Store) {
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
         config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
         analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id)
@@ -328,7 +318,7 @@ private extension TT2 {
         }
     }
     
-    private func setupAnalytics(with zoneData: [Int64: ZoneData]?) {
+    func setupAnalytics(with zoneData: [Int64: ZoneData]?) {
         guard let rtlsOption = activeFloor, let store = activeStore, let zoneData = zoneData else { return }
 
         zoneData.forEach { (key, value) in

@@ -22,6 +22,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var positionUploadWorker: PositionUploadWorker
     @Inject var zoneManager: TT2ZoneManager
     @Inject var eventManager: TT2EventManager
+    @Inject var mlModelManager: VSMLModelManager
 
     var accuracyUploader: AccuracyUploader?
     var stepEventUploader: StepEventUploader?
@@ -295,7 +296,8 @@ private extension TT2AnalyticsManager {
       "tt2DeviceModel" : UIDevice.current.modelName,
       "tt2DeviceOs" : UIDevice.current.systemName,
       "tt2DeviceOsVersion" : UIDevice.current.systemVersion,
-      "tt2MLActive" : "false"
+      "tt2MLActive" : "false",
+      "tt2VelocityModelName": mlModelManager.currentVersion?.name ?? ""
     ]
   }
 

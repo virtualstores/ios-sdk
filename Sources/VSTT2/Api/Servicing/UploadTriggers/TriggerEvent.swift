@@ -13,33 +13,49 @@ public class TriggerEvent {
     public let rtlsOptionsId: Int64
     public let name: String
     public let description: String
-    public private(set) var timestamp: Date
-    public private(set) var userPosition: CGPoint
-    public var eventType: EventType
+    public let eventType: EventType
     public private(set) var tags: [String: String]
     public private(set) var metaData: [String: String]
     public private(set) var hasBeenTriggered: Bool
+
+    public var id: String? { tags[DefaultTags.id] }
+
+    var timestamp: Date
+    var userPosition: CGPoint
     
-    public init(
+    init(
         rtlsOptionsId: Int64,
         name: String,
         description: String,
-        timestamp: Date = Date(),
-        userPosition: CGPoint = .zero,
         eventType: EventType,
         tags: [String: String] = [:],
         metaData: [String: String] = [:],
-        hasBeenTriggered: Bool = false
+        hasBeenTriggered: Bool = false,
+        timestamp: Date = Date(),
+        userPosition: CGPoint = .zero
     ) {
         self.rtlsOptionsId = rtlsOptionsId
         self.name = name
         self.description = description
-        self.timestamp = timestamp
-        self.userPosition = userPosition
         self.eventType = eventType
         self.tags = tags
         self.metaData = metaData
-        self.hasBeenTriggered = hasBeenTriggered
+        self.hasBeenTriggered = false
+        self.timestamp = Date()
+        self.userPosition = .zero
+    }
+
+    public convenience init(
+        id: String,
+        rtlsOptionsId: Int64,
+        name: String,
+        description: String,
+        eventType: EventType,
+        tags: [String: String] = [:],
+        metaData: [String: String] = [:]
+    ) {
+        self.init(rtlsOptionsId: rtlsOptionsId, name: name, description: description, eventType: eventType, tags: tags, metaData: metaData)
+        self.tags[DefaultTags.id] = id
     }
     
     func updateEventData(for userPosition: CGPoint, timestamp: Date) {
@@ -268,12 +284,12 @@ public extension TriggerEvent {
             rtlsOptionsId: rtlsOptionsId,
             name: name,
             description: description,
-            timestamp: timestamp,
-            userPosition: userPosition,
             eventType: .appTrigger(TriggerEvent.AppTrigger(event: name)),
             tags: tags,
             metaData: metaData,
-            hasBeenTriggered: hasBeenTriggered
+            hasBeenTriggered: hasBeenTriggered,
+            timestamp: timestamp,
+            userPosition: userPosition
         )
     }
 
@@ -284,12 +300,12 @@ public extension TriggerEvent {
             rtlsOptionsId: rtlsOptionsId,
             name: name,
             description: description,
-            timestamp: timestamp,
-            userPosition: userPosition,
             eventType: .appTrigger(TriggerEvent.AppTrigger(event: name)),
             tags: tags,
             metaData: metaData,
-            hasBeenTriggered: hasBeenTriggered
+            hasBeenTriggered: hasBeenTriggered,
+            timestamp: timestamp,
+            userPosition: userPosition
         )
     }
 }

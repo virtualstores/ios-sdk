@@ -54,7 +54,7 @@ extension UploadScanEventsParameters: Routing {
                 "y": Double(point.y),
                 "timestamp": timeStamp,
                 "type": scanType.rawValue
-            ]
+            ] as [String : Any]
         ]
     }
 }

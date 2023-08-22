@@ -23,7 +23,7 @@ public class Tree {
     }
     
     public func print() {
-        self.root.recursivePrint("")
+        root.recursivePrint("")
     }
 
     var zonesToAdd: [Zone] = []
@@ -35,25 +35,24 @@ public class Tree {
             let height = converter.convertFromMetersToMapCoordinate(input: rtls.heightInMeters)
             let polygon = [CGPoint(x: 0.0, y: 0.0), CGPoint(x: 0.0, y: height), CGPoint(x: width, y: height), CGPoint(x: width, y: 0.0)]
             let properties = ZoneProperties(description: nil, id: floorLevelName, name: floorLevelName, names: [], parentId: root.id, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
-            self.root.addChild(child: Zone(id: floorLevelName, properties: properties, polygon: polygon, floorLevelId: floorLevelId, converter: converter))
+            root.addChild(child: Zone(id: floorLevelName, properties: properties, polygon: polygon, floorLevelId: floorLevelId, converter: converter))
         }
 
-        let root: Zone = getZoneWith(id: floorLevelName) ?? self.root
         let parentId = mapZone.properties.parentId
         var navigationPoints: [String : (point: CGPoint, properties: PointProperties)] = [:] //mapZonePoints.map { $0.coordinate.fromLatLngToMeter(converter: converter) }
         mapZonePoints.forEach { navigationPoints[$0.description] = ($0.coordinate.fromLatLngToMeter(converter: converter), $0.properties) }
-        if let id = parentId, let zone = self.getZoneWith(id: id) {
+        if let id = parentId, let zone = getZoneWith(id: id) {
             zone.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, parent: zone, floorLevelId: floorLevelId, converter: converter))
         } else if parentId != nil {
-            self.zonesToAdd.append(Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, floorLevelId: floorLevelId, converter: converter))
+            zonesToAdd.append(Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, floorLevelId: floorLevelId, converter: converter))
         } else {
-            root.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, floorLevelId: floorLevelId, converter: converter))
+            (getZoneWith(id: floorLevelName) ?? root).addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, floorLevelId: floorLevelId, converter: converter))
         }
-        self.zonesToAdd.forEach { zone in
-            if let id = parentId, let parentZone = self.getZoneWith(id: id) {
+        zonesToAdd.forEach { zone in
+            if let id = parentId, let parentZone = getZoneWith(id: id) {
                 zone.parent = parentZone
                 parentZone.addChild(child: zone)
-                self.zonesToAdd.removeAll(where: { $0 == zone})
+                zonesToAdd.removeAll(where: { $0 == zone})
             }
         }
     }
@@ -65,32 +64,29 @@ public class Tree {
     }
     
     public func search(string: String?) -> [Zone]? {
-        guard let string = string, var zones = self.root.recursiveSearch(string) else { return nil }
+        guard let string = string, var zones = root.recursiveSearch(string) else { return nil }
         zones.removeAll(where: { $0 == root })
         zones.sort(by: { $0 < $1 })
         return zones
     }
     
     public func getAllZones() -> [Zone]? {
-        guard var zones = self.root.getChildren() else { return nil }
+        guard var zones = root.getChildren() else { return nil }
         zones.removeAll(where: { $0 == root })
         zones.sort(by: { $0 < $1 })
         return zones
     }
 
     public func getZoneWith(id: String) -> Zone? {
-      guard let zones = self.getAllZones() else { return nil }
-      return zones.first(where: { $0.id == id })
+        getAllZones()?.first(where: { $0.id == id })
     }
 
-    public func getZoneWith(name: String) -> [Zone]? {
-        let zones = self.getAllZones()?.all(where: { $0.name == name && $0.floorLevelId == currentFloorLevelId })
-        
-        return zones
+    public func getZonesWith(name: String) -> [Zone]? {
+        getAllZones()?.all(where: { $0.name == name && $0.floorLevelId == currentFloorLevelId })
     }
     
     public func getZonesFor(floorLevelId: Int64, includeParent: Bool = false) -> [Zone]? {
-        var zones = self.getAllZones()?.all(where: { $0.floorLevelId == floorLevelId })
+        var zones = getAllZones()?.all(where: { $0.floorLevelId == floorLevelId })
         if !includeParent {
             let names = root.children.values.map { $0.name }
             names.forEach { name in

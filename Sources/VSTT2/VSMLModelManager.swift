@@ -18,7 +18,7 @@ class VSMLModelManager {
   private let fileManager = FileManager.default
   private var mlInterfaceVersion: String { "1" } // TODO: Get this from VPS in future
   //private var info: [MLInterfaceInfo] = []
-  private var currentVersion: MLInterfaceVersions.Interface.Device.Version? {
+  var currentVersion: MLInterfaceVersions.Interface.Device.Version? {
     get {
       guard let data = UserDefaults.standard.value(forKey: "TT2CURRENTMLINTERFACEVERSION") as? Data else { return nil }
       return try? JSONDecoder().decode(MLInterfaceVersions.Interface.Device.Version.self, from: data)
@@ -29,6 +29,7 @@ class VSMLModelManager {
     }
   }
   private var _model: MLModel?
+  private var _params: VPSModelParams?
   private var modelName = ""
   var pathDirectory: URL? {
     try? fileManager.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
@@ -41,20 +42,24 @@ class VSMLModelManager {
     if let path = pathDirectory {
       try? fileManager.removeItem(at: path)
     }
+  }
+
+  func setup(settings: MLModelDownloadSettings?) {
     loadVersion { [self] (result) in
       switch result {
       case .success(let versions):
         //print("File", "Success getting Version")
-        guard let interface = versions.interfaces[mlInterfaceVersion]?.iOS else { return }
+        guard let interface = versions.interfaces[settings?.interfaceVersion ?? mlInterfaceVersion]?.iOS else { return }
         var version: MLInterfaceVersions.Interface.Device.Version?
-        if let v = interface.versions[interface.latestVersion], !v.deprecated {
+        if let v = interface.versions[settings?.modelVersion ?? interface.latestVersion], !v.deprecated {
           version = v
         } else if let v = interface.versions.first(where: { !$0.value.deprecated }) {
           version = v.value
         }
         guard let version = version else { return }
+        currentVersion = version
+        _params = VPSModelParams(frameSize: version.frameSize, useSmooting: version.smoothing)
         loadModel(version: version) { [self] (error) in
-          currentVersion = version
           if let error = error {
             print("File", "Error getting MLModel", error)
             return
@@ -65,7 +70,7 @@ class VSMLModelManager {
               //print("File", "Success", url)
               let config = MLModelConfiguration()
               config.computeUnits = .cpuOnly
-              _model = try! MLModel(contentsOf: url, configuration: config)
+              _model = try? MLModel(contentsOf: url, configuration: config)
               //let parameter = try! self.model.parameterValue(for: .biases)
               //print("File", "Parameter", parameter)
               if let path = self.pathDirectory {
@@ -166,6 +171,11 @@ class VSMLModelManager {
 }
 
 extension VSMLModelManager: VPSModelManager {
+  var params: VPSModelParams? {
+    guard let params = _params else { return nil }
+    return params
+  }
+
   var model: MLModel? {
     guard let model = _model else { return nil }
     return model
@@ -189,5 +199,15 @@ extension Array {
   func split(into size: Int) -> [[Element]] {
     stride(from: 0, to: count, by: size)
       .map { Array(self[$0..<Swift.min($0 + size, count)]) }
+  }
+}
+
+public struct MLModelDownloadSettings {
+  public let interfaceVersion: String
+  public let modelVersion: String?
+
+  public init(interfaceVersion: String, modelVersion: String?) {
+    self.interfaceVersion = interfaceVersion
+    self.modelVersion = modelVersion
   }
 }

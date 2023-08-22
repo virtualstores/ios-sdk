@@ -30,10 +30,10 @@ internal class CoordinateEventDetector: EventDetector {
     func updateInAndOut() {
         var triggers: [InAndOutRadius.Trigger] = []
 
-        events.forEach { event in
-            guard let trigger = event.eventType.getTrigger().coordinateTrigger else { return }
-            triggers.append(InAndOutRadius.Trigger(id: event.name, centerPoint: trigger.point, radius: trigger.radius))
-            triggersAndEvents[event.name] = (event, trigger)
+        events.forEach { (event) in
+            guard let id = event.id, let trigger = event.eventType.getTrigger().coordinateTrigger else { return }
+            triggers.append(InAndOutRadius.Trigger(id: id, centerPoint: trigger.point, radius: trigger.radius))
+            triggersAndEvents[id] = (event, trigger)
         }
 
         inAndOut = InAndOutRadius(triggers: triggers)
