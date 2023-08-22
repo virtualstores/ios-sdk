@@ -1,0 +1,146 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 5.8.1 (swiftlang-5.8.0.124.5 clang-1403.0.22.11.100)
+// swift-module-flags: -target x86_64-apple-ios13.0-simulator -enable-objc-interop -enable-library-evolution -swift-version 5 -enforce-exclusivity=checked -O -module-name VSPositionKit
+import Combine
+import CoreFoundation
+import CoreGraphics
+import CoreLocation
+import CoreML
+import CoreMotion
+import Foundation
+import Swift
+import UIKit
+import VSFoundation
+import VSSensorFusion
+import _Concurrency
+import _StringProcessing
+import vps
+public protocol IFloorChangeDelegate {
+  func onDetectedFloorChange(floorDifference: Swift.Int, timestamp: Swift.Int)
+}
+public struct PositionKitConfig : VSFoundation.Config {
+  public init()
+  public func configure(_ injector: VSFoundation.Injector)
+}
+public protocol IPositionKit {
+  var locationHeadingPublisher: Combine.CurrentValueSubject<CoreLocation.CLHeading, any Swift.Error> { get }
+  var recordingPublisher: Combine.CurrentValueSubject<(identifier: Swift.String, data: Swift.String, sessionId: Swift.String, lastFile: Swift.Bool)?, Swift.Never> { get }
+  var outputSignalPublisher: Combine.CurrentValueSubject<VSFoundation.VPSOutputSignal?, Swift.Never> { get }
+  func start() throws
+  func stop(stopSensors: Swift.Bool)
+  func setBackgroundAccess(isActive: Swift.Bool)
+  func prepareAngle()
+  func setupMapFence(with mapData: VSFoundation.MapFence, rtlsOption: VSFoundation.RtlsOptions, floorheight: Swift.Double, parameterPackage: VSFoundation.ParameterPackage, userController: any VSFoundation.IUserController, positionServiceSettings: VSFoundation.PositionServiceSettings?, converter: any VSFoundation.ICoordinateConverter, modelManger: any VSFoundation.VPSModelManager)
+  func startNavigation(positions: [CoreFoundation.CGPoint], syncPosition: Swift.Bool, syncAngle: Swift.Bool, angle: Swift.Double, uncertainAngle: Swift.Bool)
+  func syncPosition(positions: [CoreFoundation.CGPoint], syncPosition: Swift.Bool, syncAngle: Swift.Bool, angle: Swift.Double, uncertainAngle: Swift.Bool)
+}
+public enum PositionKitError : Swift.Error {
+  case noPositions
+  case noDirection
+  case alreadyStarted
+  case noRealWorldOffset
+  public static func == (a: VSPositionKit.PositionKitError, b: VSPositionKit.PositionKitError) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+extension VSPositionKit.PositionKitError : Foundation.LocalizedError {
+  public var errorDescription: Swift.String? {
+    get
+  }
+}
+final public class PositionManager : VSPositionKit.IPositionKit {
+  final public var locationHeadingPublisher: Combine.CurrentValueSubject<CoreLocation.CLHeading, any Swift.Error>
+  final public var recordingPublisher: Combine.CurrentValueSubject<(identifier: Swift.String, data: Swift.String, sessionId: Swift.String, lastFile: Swift.Bool)?, Swift.Never>
+  final public var outputSignalPublisher: Combine.CurrentValueSubject<VSFoundation.VPSOutputSignal?, Swift.Never>
+  final public var rtlsOption: VSFoundation.RtlsOptions?
+  public init()
+  final public func setupMapFence(with mapData: VSFoundation.MapFence, rtlsOption: VSFoundation.RtlsOptions, floorheight: Swift.Double = 3.6, parameterPackage: VSFoundation.ParameterPackage, userController: any VSFoundation.IUserController, positionServiceSettings: VSFoundation.PositionServiceSettings?, converter: any VSFoundation.ICoordinateConverter, modelManger: any VSFoundation.VPSModelManager)
+  final public func start() throws
+  final public func startNavigation(positions: [CoreFoundation.CGPoint], syncPosition: Swift.Bool, syncAngle: Swift.Bool, angle: Swift.Double, uncertainAngle: Swift.Bool)
+  final public func syncPosition(positions: [CoreFoundation.CGPoint], syncPosition: Swift.Bool, syncAngle: Swift.Bool, angle: Swift.Double, uncertainAngle: Swift.Bool)
+  final public func startRecording()
+  final public func stop(stopSensors: Swift.Bool = true)
+  final public func stopRecording()
+  final public func setBackgroundAccess(isActive: Swift.Bool)
+  final public func prepareAngle()
+  @objc deinit
+}
+public struct PositionKitTestConfig : VSFoundation.Config {
+  public init()
+  public func configure(_ injector: VSFoundation.Injector)
+}
+public protocol IDataCommunicator {
+  func onNewCoefficients(slope: Swift.Double, intercept: Swift.Double)
+  func onNewRegressionVectors(alpha: [Swift.Double], beta: [Swift.Double], y: [Swift.Double])
+  func getRegressionVectors() -> VSPositionKit.RegressionVectors?
+}
+public struct RegressionVectors {
+}
+@_hasMissingDesignatedInitializers public class MapFenceData {
+  public func isRightAisle(p1: CoreFoundation.CGPoint, p2: CoreFoundation.CGPoint) -> Swift.Bool
+  @objc deinit
+}
+@_hasMissingDesignatedInitializers public class MapFenceFactory {
+  public static func getMapFenceData(fromMapFence mapFence: VSFoundation.MapFence) -> VSPositionKit.MapFenceData
+  @objc deinit
+}
+@_hasMissingDesignatedInitializers final public class VPSRecorder {
+  final public var dataPublisher: Combine.CurrentValueSubject<(identifier: Swift.String, data: Swift.String, sessionId: Swift.String, lastFile: Swift.Bool)?, Swift.Never>
+  @objc deinit
+}
+extension VSPositionKit.VPSRecorder : vps.Uploader {
+  @objc final public func onPartialUpload(dataPackage: vps.PartitionRecorderDataPackage)
+  @objc final public func onEndUpload(dataPackage: vps.PartitionRecorderDataPackage)
+}
+final public class VPSPathfinderAdapter : VSFoundation.IPathfinder {
+  final public var currentGoalUpdatedPublisher: Combine.CurrentValueSubject<VSFoundation.Goal?, Swift.Never>
+  final public var sortedGoalUpdatedPublisher: Combine.CurrentValueSubject<[VSFoundation.Goal]?, Swift.Never>
+  final public var pathUpdatedPublisher: Combine.CurrentValueSubject<VSFoundation.Path?, Swift.Never>
+  final public var hasGoal: Combine.CurrentValueSubject<Swift.Bool, Swift.Never> {
+    get
+  }
+  public init(converter: any VSFoundation.ICoordinateConverter, height: Swift.Double, width: Swift.Double, pixelsPerMeter: Swift.Float, navGraph: VSFoundation.TT2NavGraph, startPosition: CoreFoundation.CGPoint, stopPosition: CoreFoundation.CGPoint, pathRefreshDistance: Swift.Float = 100.0)
+  final public func setUserPosition(position: CoreFoundation.CGPoint?)
+  final public func add(goal: VSFoundation.Goal, completion: @escaping () -> Swift.Void)
+  final public func add(goals: [VSFoundation.Goal], completion: @escaping () -> Swift.Void)
+  final public func set(goals: [VSFoundation.Goal], completion: @escaping () -> Swift.Void)
+  final public func remove(id: Swift.String, completion: @escaping () -> Swift.Void)
+  final public func remove(ids: [Swift.String], completion: @escaping () -> Swift.Void)
+  final public func popGoal()
+  final public func forceRefresh(withTSP: Swift.Bool, overridePosition: CoreFoundation.CGPoint?, completion: @escaping () -> Swift.Void)
+  @objc deinit
+}
+extension VSPositionKit.VPSPathfinderAdapter : vps.IPathfinderListener {
+  @objc final public var id: Swift.String {
+    @objc get
+  }
+  @objc final public func onCurrentGoalUpdated(goal: (any vps.IPathfinderGoal)?)
+  @objc final public func onPathUpdated(path: any vps.IPathfinderPath)
+  @objc final public func onSortedGoalUpdated(goals: [any vps.IPathfinderGoal])
+}
+public let vpsVersion: Swift.String
+public let velocityModelInterfaceVersion: Swift.String
+final public class VPSSensorManager {
+  public init(sensorManager: VSSensorFusion.SensorManager)
+  @objc deinit
+  final public func start() throws
+  final public func startMotion() throws
+  final public func startAltimeter() throws
+  final public func stop()
+  final public func stopMotion()
+  final public func stopAltimeter()
+}
+public enum VPSWrapperError : Swift.Error {
+  case noData
+  public static func == (a: VSPositionKit.VPSWrapperError, b: VSPositionKit.VPSWrapperError) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+extension VSPositionKit.PositionKitError : Swift.Equatable {}
+extension VSPositionKit.PositionKitError : Swift.Hashable {}
+extension VSPositionKit.VPSWrapperError : Swift.Equatable {}
+extension VSPositionKit.VPSWrapperError : Swift.Hashable {}

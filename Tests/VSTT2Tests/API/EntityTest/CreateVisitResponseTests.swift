@@ -7,7 +7,7 @@
 
 import XCTest
 //@testable import VSEngineWrapper
-import VSTT2
+@testable import VSTT2
 
 extension String {
     static var createVisitResponseFixture: String {

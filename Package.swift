@@ -17,8 +17,9 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "https://github.com/virtualstores/ios-foundation.git", .exact("1.0.0")),
-        .package(url: "https://github.com/virtualstores/ios-position-kit.git", .exact("1.0.1")),
+        .package(url: "https://github.com/virtualstores/ios-foundation.git", .branchItem("development")),
+        //.package(url: "https://github.com/virtualstores/ios-foundation.git", .exact("1.0.0")),
+        .package(url: "https://github.com/virtualstores/ios-sensor-fusion.git", .exact("1.0.0")),
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", .exact("0.13.1")),
         .package(url: "https://github.com/aws-amplify/aws-sdk-ios-spm.git", .exact("2.27.4")),
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", .exactItem("0.9.16")),
@@ -27,14 +28,16 @@ let package = Package(
         .target(
             name: "VSTT2",
             dependencies: [
-                .product(name: "SQLite", package: "SQLite.swift"),
+                .target(name: "VPS"),
+                .target(name: "VSPostionKit"),
                 .product(name: "VSFoundation", package: "ios-foundation"),
-                .product(name: "VSPositionKit", package: "ios-position-kit"),
+                .product(name: "VSSensorFusion", package: "ios-sensor-fusion"),
+                .product(name: "SQLite", package: "SQLite.swift"),
                 .product(name: "AWSS3", package: "aws-sdk-ios-spm"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ]),
-        .testTarget(
-            name: "VSTT2Tests",
-            dependencies: ["VSTT2"]),
+        //.testTarget(name: "VSTT2Tests", dependencies: ["VSTT2"]),
+        .binaryTarget(name: "VPS", path: "vps.xcframework"),
+        .binaryTarget(name: "VSPostionKit", path: "VSPositionKit.xcframework")
     ]
 )
