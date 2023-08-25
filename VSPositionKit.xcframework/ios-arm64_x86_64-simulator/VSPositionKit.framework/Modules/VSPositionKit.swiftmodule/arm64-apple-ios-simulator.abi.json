@@ -16,26 +16,6 @@
       },
       {
         "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "RawDocComment"
-        ]
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "RawDocComment"
-        ]
-      },
-      {
-        "kind": "Import",
         "name": "VSFoundation",
         "printedName": "VSFoundation",
         "declKind": "Import",
@@ -2507,255 +2487,6 @@
         "declAttributes": [
           "RawDocComment"
         ]
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "RawDocComment"
-        ]
-      },
-      {
-        "kind": "TypeDecl",
-        "name": "IDataCommunicator",
-        "printedName": "IDataCommunicator",
-        "children": [
-          {
-            "kind": "Function",
-            "name": "onNewCoefficients",
-            "printedName": "onNewCoefficients(slope:intercept:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "Double",
-                "printedName": "Swift.Double",
-                "usr": "s:Sd"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "Double",
-                "printedName": "Swift.Double",
-                "usr": "s:Sd"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "s:13VSPositionKit17IDataCommunicatorP17onNewCoefficients5slope9interceptySd_SdtF",
-            "mangledName": "$s13VSPositionKit17IDataCommunicatorP17onNewCoefficients5slope9interceptySd_SdtF",
-            "moduleName": "VSPositionKit",
-            "genericSig": "<τ_0_0 where τ_0_0 : VSPositionKit.IDataCommunicator>",
-            "sugared_genericSig": "<Self where Self : VSPositionKit.IDataCommunicator>",
-            "protocolReq": true,
-            "declAttributes": [
-              "RawDocComment"
-            ],
-            "reqNewWitnessTableEntry": true,
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "onNewRegressionVectors",
-            "printedName": "onNewRegressionVectors(alpha:beta:y:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "Array",
-                "printedName": "[Swift.Double]",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Double",
-                    "printedName": "Swift.Double",
-                    "usr": "s:Sd"
-                  }
-                ],
-                "usr": "s:Sa"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "Array",
-                "printedName": "[Swift.Double]",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Double",
-                    "printedName": "Swift.Double",
-                    "usr": "s:Sd"
-                  }
-                ],
-                "usr": "s:Sa"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "Array",
-                "printedName": "[Swift.Double]",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Double",
-                    "printedName": "Swift.Double",
-                    "usr": "s:Sd"
-                  }
-                ],
-                "usr": "s:Sa"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "s:13VSPositionKit17IDataCommunicatorP22onNewRegressionVectors5alpha4beta1yySaySdG_A2HtF",
-            "mangledName": "$s13VSPositionKit17IDataCommunicatorP22onNewRegressionVectors5alpha4beta1yySaySdG_A2HtF",
-            "moduleName": "VSPositionKit",
-            "genericSig": "<τ_0_0 where τ_0_0 : VSPositionKit.IDataCommunicator>",
-            "sugared_genericSig": "<Self where Self : VSPositionKit.IDataCommunicator>",
-            "protocolReq": true,
-            "reqNewWitnessTableEntry": true,
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "getRegressionVectors",
-            "printedName": "getRegressionVectors()",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Optional",
-                "printedName": "VSPositionKit.RegressionVectors?",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "RegressionVectors",
-                    "printedName": "VSPositionKit.RegressionVectors",
-                    "usr": "s:13VSPositionKit17RegressionVectorsV"
-                  }
-                ],
-                "usr": "s:Sq"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "s:13VSPositionKit17IDataCommunicatorP20getRegressionVectorsAA0fG0VSgyF",
-            "mangledName": "$s13VSPositionKit17IDataCommunicatorP20getRegressionVectorsAA0fG0VSgyF",
-            "moduleName": "VSPositionKit",
-            "genericSig": "<τ_0_0 where τ_0_0 : VSPositionKit.IDataCommunicator>",
-            "sugared_genericSig": "<Self where Self : VSPositionKit.IDataCommunicator>",
-            "protocolReq": true,
-            "declAttributes": [
-              "RawDocComment"
-            ],
-            "reqNewWitnessTableEntry": true,
-            "funcSelfKind": "NonMutating"
-          }
-        ],
-        "declKind": "Protocol",
-        "usr": "s:13VSPositionKit17IDataCommunicatorP",
-        "mangledName": "$s13VSPositionKit17IDataCommunicatorP",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "AccessControl"
-        ]
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "RawDocComment"
-        ]
-      },
-      {
-        "kind": "Import",
-        "name": "VSFoundation",
-        "printedName": "VSFoundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit"
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "RawDocComment"
-        ]
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "RawDocComment"
-        ]
-      },
-      {
-        "kind": "Import",
-        "name": "VSFoundation",
-        "printedName": "VSFoundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit"
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "RawDocComment"
-        ]
-      },
-      {
-        "kind": "TypeDecl",
-        "name": "RegressionVectors",
-        "printedName": "RegressionVectors",
-        "declKind": "Struct",
-        "usr": "s:13VSPositionKit17RegressionVectorsV",
-        "mangledName": "$s13VSPositionKit17RegressionVectorsV",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "AccessControl"
-        ]
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "RawDocComment"
-        ]
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit",
-        "declAttributes": [
-          "RawDocComment"
-        ]
-      },
-      {
-        "kind": "Import",
-        "name": "VSFoundation",
-        "printedName": "VSFoundation",
-        "declKind": "Import",
-        "moduleName": "VSPositionKit"
       },
       {
         "kind": "Import",
@@ -5390,14 +5121,14 @@
     {
       "filePath": "\/Users\/theodoreroos\/Documents\/Work\/xcodeprojects.nosync\/GitHub\/ios-position-kit\/Sources\/VSPositionKit\/Extensions\/VPS+Extension.swift",
       "kind": "IntegerLiteral",
-      "offset": 1040,
+      "offset": 1035,
       "length": 1,
       "value": "0"
     },
     {
       "filePath": "\/Users\/theodoreroos\/Documents\/Work\/xcodeprojects.nosync\/GitHub\/ios-position-kit\/Sources\/VSPositionKit\/Extensions\/VPS+Extension.swift",
       "kind": "StringLiteral",
-      "offset": 1438,
+      "offset": 1433,
       "length": 61,
       "value": "\"Failed to parse IPathfinderGoalType in VPSPathfinderAdapter\""
     },
@@ -5554,41 +5285,6 @@
       "offset": 9517,
       "length": 1,
       "value": "0"
-    },
-    {
-      "filePath": "\/Users\/theodoreroos\/Documents\/Work\/xcodeprojects.nosync\/GitHub\/ios-position-kit\/Sources\/VSPositionKit\/StepEventBasedML\/Models\/BasicAlgo.swift",
-      "kind": "BooleanLiteral",
-      "offset": 330,
-      "length": 5,
-      "value": "false"
-    },
-    {
-      "filePath": "\/Users\/theodoreroos\/Documents\/Work\/xcodeprojects.nosync\/GitHub\/ios-position-kit\/Sources\/VSPositionKit\/StepEventBasedML\/Models\/BasicAlgo.swift",
-      "kind": "StringLiteral",
-      "offset": 417,
-      "length": 87,
-      "value": "\"\""
-    },
-    {
-      "filePath": "\/Users\/theodoreroos\/Documents\/Work\/xcodeprojects.nosync\/GitHub\/ios-position-kit\/Sources\/VSPositionKit\/StepEventBasedML\/Models\/BasicAlgo.swift",
-      "kind": "StringLiteral",
-      "offset": 486,
-      "length": 1,
-      "value": "\": already started\""
-    },
-    {
-      "filePath": "\/Users\/theodoreroos\/Documents\/Work\/xcodeprojects.nosync\/GitHub\/ios-position-kit\/Sources\/VSPositionKit\/StepEventBasedML\/Models\/BasicAlgo.swift",
-      "kind": "BooleanLiteral",
-      "offset": 526,
-      "length": 4,
-      "value": "true"
-    },
-    {
-      "filePath": "\/Users\/theodoreroos\/Documents\/Work\/xcodeprojects.nosync\/GitHub\/ios-position-kit\/Sources\/VSPositionKit\/StepEventBasedML\/Models\/BasicAlgo.swift",
-      "kind": "BooleanLiteral",
-      "offset": 567,
-      "length": 5,
-      "value": "false"
     },
     {
       "filePath": "\/Users\/theodoreroos\/Documents\/Work\/xcodeprojects.nosync\/GitHub\/ios-position-kit\/Sources\/VSPositionKit\/VPS\/FloorLevelData.swift",

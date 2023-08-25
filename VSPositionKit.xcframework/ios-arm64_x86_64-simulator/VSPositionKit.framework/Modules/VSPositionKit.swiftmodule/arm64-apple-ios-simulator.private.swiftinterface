@@ -71,13 +71,6 @@ public struct PositionKitTestConfig : VSFoundation.Config {
   public init()
   public func configure(_ injector: VSFoundation.Injector)
 }
-public protocol IDataCommunicator {
-  func onNewCoefficients(slope: Swift.Double, intercept: Swift.Double)
-  func onNewRegressionVectors(alpha: [Swift.Double], beta: [Swift.Double], y: [Swift.Double])
-  func getRegressionVectors() -> VSPositionKit.RegressionVectors?
-}
-public struct RegressionVectors {
-}
 @_hasMissingDesignatedInitializers public class MapFenceData {
   public func isRightAisle(p1: CoreFoundation.CGPoint, p2: CoreFoundation.CGPoint) -> Swift.Bool
   @objc deinit
