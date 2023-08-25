@@ -10,6 +10,7 @@ import Combine
 import CoreML
 import VSFoundation
 import ZIPFoundation
+import vps
 
 class VSMLModelManager {
   @Inject var mlInterfaceVersionService: MLInterfaceVersionsService
@@ -139,7 +140,7 @@ class VSMLModelManager {
 
   func decrypt(id: String, at sourceURL: URL) throws -> Data? {
     guard let data = fileManager.contents(atPath: sourceURL.relativePath) else { throw NSError(domain: "Gunnis did not like this", code: 500) }
-    return CommonCryptoAES(key: id.gunnis, data: data).decrypt()
+    return CommonCryptoAES(key: Gunnis().gunnis(input: id), data: data).decrypt()
   }
 
   func compileModel(completion: @escaping (Result<URL, Error>) -> Void) {
@@ -179,19 +180,6 @@ extension VSMLModelManager: VPSModelManager {
   var model: MLModel? {
     guard let model = _model else { return nil }
     return model
-  }
-}
-
-extension String {
-  var gunnis: String {
-    self + replacingOccurrences(of: "-", with: "8")
-      .replacingOccurrences(of: "0", with: "9")
-      .map { Int(String($0), radix: 16) }
-      .compactMap { $0 }
-      .split(into: 4)
-      .map { $0.reduce(1) { ($0 * $1) % 9999 } }
-      .map { String(format: "%04d", $0) }
-      .joined()
   }
 }
 
