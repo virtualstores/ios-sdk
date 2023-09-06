@@ -23,6 +23,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var zoneManager: TT2ZoneManager
     @Inject var eventManager: TT2EventManager
     @Inject var mlModelManager: VSMLModelManager
+    @Inject var navigationManager: Navigation
 
     var accuracyUploader: AccuracyUploader?
     var stepEventUploader: StepEventUploader?
@@ -285,6 +286,21 @@ private extension TT2AnalyticsManager {
                 Logger(verbosity: .debug).log(message: "\(request.name), uploadTriggerEvents success")
             }).store(in: &cancellable)
     }
+
+    func getVPSParams() -> String {
+      var string = "{"
+      navigationManager
+        .positionKitManager
+        .vpsParams
+        .sorted(by: {
+          guard let key1 = Int($0.key), let key2 = Int($1.key) else { return $0.key < $1.key }
+          return key1 < key2
+        })
+        .forEach { string = string + "\($0.key)=\($0.value), " }
+      if string.hasSuffix(", ") { string.removeLast(2) }
+      string = string + "}"
+      return string
+    }
 }
 
 private extension TT2AnalyticsManager {
@@ -297,7 +313,8 @@ private extension TT2AnalyticsManager {
       "tt2DeviceOs" : UIDevice.current.systemName,
       "tt2DeviceOsVersion" : UIDevice.current.systemVersion,
       "tt2MLActive" : "false",
-      "tt2VelocityModelName": mlModelManager.currentVersion?.name ?? ""
+      "tt2VelocityModelName": mlModelManager.currentVersion?.name ?? "",
+      "tt2SdkVpsSettings": getVPSParams()
     ]
   }
 

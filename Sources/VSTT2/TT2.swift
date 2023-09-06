@@ -12,7 +12,7 @@ import VSPositionKit
 import CoreGraphics
 import UIKit
 
-let version = "1.1.3"
+let version = "2.0.1"
 
 final public class TT2: ITT2 {
     public var initialized: Bool { _tt2Internal != nil }
@@ -33,6 +33,7 @@ final public class TT2: ITT2 {
     public private(set) var mapData: MapData?
     public private(set) var map: Map?
     public private(set) var mapZonesTree: Tree?
+
 
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
