@@ -58,13 +58,13 @@ class VSMLModelManager {
           version = v.value
         }
         guard let version = version else { return }
-        currentVersion = version
         _params = VPSModelParams(frameSize: version.frameSize, useSmooting: version.smoothing)
         loadModel(version: version) { [self] (error) in
           if let error = error {
             print("File", "Error getting MLModel", error)
             return
           }
+          currentVersion = version
           compileModel { [self] (result) in
             switch result {
             case .success(let url):
@@ -140,7 +140,7 @@ class VSMLModelManager {
 
   func decrypt(id: String, at sourceURL: URL) throws -> Data? {
     guard let data = fileManager.contents(atPath: sourceURL.relativePath) else { throw NSError(domain: "Gunnis did not like this", code: 500) }
-    return CommonCryptoAES(key: Gunnis().gunnis(input: id), data: data).decrypt()
+    return CommonCryptoAES(key: id.gunnis, data: data).decrypt()
   }
 
   func compileModel(completion: @escaping (Result<URL, Error>) -> Void) {
@@ -181,6 +181,10 @@ extension VSMLModelManager: VPSModelManager {
     guard let model = _model else { return nil }
     return model
   }
+}
+
+extension String {
+  var gunnis: String { Gunnis().gunnis(input: self) }
 }
 
 extension Array {

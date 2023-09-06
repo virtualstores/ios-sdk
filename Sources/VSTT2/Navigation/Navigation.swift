@@ -16,6 +16,7 @@ final public class Navigation: INavigation {
     @Inject var positionKitManager: PositionManager
     @Inject var floor: VSTT2FloorManager
     @Inject var positionManager: Position
+    @Inject var modelManager: VSMLModelManager
 
     public var currentPosition: CGPoint?
     public private(set) var isActive: Bool = false {
@@ -57,6 +58,7 @@ final public class Navigation: INavigation {
 
 public extension Navigation {
     func start(startPosition: CGPoint, startAngle: Double) throws {
+        guard modelManager.model != nil else { throw VSTT2Error.missingData }
         guard !isActive else {
             self.stop()
             var err: Error?
@@ -102,6 +104,7 @@ public extension Navigation {
     }
 
     func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
+        guard modelManager.model != nil else { throw VSTT2Error.missingData }
         guard let heading = heading, !isActive else {
             self.stop()
             var err: Error?
