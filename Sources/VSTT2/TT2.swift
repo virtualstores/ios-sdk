@@ -12,7 +12,7 @@ import VSPositionKit
 import CoreGraphics
 import UIKit
 
-let version = "2.0.1"
+let version = "2.0.2"
 
 final public class TT2: ITT2 {
     public var initialized: Bool { _tt2Internal != nil }
@@ -63,7 +63,6 @@ final public class TT2: ITT2 {
     }
 
     deinit {
-        Injector.reset()
         _tt2Internal = nil
         cancellable.removeAll()
         wifiCancellable.removeAll()
@@ -108,14 +107,18 @@ final public class TT2: ITT2 {
               group.enter()
               if let rtls = currentStore.rtlsOptions.first(where: { $0.isDefault }) {
                   self.setActiveFloor(rtls: rtls) { (error) in
-                      completion(error)
+                      if let error = error {
+                          completion(error)
+                      }
                       self.mapData?.swapLocations = swapLocations
                       group.leave()
                   }
               } else {
                   guard let rtls = currentStore.rtlsOptions.first else { return }
                   self.setActiveFloor(rtls: rtls) { (error) in
-                      completion(error)
+                      if let error = error {
+                          completion(error)
+                      }
                       self.mapData?.swapLocations = swapLocations
                       group.leave()
                   }
@@ -139,6 +142,7 @@ final public class TT2: ITT2 {
                       self.tt2Internal.analytics.accuracyUploader = AccuracyUploader(store: currentStore, client: client, converter: converter)
                       self.tt2Internal.deviceOrientationUploader = DeviceOrientationUploader(store: currentStore, client: client)
                   }
+                  completion(nil)
               }
             case .failure(let error): completion(error)
             }
@@ -303,7 +307,7 @@ private extension TT2 {
             rtlsOption: rtlsOption,
             floorheight: floorHeightDiff,
             parameterPackage: positionKitParams,
-            userController: user,
+            automaticSensorRecording: tt2Internal.automaticSensorRecording,
             positionServiceSettings: tt2Internal.activeStore.positionServiceSettings,
             converter: converter,
             modelManger: tt2Internal.mlModelManager

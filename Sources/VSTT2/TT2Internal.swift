@@ -115,7 +115,6 @@ internal class TT2Internal {
         }
     }
     
-    
     private func bindPublishers() {
         navigation.isActivePublisher
           .sink { [weak self] (isActive) in
@@ -146,10 +145,15 @@ internal class TT2Internal {
                 navigation.currentPosition = position.position
                 floorManager.onNewPostion(location: position.position)
                 mapController?.updateUserLocation(newLocation: position.position, std: position.std)
-                analytics.onNewPositionBundle(point: position.position)
+                analytics.onNewPositionBundle(position: position)
               case .ux(position: let position): break
                 //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
-              case .ml(position: let position): break
+              case .ml(position: let position):
+                if navigation.positionKitManager.isRecording {
+                  if let id = floorManager.activeFloor?.id {
+                    analytics.addMLPositions(id: id, position: position)
+                  }
+                }
               case .rotation(heading: let heading):
                 let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
                 self.mapController?.updateUserDirection(newDirection: heading)

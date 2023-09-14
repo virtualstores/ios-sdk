@@ -10,11 +10,11 @@ import Foundation
 struct RecordedPosition: Codable {
     let xPosition: Double
     let yPosition: Double
-    let timeStamp: String
+    let timestamp: String
     
     private enum CodingKeys: String, CodingKey {
         case xPosition = "x"
         case yPosition = "y"
-        case timeStamp = "timeStamp"
+        case timestamp = "timestamp"
     }
 }

@@ -19,7 +19,7 @@ final class PositionUploadWorker {
         object.key = id
         object.xPosition = xPosition
         object.yPosition = yPosition
-        object.timeStamp = time
+        object.timestamp = time
         object.status = uploadStatus.rawValue
         object.visitId = visitId
 
@@ -39,8 +39,8 @@ final class PositionUploadWorker {
         updateObjectStatus(objects: positions, status: .inProgress)
         
         positions.forEach { (object) in
-            if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key, let id = object.visitId {
-                let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timeStamp: timeStamp)
+            if let xPosition = object.xPosition, let yPosition = object.yPosition, let timestamp = object.timestamp, let key = object.key, let id = object.visitId {
+                let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timestamp: timestamp)
                 if pointsList[id] == nil {
                     pointsList[id] = [:]
                 }
@@ -58,8 +58,8 @@ final class PositionUploadWorker {
     func getAllPoints() -> [Int64: [String: [RecordedPosition]]] {
         var pointsList: [Int64: [String: [RecordedPosition]]] = [:]
         positionObjects.forEach { (object) in
-            if let xPosition = object.xPosition, let yPosition = object.yPosition, let timeStamp = object.timeStamp, let key = object.key, let id = object.visitId {
-                let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timeStamp: timeStamp)
+            if let xPosition = object.xPosition, let yPosition = object.yPosition, let timestamp = object.timestamp, let key = object.key, let id = object.visitId {
+                let recordedPosition = RecordedPosition(xPosition: xPosition, yPosition: yPosition, timestamp: timestamp)
                 if pointsList[id] == nil {
                     pointsList[id] = [:]
                 }

@@ -103,6 +103,9 @@ final public class TT2AnalyticsManager: TT2Analytics {
             zoneManager.stopped(currentPosition: point)
             currentPosition = nil
         }
+        if let event = mlPositionsToTriggerEvent() {
+          addTriggerEvent(for: event)
+        }
         let parameters = StopVisitParameters(
           requestId: UUID().uuidString.uppercased(),
           visitId: visitId,
@@ -121,19 +124,40 @@ final public class TT2AnalyticsManager: TT2Analytics {
             }.store(in: &cancellable)
     }
 
+    var recordedMLPositions: [Int64: [RecordedPosition]] = [:]
+    func addMLPositions(id: Int64, position: VPSOutputSignal.Position) {
+      let position = RecordedPosition(xPosition: position.position.x, yPosition: position.position.y, timestamp: DateFormatter.standardFormatter.string(from: position.timestamp))
+      if recordedMLPositions[id] == nil { recordedMLPositions[id] = [] }
+      recordedMLPositions[id]?.append(position)
+    }
+
+    struct MLPositionRecording: Codable {
+      let positions: [RecordedPosition]
+    }
+
+    func mlPositionsToTriggerEvent() -> TriggerEvent? {
+      defer { recordedMLPositions.removeAll() }
+      guard
+        let id = rtlsOptionId,
+        let json = try? JSONEncoder().encode(recordedMLPositions.flatMap({ $0.value })),
+        let string = String(data: json, encoding: .utf8)
+      else { return nil }
+      return TriggerEvent(id: "", rtlsOptionsId: id, name: "MLPositions", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsTrigger")), tags: ["mlPositions" : string])
+    }
+
     func update(rtlsOptionId: Int64) {
         self.rtlsOptionId = rtlsOptionId
     }
 
     var currentPosition: CGPoint?
-    internal func onNewPositionBundle(point: CGPoint) {
+    internal func onNewPositionBundle(position: VPSOutputSignal.Position) {
         guard Date().timeIntervalSince(latestRecordedPosition) > 0.2 else { return }
         self.latestRecordedPosition = Date()
-        currentPosition = point
+        currentPosition = position.position
         if let id = rtlsOptionId, isRecording {
-            recordPosition(rtlsOptionId: id, point: point)
-            zoneManager.onNewPosition(currentPosition: point)
-            eventManager.onNewPosition(currentPosition: point)
+            recordPosition(rtlsOptionId: id, position: position)
+            zoneManager.onNewPosition(currentPosition: position.position)
+            eventManager.onNewPosition(currentPosition: position.position)
         }
     }
     
@@ -230,11 +254,11 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
 private extension TT2AnalyticsManager {
     // MARK: Heatmap data
-    func recordPosition(rtlsOptionId: Int64, point: CGPoint) {
+    func recordPosition(rtlsOptionId: Int64, position: VPSOutputSignal.Position) {
         recordedPositionsCount += 1
-        let time = DateFormatter.standardFormatter.string(from: Date())
+        let time = DateFormatter.standardFormatter.string(from: position.timestamp)
         if let id = visitId {
-            positionUploadWorker.insert(id: String(rtlsOptionId), xPosition: Double(point.x), yPosition: Double(point.y), time: time, uploadStatus: .pending, visitId: id)
+            positionUploadWorker.insert(id: String(rtlsOptionId), xPosition: Double(position.position.x), yPosition: Double(position.position.y), time: time, uploadStatus: .pending, visitId: id)
         }
         if self.checkIfPartialUpload() {
             positionUploadWorker.getPoints().forEach { (key, value) in

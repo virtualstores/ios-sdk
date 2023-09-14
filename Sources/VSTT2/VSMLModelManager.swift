@@ -46,6 +46,9 @@ class VSMLModelManager {
   }
 
   func setup(settings: MLModelDownloadSettings?) {
+    if let path = pathDirectory {
+      try? fileManager.removeItem(at: path)
+    }
     loadVersion { [self] (result) in
       switch result {
       case .success(let versions):
