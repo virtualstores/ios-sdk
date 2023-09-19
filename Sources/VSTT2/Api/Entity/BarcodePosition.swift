@@ -8,38 +8,38 @@
 import Foundation
 import CoreGraphics
 
-public struct BarcodePosition: Codable {
-    public let rtlsOptionsId: Int64?
-    public let shelfId: Int64?
-    public let shelfTierId: Int64?
-    public let barcode: String?
-    public let isDisabled: Bool?
-    public let itemPositionX: Double?
-    public let itemPositionY: Double?
-    public let itemPositionOffsetX: Double?
-    public let itemPositionOffsetY: Double?
+struct BarcodePosition: Codable {
+  let rtlsOptionsId: Int64?
+  let shelfId: Int64?
+  let shelfTierId: Int64?
+  let shelfTierPosition: Int64?
+  let barcode: String?
+  let isDisabled: Bool?
+  let itemPositionX: Double?
+  let itemPositionY: Double?
+  let itemPositionOffsetX: Double?
+  let itemPositionOffsetY: Double?
 
-    public var itemPosition: CGPoint? {
-        guard let x = itemPositionX, let y = itemPositionY else { return nil }
+  var itemPosition: CGPoint? {
+    guard let x = itemPositionX, let y = itemPositionY else { return nil }
+    return CGPoint(x: x, y: y)
+  }
 
-        return CGPoint(x: x, y: y)
-    }
+  var itemPositionOffset: CGVector? {
+    guard let x = itemPositionOffsetX, let y = itemPositionOffsetY else { return nil }
+    return CGVector(dx: x, dy: y)
+  }
 
-    public var itemPositionOffset: CGVector? {
-        guard let x = itemPositionOffsetX, let y = itemPositionOffsetY else { return nil }
-
-        return CGVector(dx: x, dy: y)
-    }
-
-    public init(rtlsOptionsId: Int64?, shelfId: Int64?, shelfTierId: Int64?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, barcode: String?, isDisabled: Bool? = nil) {
-        self.rtlsOptionsId = rtlsOptionsId
-        self.shelfId = shelfId
-        self.shelfTierId = shelfTierId
-        self.barcode = barcode
-        self.isDisabled = isDisabled
-        self.itemPositionX = itemPositionX
-        self.itemPositionY = itemPositionY
-        self.itemPositionOffsetX = itemPositionOffsetX
-        self.itemPositionOffsetY = itemPositionOffsetY
-    }
+  init(rtlsOptionsId: Int64?, shelfId: Int64?, shelfTierId: Int64?, shelfTierPosition: Int64?, itemPositionX: Double?, itemPositionY: Double?, itemPositionOffsetX: Double?, itemPositionOffsetY: Double?, barcode: String?, isDisabled: Bool? = nil) {
+    self.rtlsOptionsId = rtlsOptionsId
+    self.shelfId = shelfId
+    self.shelfTierId = shelfTierId
+    self.shelfTierPosition = shelfTierPosition
+    self.barcode = barcode
+    self.isDisabled = isDisabled
+    self.itemPositionX = itemPositionX
+    self.itemPositionY = itemPositionY
+    self.itemPositionOffsetX = itemPositionOffsetX
+    self.itemPositionOffsetY = itemPositionOffsetY
+  }
 }
