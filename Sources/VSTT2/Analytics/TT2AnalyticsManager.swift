@@ -168,12 +168,14 @@ final public class TT2AnalyticsManager: TT2Analytics {
 
     public func postScanEvents(position: ItemPosition) {
         guard let visitId = visitId else { return }
-        
-        let parameters = UploadScanEventsParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), barcode: position.identifier, shelfId: position.shelfId ?? -1, point: position.point, timeStamp: DateFormatter.standardFormatter.string(from: Date()), type: .unknown)
-
         uploadScanEventsService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
+            .call(with: UploadScanEventsParameters(
+                visitId: visitId,
+                requestId: UUID().uuidString.uppercased(),
+                position: position,
+                timestamp: DateFormatter.standardFormatter.string(from: Date()),
+                type: .shelf
+            )).sink(receiveCompletion: { (completion) in
                 switch completion {
                 case .finished: break
                 case .failure(let error): Logger(verbosity: .warning).log(message: error.localizedDescription)

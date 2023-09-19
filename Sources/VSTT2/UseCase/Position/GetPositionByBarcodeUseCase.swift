@@ -44,7 +44,7 @@ class PositionBusiness {
 extension BarcodePosition {
   var toItemPosition: ItemPosition? {
     guard let point = itemPosition, let offset = itemPositionOffset else { return nil }
-    return ItemPosition(point: point, offset: offset, floorLevelId: rtlsOptionsId, shelfId: shelfId, identifier: barcode, isDisabled: isDisabled)
+    return ItemPosition(point: point, offset: offset, floorLevelId: rtlsOptionsId, shelfId: shelfId, shelfTierId: shelfTierId, shelfTierPosition: shelfTierPosition, identifier: barcode, isDisabled: isDisabled)
   }
 }
 

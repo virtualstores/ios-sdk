@@ -9,29 +9,24 @@ import Foundation
 import VSFoundation
 import CoreGraphics
 
+public enum ScanEventType: String {
+    case shelf = "SHELF"
+    case shelfSection = "SHELF_SECTION"
+}
+
 struct UploadScanEventsParameters {
     @Inject var config: EnvironmentConfig
     private let visitId: Int64
     private let requestId: String
-    private let barcode: String
-    private let shelfId: Int64
-    private let point: CGPoint
-    private let timeStamp: String
-    private let scanType: ScanType
+    private let position: ItemPosition
+    private let timestamp: String
+    private let scanType: ScanEventType
 
-    enum ScanType: String {
-        case shelf = "SHELF"
-        case unknown = "UNKNOWN"
-    }
-
-    init(visitId: Int64, requestId: String, barcode: String, shelfId: Int64,
-         point: CGPoint, timeStamp: String, type: ScanType) {
+    init(visitId: Int64, requestId: String, position: ItemPosition, timestamp: String, type: ScanEventType) {
         self.visitId = visitId
         self.requestId = requestId
-        self.barcode = barcode
-        self.shelfId = shelfId
-        self.point = point
-        self.timeStamp = timeStamp
+        self.position = position
+        self.timestamp = timestamp
         self.scanType = type
     }
 }
@@ -46,15 +41,37 @@ extension UploadScanEventsParameters: Routing {
     }
 
     var parameters: Any? {
-        [
-            [
-                "barcode": barcode,
-                "shelfId": shelfId,
-                "x": Double(point.x),
-                "y": Double(point.y),
-                "timestamp": timeStamp,
-                "type": scanType.rawValue
-            ] as [String : Any]
-        ]
+        [ scanType.asParameters(position: position, timestamp: timestamp) ]
     }
+}
+
+extension ScanEventType {
+  func asParameters(position: ItemPosition, timestamp: String) -> [String:Any] {
+    switch self {
+    case .shelf:
+      return [
+        "barcode": position.identifier,
+        "shelfId": position.shelfId as Any,
+        "shelfTierId": position.shelfTierId as Any,
+        "shelfTierPosition": position.shelfTierPosition as Any,
+        "x": Double(position.point.x),
+        "y": Double(position.point.y),
+        "timestamp": timestamp,
+        "type": self.rawValue
+      ]
+    //case .shelfSection:
+    //  return [
+    //    "barcode": position.identifier,
+    //    "shelfSectionId": String(),
+    //    "rtlsOptionsId": Int64(),
+    //    "sectionPosition": Int64(),
+    //    "shelfPositionFromLeftToRight": Int64(),
+    //    "x": Double(position.point.x),
+    //    "y": Double(position.point.y),
+    //    "timestamp": timestamp,
+    //    "type": self.rawValue
+    //  ]
+    default: fatalError("Case not handled, please use .shelf")
+    }
+  }
 }

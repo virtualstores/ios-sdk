@@ -91,7 +91,7 @@ public extension Navigation {
     }
 
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
-        let angle = atan2(-position.offsetPoint.y, -position.offsetPoint.x)*180.0/Double.pi
+        let angle = atan2(-position.offset.dx, -position.offset.dy)*180.0/Double.pi
         guard isActive else {
           try start(startPosition: position.point, startAngle: angle)
           return
