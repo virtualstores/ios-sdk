@@ -105,8 +105,8 @@ public extension Navigation {
     }
 
     func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
-        guard modelManager.model != nil else { throw VSTT2Error.missingData }
-        guard let heading = heading, !isActive else {
+        guard modelManager.model != nil, let heading = heading else { throw VSTT2Error.missingData }
+        guard !isActive else {
             self.stop()
             var err: Error?
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
