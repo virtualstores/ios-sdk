@@ -35,10 +35,11 @@ final public class Navigation: INavigation {
     private var certainAngle: Bool = false
 
     private var heading: TT2Course? {
-        let north = positionKitManager.rtlsOption?.north ?? 0.0
-        let heading = positionKitManager.locationHeadingPublisher.value
-        let course = TT2Course(fromDegrees: -heading.magneticHeading + 90 - north)
-        return course
+        guard
+          let north = positionKitManager.rtlsOption?.north,
+          let heading = positionKitManager.locationHeadingPublisher.value
+        else { return nil }
+        return TT2Course(fromDegrees: -heading.magneticHeading + 90 - north)
     }
 
     private var userStartAngle: TT2Course = TT2Course(fromRadians: 0.0)

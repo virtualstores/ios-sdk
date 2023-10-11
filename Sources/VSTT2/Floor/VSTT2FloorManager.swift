@@ -111,8 +111,7 @@ private extension VSTT2FloorManager {
                 .call(with: parameters)
                 .sink(receiveCompletion: { (completion) in
                     switch completion {
-                    case .finished:
-                        break
+                    case .finished: break
                     case .failure(let error): Logger(verbosity: .debug).log(message: "GetMapFenceDataError \(error)")
                     }
                 }, receiveValue: { [weak self] (data) in
