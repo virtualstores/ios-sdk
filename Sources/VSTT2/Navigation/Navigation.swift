@@ -59,7 +59,7 @@ final public class Navigation: INavigation {
 
 public extension Navigation {
     func start(startPosition: CGPoint, startAngle: Double) throws {
-        guard modelManager.model != nil else { throw VSTT2Error.missingData }
+        guard modelManager.model != nil, modelManager.params != nil else { throw VSTT2Error.missingData }
         guard !isActive else {
             self.stop()
             var err: Error?
@@ -105,7 +105,7 @@ public extension Navigation {
     }
 
     func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
-        guard modelManager.model != nil, let heading = heading else { throw VSTT2Error.missingData }
+        guard modelManager.model != nil, modelManager.params != nil, let heading = heading else { throw VSTT2Error.missingData }
         guard !isActive else {
             self.stop()
             var err: Error?

@@ -29,8 +29,8 @@ public class VSTT2FloorManager: VSTT2Floor {
     public var startCode: PositionedCode? { activeFloor?.scanLocations?.first(where: { $0.type == .start }) }
     public var stopCode: PositionedCode? { activeFloor?.scanLocations?.first(where: { $0.type == .stop }) ?? startCode }
 
-    var mapFence: [Int64: MapFence] = [:]
-    var navgraph: [Int64: Data] = [:]
+    private(set) var mapFence: [Int64: MapFence] = [:]
+    private(set) var navgraph: [Int64: Data] = [:]
 
     private var cancellable = Set<AnyCancellable>()
     private let dispatchGroup = DispatchGroup()
@@ -95,8 +95,10 @@ private extension VSTT2FloorManager {
         getNavGraph()
         
         dispatchGroup.notify(queue: .main) {
-            if let id = self.activeFloor?.id, let mapFance = self.mapFence[id] {
-                completion((mapFence: mapFance, zoneData: self.zoneData))
+            DispatchQueue.main.async {
+                if let id = self.activeFloor?.id, let mapFance = self.mapFence[id] {
+                    completion((mapFence: mapFance, zoneData: self.zoneData))
+                }
             }
         }
     }
@@ -106,17 +108,19 @@ private extension VSTT2FloorManager {
         floors.forEach { (rtls) in
             guard let url = rtls.mapFenceUrl else { return }
             dispatchGroup.enter()
-            let parameters = MapFenceDataParameters(url: url)
             mapFenceDataService
-                .call(with: parameters)
+                .call(with: MapFenceDataParameters(url: url))
                 .sink(receiveCompletion: { (completion) in
                     switch completion {
                     case .finished: break
                     case .failure(let error): Logger(verbosity: .debug).log(message: "GetMapFenceDataError \(error)")
                     }
                 }, receiveValue: { [weak self] (data) in
-                    self?.mapFence[rtls.id] = data
-                    self?.dispatchGroup.leave()
+                  guard let self = self else { return }
+                  DispatchQueue.main.async {
+                    self.mapFence[rtls.id] = data
+                    self.dispatchGroup.leave()
+                  }
                 }).store(in: &cancellable)
         }
     }
@@ -135,8 +139,10 @@ private extension VSTT2FloorManager {
               case .success(let data):
                   let mapData = MapZoneParser.getMapZonesData(fromJsonData: data)
 
-                  self.zoneData[rtls.id] = mapData
-                  self.dispatchGroup.leave()
+                  DispatchQueue.main.async {
+                      self.zoneData[rtls.id] = mapData
+                      self.dispatchGroup.leave()
+                  }
               case .failure(let error):
                   Logger(verbosity: .debug).log(message: error.localizedDescription)
               }
@@ -147,14 +153,16 @@ private extension VSTT2FloorManager {
     private func getNavGraph() {
         guard navgraph.isEmpty else { return }
         floors.forEach { (rtls) in
-          guard let navGraphUrl = rtls.navGraphUrl, let url = URL(string: navGraphUrl.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? navGraphUrl) else { return }
+            guard let navGraphUrl = rtls.navGraphUrl, let url = URL(string: navGraphUrl.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? navGraphUrl) else { return }
             dispatchGroup.enter()
 
             downloadManager.loadData(from: url) { result in
                 switch result {
                 case .success(let data):
-                    self.navgraph[rtls.id] = data
-                    self.dispatchGroup.leave()
+                    DispatchQueue.main.async {
+                        self.navgraph[rtls.id] = data
+                        self.dispatchGroup.leave()
+                    }
                 case .failure(let error):
                     Logger.init().log(message: error.localizedDescription)
                 }

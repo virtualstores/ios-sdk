@@ -40,7 +40,6 @@ final public class TT2: ITT2 {
     
     // MARK: Private members
     private let context: Context
-    private let config = EnvironmentConfig()
     private var _tt2Internal: TT2Internal?
     private var tt2Internal: TT2Internal {
         guard let tt2Internal = _tt2Internal else { fatalError("tt2Internal is not initialized") }
@@ -55,9 +54,9 @@ final public class TT2: ITT2 {
     private var positionKitParams: ParameterPackage = .retail
     
     public init(with apiUrl: String, apiKey: String, settings: MLModelDownloadSettings? = nil) {
-        config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
-        context = Context(VSTT2Config(environment: config))
+        context = Context(VSTT2Config(environment: EnvironmentConfig()))
         _tt2Internal = TT2Internal()
+        tt2Internal.config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
         tt2Internal.mlModelManager.setup(settings: settings)
         URLCache().removeAllCachedResponses()
     }
@@ -83,7 +82,7 @@ final public class TT2: ITT2 {
             else { completion(VSTT2Error.missingData); return }
 
             tt2Internal.activeClient = client
-            config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
+            tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
             user.setup(clientId: clientId)
             self.positionKitParams = positionKitParams
             tt2Internal.getStores(with: clientId, completion: completion)
@@ -316,7 +315,7 @@ private extension TT2 {
     
     func setupAnalytics(for store: Store) {
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
-        config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
+        tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
         analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id)
         if let client = activeClient {
             user.setup(clientId: client.clientId, positionServiceSettings: store.positionServiceSettings)

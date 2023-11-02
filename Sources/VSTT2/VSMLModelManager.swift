@@ -61,7 +61,13 @@ class VSMLModelManager {
           version = v.value
         }
         guard let version = version else { return }
-        _params = VPSModelParams(frameSize: version.frameSize, useSmooting: version.smoothing)
+        if let featureSequence = convert(featureSequence: version.featureSequence) {
+          _params = VPSModelParams(
+            frameSize: version.frameSize,
+            useSmooting: version.smoothing,
+            featureSequence: featureSequence
+          )
+        }
         loadModel(version: version) { [self] (error) in
           if let error = error {
             print("File", "Error getting MLModel", error)
@@ -100,7 +106,7 @@ class VSMLModelManager {
         case .failure(let error): completion(.failure(error))
         }
       } receiveValue: { (versions) in
-        //versions.print()
+        //versions.printInterfaces()
         completion(.success(versions))
       }.store(in: &cancellable)
   }
@@ -172,18 +178,16 @@ class VSMLModelManager {
       _ = try archive.extract(entry, to: destinationURL.appendingPathComponent(entry.path))
     }
   }
+
+  func convert(featureSequence: [String]) -> [VPSFeaturesEntriesEnum]? {
+    let convertedSequence = featureSequence.map({ VPSFeaturesEntriesEnum(rawValue: $0.lowercased()) }).compactMap({ $0 })
+    return convertedSequence.count == featureSequence.count ? convertedSequence : nil
+  }
 }
 
 extension VSMLModelManager: VPSModelManager {
-  var params: VPSModelParams? {
-    guard let params = _params else { return nil }
-    return params
-  }
-
-  var model: MLModel? {
-    guard let model = _model else { return nil }
-    return model
-  }
+  var model: MLModel? { _model }
+  var params: VPSModelParams? { _params }
 }
 
 extension String {

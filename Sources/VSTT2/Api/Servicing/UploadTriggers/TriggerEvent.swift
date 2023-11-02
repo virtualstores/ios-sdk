@@ -131,10 +131,7 @@ public class TriggerEvent {
     }
 
     public func convertMetaDataToDefaultMessage() -> Message? {
-        guard
-            let title = metaData[DefaultMetaData.title],
-            let type = metaData[DefaultMetaData.type]
-        else { return nil }
+        guard let type = metaData[DefaultMetaData.type] else { return nil }
 
         var poll: Message.Poll?
         if
@@ -157,7 +154,7 @@ public class TriggerEvent {
         }
 
         return Message(
-          title: title,
+          title: metaData[DefaultMetaData.title],
           body: metaData[DefaultMetaData.body],
           imageUrl: metaData[DefaultMetaData.imageUrl],
           poll: poll,
@@ -226,14 +223,14 @@ public class TriggerEvent {
     }
 
     public struct Message {
-        public let title: String
+        public let title: String?
         public let body: String?
         public let imageUrl: String?
         public let poll: Poll?
         public let type: DefaultMetaData.MessageType
         public let size: DefaultMetaData.MessageSize?
 
-        public init(title: String, body: String?, imageUrl: String?, poll: Poll?, type: DefaultMetaData.MessageType, size: DefaultMetaData.MessageSize?) {
+        public init(title: String?, body: String?, imageUrl: String?, poll: Poll?, type: DefaultMetaData.MessageType, size: DefaultMetaData.MessageSize?) {
             self.title = title
             self.body = body
             self.imageUrl = imageUrl

@@ -25,10 +25,8 @@ class StoreApi: IStoreApi {
   }
 
   func getStores(clientId: Int64, completion: @escaping (Result<[Store], Error>) -> Void) {
-    let parameters = StoresListParameters(config: config, clientId: clientId)
-
     service
-      .call(with: parameters)
+      .call(with: StoresListParameters(config: config, clientId: clientId))
       .sink(receiveCompletion: { (result) in
         switch result {
         case .finished:

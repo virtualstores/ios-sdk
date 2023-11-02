@@ -17,20 +17,23 @@ final class MLInterfaceVersionsService: DataFetchingManager {
 struct MLInterfaceVersions: Codable {
   let interfaces: [String: Interface]
 
-  func print() {
-    interfaces.forEach { (key, value) in
-      Swift.print("Interface", key)
-      Swift.print("    MLInterfaceVersion", value.mlInterfaceVersion)
-      Swift.print("    iOS")
-      Swift.print("        LatestVersion", value.iOS.latestVersion)
-      Swift.print("        Versions")
+  func printInterfaces() {
+    interfaces.sorted(by: { $0.key < $1.key }).forEach { (key, value) in
+      print("Interface", key)
+      print("    MLInterfaceVersion", value.mlInterfaceVersion)
+      print("    iOS")
+      print("        LatestVersion", value.iOS.latestVersion)
+      print("        Versions")
       value.iOS.versions.forEach { (key, value) in
-        Swift.print("            Key", key)
-        Swift.print("                ModelVerion", value.modelVersion)
-        Swift.print("                ID         ", value.id)
-        Swift.print("                ModelURL   ", value.modelUrl)
-        Swift.print("                Name       ", value.name)
-        Swift.print("                Deprecated ", value.deprecated)
+        print("            Key", key)
+        print("                ModelVerion         ", value.modelVersion)
+        print("                ID                  ", value.id)
+        print("                ModelURL            ", value.modelUrl)
+        print("                Name                ", value.name)
+        print("                Deprecated          ", value.deprecated)
+        print("                FrameSize           ", value.frameSize)
+        print("                Smoothing           ", value.smoothing)
+        print("                FeatureSequence     ", value.featureSequence)
       }
     }
   }
@@ -51,6 +54,7 @@ struct MLInterfaceVersions: Codable {
         let deprecated: Bool
         let frameSize: Int32
         let smoothing: Bool
+        let featureSequence: [String]
       }
     }
   }
