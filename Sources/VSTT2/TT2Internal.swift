@@ -149,6 +149,7 @@ internal class TT2Internal {
               case .ux(position: let position): break
                 //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
               case .ml(position: let position):
+                mapController?.updateMLPosition(point: position.position)
                 if navigation.positionKitManager.isRecording {
                   if let id = floorManager.activeFloor?.id {
                     analytics.addMLPositions(id: id, position: position)
