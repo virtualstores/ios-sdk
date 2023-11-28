@@ -12,8 +12,6 @@ import VSPositionKit
 import CoreGraphics
 import UIKit
 
-let version = "2.0.2"
-
 final public class TT2: ITT2 {
     public var initialized: Bool { _tt2Internal != nil }
     public var stores: [TT2Store] { tt2Internal.internalStores.map({ $0.toTT2Store() }) }
@@ -37,7 +35,9 @@ final public class TT2: ITT2 {
 
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
-    
+
+    static let version = "2.0.3"
+
     // MARK: Private members
     private let context: Context
     private var _tt2Internal: TT2Internal?

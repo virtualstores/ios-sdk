@@ -36,7 +36,11 @@ internal class TT2Internal {
     @Inject var setActiveStoreUseCase: SetActiveStoreUseCase
     
     var deviceOrientationUploader: DeviceOrientationUploader?
-    var mapController: IMapController?
+    var mapController: IMapController? {
+        didSet {
+            bindMapPublishers()
+        }
+    }
     var wifiController: IWiFiController?
 
     private var cancellable = Set<AnyCancellable>()
@@ -139,7 +143,8 @@ internal class TT2Internal {
 
         navigation.positionKitManager.outputSignalPublisher
             .compactMap { $0 }
-            .sink { [self] (signal) in
+            .sink { [weak self] (signal) in
+              guard let self = self else { return }
               switch signal {
               case .position(position: let position):
                 navigation.currentPosition = position.position
@@ -157,7 +162,7 @@ internal class TT2Internal {
                 }
               case .rotation(heading: let heading):
                 let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
-                self.mapController?.updateUserDirection(newDirection: heading)
+                mapController?.updateUserDirection(newDirection: heading)
               }
             }.store(in: &cancellable)
         
@@ -183,6 +188,16 @@ internal class TT2Internal {
             .sink { [weak self] (zone) in
                 self?.mapController?.zone.onExitPublisher.send(zone)
             }.store(in: &cancellable)
+    }
+
+    func bindMapPublishers() {
+        mapController?.convertedMLPostionPublisher // Currently MapController is nil when binding publishers, please fix
+            .compactMap { $0 }
+            .sink(receiveValue: { [weak self] (coordinate) in
+                if let id = self?.floorManager.activeFloor?.id {
+                    self?.analytics.addMLPositions(id: id, coordinate: coordinate)
+                }
+            }).store(in: &cancellable)
     }
 
     func generateAWSFolderPath(visitId: Int64?, additionalData: Bool = false) -> String? {

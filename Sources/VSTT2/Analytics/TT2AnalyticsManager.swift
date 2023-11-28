@@ -8,9 +8,9 @@
 import Foundation
 import VSFoundation
 import Combine
-import CoreGraphics
+import CoreLocation
 import UIKit
-import  VSPositionKit
+import VSPositionKit
 
 final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var createVisitService: CreateVisitService
@@ -106,6 +106,9 @@ final public class TT2AnalyticsManager: TT2Analytics {
         if let event = mlPositionsToTriggerEvent() {
           addTriggerEvent(for: event)
         }
+        if let event = mlPositionsLatLngToTriggerEvent() {
+          addTriggerEvent(for: event)
+        }
         let parameters = StopVisitParameters(
           requestId: UUID().uuidString.uppercased(),
           visitId: visitId,
@@ -131,6 +134,13 @@ final public class TT2AnalyticsManager: TT2Analytics {
       recordedMLPositions[id]?.append(position)
     }
 
+    var recordedMLPositionsLatLng: [Int64: [RecordedPosition]] = [:]
+    func addMLPositions(id: Int64, coordinate: CLLocationCoordinate2D) {
+      let position = RecordedPosition(xPosition: coordinate.longitude, yPosition: coordinate.latitude, timestamp: DateFormatter.standardFormatter.string(from: Date()))
+      if recordedMLPositionsLatLng[id] == nil { recordedMLPositionsLatLng[id] = [] }
+      recordedMLPositionsLatLng[id]?.append(position)
+    }
+
     struct MLPositionRecording: Codable {
       let positions: [RecordedPosition]
     }
@@ -143,6 +153,16 @@ final public class TT2AnalyticsManager: TT2Analytics {
         let string = String(data: json, encoding: .utf8)
       else { return nil }
       return TriggerEvent(id: "", rtlsOptionsId: id, name: "MLPositions", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsTrigger")), tags: ["mlPositions" : string])
+    }
+
+    func mlPositionsLatLngToTriggerEvent() -> TriggerEvent? {
+      defer { recordedMLPositionsLatLng.removeAll() }
+      guard
+        let id = rtlsOptionId,
+        let json = try? JSONEncoder().encode(recordedMLPositionsLatLng.flatMap({ $0.value })),
+        let string = String(data: json, encoding: .utf8)
+      else { return nil }
+      return TriggerEvent(id: "", rtlsOptionsId: id, name: "MLPositionsLatLng", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsLatLngTrigger")), tags: ["mlPositionsLatLng" : string])
     }
 
     func update(rtlsOptionId: Int64) {
@@ -332,7 +352,7 @@ private extension TT2AnalyticsManager {
 private extension TT2AnalyticsManager {
   var tt2VisitStartTags: [String:String] {
     [
-      "tt2SdkVersion" : version,
+      "tt2SdkVersion" : TT2.version,
       "tt2VpsVersion" : vpsVersion,
       "tt2DeviceManufacturer" : "Apple",
       "tt2DeviceModel" : UIDevice.current.modelName,
