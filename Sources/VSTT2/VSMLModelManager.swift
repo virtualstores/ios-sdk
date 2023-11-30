@@ -33,7 +33,8 @@ class VSMLModelManager {
   private var _params: VPSModelParams?
   private var modelName = ""
   var pathDirectory: URL? {
-    try? fileManager.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+    try? fileManager
+      .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
       .appendingPathComponent("MLModel")
   }
   var pathMLModel: URL? { pathDirectory?.appendingPathComponent(modelName).appendingPathExtension("mlpackage") }
@@ -124,6 +125,7 @@ class VSMLModelManager {
       }
     } else {
       guard let url = URL(string: version.modelUrl) else { return }
+      currentVersion = nil
       //print("VERSION", version.modelVersion)
       URLSession.shared.dataTask(with: url) { [self] (data, response, error) in
         //print("DOWNLOADING MODEL")
@@ -205,7 +207,7 @@ public struct MLModelDownloadSettings {
   public let interfaceVersion: String
   public let modelVersion: String?
 
-  public init(interfaceVersion: String, modelVersion: String?) {
+  public init(interfaceVersion: String, modelVersion: String? = nil) {
     self.interfaceVersion = interfaceVersion
     self.modelVersion = modelVersion
   }
