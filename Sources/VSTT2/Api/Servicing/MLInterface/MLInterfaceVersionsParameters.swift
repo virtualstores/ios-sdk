@@ -11,7 +11,7 @@ struct MLInterfaceVersionsParameters {
   private let config: EnvironmentConfig = EnvironmentConfig()
 
   init() {
-    config.centralServerConnection = ServerConnection(apiKey: "kanelbulle", serverAddress: "https://lmz7vrr223.execute-api.eu-north-1.amazonaws.com", mqttAddress: nil, storeId: nil)
+    config.centralServerConnection = ServerConnection(apiKey: "kanelbulle", serverAddress: "https://lmz7vrr223.execute-api.eu-north-1.amazonaws.com")
   }
 }
 

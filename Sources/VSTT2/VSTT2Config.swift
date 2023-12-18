@@ -117,6 +117,10 @@ struct VSTT2Config: Config {
         injector.map(MLInterfaceVersionsService.self) {
             MLInterfaceVersionsService(with: NetworkManager())
         }
+
+        injector.map(UploadGeoPositionsService.self) {
+            UploadGeoPositionsService(with: NetworkManager())
+        }
     }
 
     private func configureManagers(_ injector: Injector) {

@@ -20,6 +20,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     @Inject var uploadTriggersService: UploadTriggersService
     @Inject var uploadScanEventsService: UploadScanEventsService
     @Inject var positionUploadWorker: PositionUploadWorker
+    @Inject var uploadGeopositionsService: UploadGeoPositionsService
     @Inject var zoneManager: TT2ZoneManager
     @Inject var eventManager: TT2EventManager
     @Inject var mlModelManager: VSMLModelManager
@@ -99,6 +100,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
           uploadData(visitId: key, recordedPositions: value)
         }
         stepEventUploader?.upload()
+        postGeopositions()
         if let point = currentPosition {
             zoneManager.stopped(currentPosition: point)
             currentPosition = nil
@@ -106,7 +108,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
         if let event = mlPositionsToTriggerEvent() {
           addTriggerEvent(for: event)
         }
-        if let event = mlPositionsLatLngToTriggerEvent() {
+        if let event = mlPositionsLngLatToTriggerEvent() {
           addTriggerEvent(for: event)
         }
         let parameters = StopVisitParameters(
@@ -134,11 +136,26 @@ final public class TT2AnalyticsManager: TT2Analytics {
       recordedMLPositions[id]?.append(position)
     }
 
-    var recordedMLPositionsLatLng: [Int64: [RecordedPosition]] = [:]
+    var recordedMLPositionsLngLat: [Int64: [RecordedPositionLngLat]] = [:]
+    var recordedMLPositionsLngLatProcessed: [Int64: [RecordedPositionLngLat]] = [:]
     func addMLPositions(id: Int64, coordinate: CLLocationCoordinate2D) {
-      let position = RecordedPosition(xPosition: coordinate.longitude, yPosition: coordinate.latitude, timestamp: DateFormatter.standardFormatter.string(from: Date()))
-      if recordedMLPositionsLatLng[id] == nil { recordedMLPositionsLatLng[id] = [] }
-      recordedMLPositionsLatLng[id]?.append(position)
+      let position = RecordedPositionLngLat(
+        airPressure: navigationManager.positionManager.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
+        timestamp: DateFormatter.standardFormatter.string(from: Date()),
+        lngLat: [coordinate.longitude, coordinate.latitude]
+      )
+      if recordedMLPositionsLngLat[id] == nil { recordedMLPositionsLngLat[id] = [] }
+      recordedMLPositionsLngLat[id]?.append(position)
+    }
+
+    var recordedGPSPositionsLatLng: [RecordedPositionLngLat] = []
+    public func addGPSPositions(id: Int64, coordinate: CLLocationCoordinate2D) {
+      let position = RecordedPositionLngLat(
+        airPressure: navigationManager.positionManager.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
+        timestamp: DateFormatter.standardFormatter.string(from: Date()),
+        lngLat: [coordinate.longitude, coordinate.latitude]
+      )
+      recordedGPSPositionsLatLng.append(position)
     }
 
     struct MLPositionRecording: Codable {
@@ -148,6 +165,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
     func mlPositionsToTriggerEvent() -> TriggerEvent? {
       defer { recordedMLPositions.removeAll() }
       guard
+        recordedMLPositions.count > 0,
         let id = rtlsOptionId,
         let json = try? JSONEncoder().encode(recordedMLPositions.flatMap({ $0.value })),
         let string = String(data: json, encoding: .utf8)
@@ -155,14 +173,37 @@ final public class TT2AnalyticsManager: TT2Analytics {
       return TriggerEvent(id: "", rtlsOptionsId: id, name: "MLPositions", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsTrigger")), tags: ["mlPositions" : string])
     }
 
-    func mlPositionsLatLngToTriggerEvent() -> TriggerEvent? {
-      defer { recordedMLPositionsLatLng.removeAll() }
+    func mlPositionsLngLatToTriggerEvent() -> TriggerEvent? {
+      defer { recordedMLPositionsLngLat.removeAll() }
       guard
+        recordedMLPositionsLngLat.count > 0,
         let id = rtlsOptionId,
-        let json = try? JSONEncoder().encode(recordedMLPositionsLatLng.flatMap({ $0.value })),
+        let json = try? JSONEncoder().encode(recordedMLPositionsLngLat.flatMap({ $0.value })),
         let string = String(data: json, encoding: .utf8)
       else { return nil }
-      return TriggerEvent(id: "", rtlsOptionsId: id, name: "MLPositionsLatLng", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsLatLngTrigger")), tags: ["mlPositionsLatLng" : string])
+      return TriggerEvent(id: "", rtlsOptionsId: id, name: "MLPositionsLngLat", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsLatLngTrigger")), tags: ["mlPositionsLatLng" : string])
+    }
+
+    func postGeopositions() {
+      guard let visitId = visitId else { return }
+      var positions: [String: [RecordedPositionLngLat]] = [:]
+      positions[UploadGeoPositionsParameters.TypeEnum.gps.rawValue] = recordedGPSPositionsLatLng
+      positions[UploadGeoPositionsParameters.TypeEnum.vpsMl.rawValue] = recordedMLPositionsLngLat.flatMap({ $0.value })
+      positions[UploadGeoPositionsParameters.TypeEnum.vpsMlProcessed.rawValue] = recordedMLPositionsLngLatProcessed.flatMap({ $0.value })
+      uploadGeopositionsService
+        .call(with: UploadGeoPositionsParameters(
+          visitId: visitId,
+          requestId: UUID().uuidString.uppercased(),
+          positions: positions
+        )).sink { (completion) in
+          switch completion {
+          case .finished: break
+          case .failure(let error): Logger(verbosity: .error).log(message: "UploadGeopositionsService \(error)")
+          }
+        } receiveValue: { () in
+          self.recordedGPSPositionsLatLng.removeAll()
+          self.recordedMLPositionsLngLatProcessed.removeAll()
+        }.store(in: &cancellable)
     }
 
     func update(rtlsOptionId: Int64) {
@@ -336,7 +377,7 @@ private extension TT2AnalyticsManager {
     func getVPSParams() -> String {
       var string = "{"
       navigationManager
-        .positionKitManager
+        .positionManager
         .vpsParams
         .sorted(by: {
           guard let key1 = Int($0.key), let key2 = Int($1.key) else { return $0.key < $1.key }

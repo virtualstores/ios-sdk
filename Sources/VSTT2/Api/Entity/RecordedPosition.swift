@@ -18,3 +18,9 @@ struct RecordedPosition: Codable {
         case timestamp = "timestamp"
     }
 }
+
+struct RecordedPositionLngLat: Codable {
+  let airPressure: Double?
+  let timestamp: String
+  let lngLat: [Double]
+}

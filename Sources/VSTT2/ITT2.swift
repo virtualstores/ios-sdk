@@ -9,7 +9,7 @@ import Foundation
 import Combine
 import Foundation
 import VSFoundation
-import CoreGraphics
+import CoreLocation
 
 ///
 /// Interface for TT2 SDK.
@@ -77,6 +77,11 @@ public protocol ITT2 {
     func stop()
 
     func setActiveFloor(rtls: RtlsOptions)
+
+    func initRealWorldConverter()
+    func initRealWorldConverter(point: CGPoint)
+    func processMLPath(coordinate: CLLocationCoordinate2D) -> MLProcessedPath?
+    func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D)
 }
 
 public enum VSTT2Error: Error {

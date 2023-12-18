@@ -34,17 +34,17 @@ class EnvironmentConfig {
 
     func initCentralServerConnection(with url: String, endPoint: EndPoints, apiKey: String) {
       if url.last == "/" {
-        centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+        centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue)
       } else {
-        centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + "/" + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+        centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + "/" + endPoint.rawValue)
       }
     }
     
     func initAnalyticsServerConnection(with url: String, endPoint: EndPoints, apiKey: String) {
       if url.last == "/" {
-        analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+        analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue)
       } else {
-        analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + "/" + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+        analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + "/" + endPoint.rawValue)
       }
     }
 }

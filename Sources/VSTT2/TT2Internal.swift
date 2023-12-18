@@ -9,6 +9,7 @@ import Foundation
 import VSFoundation
 import Combine
 import UIKit
+import CoreLocation
 
 internal class TT2Internal {
     /// Managers for helping VSTT2 to work with separate small modules
@@ -36,11 +37,7 @@ internal class TT2Internal {
     @Inject var setActiveStoreUseCase: SetActiveStoreUseCase
     
     var deviceOrientationUploader: DeviceOrientationUploader?
-    var mapController: IMapController? {
-        didSet {
-            bindMapPublishers()
-        }
-    }
+    var mapController: IMapController?
     var wifiController: IWiFiController?
 
     private var cancellable = Set<AnyCancellable>()
@@ -69,7 +66,6 @@ internal class TT2Internal {
         guard let converter = coordinateConverter else { return nil }
         return MapData(rtlsOptions: rtlsOptions, converter: converter)
     }
-    
     
     func getClients(completion: @escaping (Error?) -> Void) {
         clientListService
@@ -124,24 +120,22 @@ internal class TT2Internal {
           .sink { [weak self] (isActive) in
               if isActive {
                   if self?.automaticActivationOfUserMark ?? true {
+                      self?.mapController?.reset()
                       self?.mapController?.start()
-                  }
-                  if self?.automaticSensorRecording ?? false {
-                      //self?.recording.start()
                   }
               } else {
                   self?.mapController?.stop()
               }
           }.store(in: &cancellable)
 
-        navigation.positionKitManager.recordingPublisher
+        navigation.positionManager.recordingPublisher
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data, sessionId, lastFile) in
                 self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderName: self?.generateAWSFolderPath(visitId: self?.analytics.visitId, additionalData: lastFile), date: Date())
                 self?.awsS3UploadManager.sendCollectedDataToS3()
             }).store(in: &cancellable)
 
-        navigation.positionKitManager.outputSignalPublisher
+        navigation.positionManager.outputSignalPublisher
             .compactMap { $0 }
             .sink { [weak self] (signal) in
               guard let self = self else { return }
@@ -154,8 +148,16 @@ internal class TT2Internal {
               case .ux(position: let position): break
                 //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
               case .ml(position: let position):
-                mapController?.updateMLPosition(point: position.position)
-                if navigation.positionKitManager.isRecording {
+                if let converter = realConverter {
+                  let coordinate = position.position.convertFromMeterToLatLng(converter: converter)
+                  mapController?.updateMLPosition(coordinate: coordinate)
+                  if let id = floorManager.activeFloor?.id {
+                    analytics.addMLPositions(id: id, coordinate: coordinate)
+                  }
+                } else {
+                  mapController?.updateMLPosition(point: position.position)
+                }
+                if navigation.positionManager.isRecording {
                   if let id = floorManager.activeFloor?.id {
                     analytics.addMLPositions(id: id, position: position)
                   }
@@ -188,16 +190,6 @@ internal class TT2Internal {
             .sink { [weak self] (zone) in
                 self?.mapController?.zone.onExitPublisher.send(zone)
             }.store(in: &cancellable)
-    }
-
-    func bindMapPublishers() {
-        mapController?.convertedMLPostionPublisher // Currently MapController is nil when binding publishers, please fix
-            .compactMap { $0 }
-            .sink(receiveValue: { [weak self] (coordinate) in
-                if let id = self?.floorManager.activeFloor?.id {
-                    self?.analytics.addMLPositions(id: id, coordinate: coordinate)
-                }
-            }).store(in: &cancellable)
     }
 
     func generateAWSFolderPath(visitId: Int64?, additionalData: Bool = false) -> String? {
@@ -247,6 +239,59 @@ internal class TT2Internal {
             }, receiveValue: { (swapLocations) in
                 completion(.success(swapLocations))
             }).store(in: &cancellable)
+    }
+
+    func initRealWorldConverter() {
+      guard
+        let map = mapController,
+        let coordinate = map.currentGPSCoordinate
+      else { return }
+      initRealWorldConverter(coordinate: coordinate)
+    }
+
+    func initRealWorldConverter(point: CGPoint) {
+      guard let map = mapController else { return }
+      initRealWorldConverter(coordinate: map.getCoordinate(point: point))
+    }
+
+    private var realConverter: ICoordinateConverterReal?
+    func initRealWorldConverter(coordinate: CLLocationCoordinate2D) {
+      realConverter = RealCoordinateConverter(
+        latLngOrigin: coordinate,
+        mapAngleInDegrees: 0.0,
+        earthRadiusInMeters: 6378137.0,
+        pixelsPerMeter: 50
+      )
+    }
+
+    func processMLPath(coordinate: CLLocationCoordinate2D) -> MLProcessedPath? {
+      guard
+        let id = floorManager.activeFloor?.id,
+        let mlPositions = analytics.recordedMLPositionsLngLat[id],
+        let converter = realConverter
+      else { return nil }
+      analytics.recordedMLPositionsLngLat[id]?.removeAll()
+      return navigation.positionManager.processMLPath(
+        path: mlPositions.map({ CLLocationCoordinate2D(latitude: $0.lngLat[1], longitude: $0.lngLat[0]).fromLatLngToMeter(converter: converter) }),
+        pathEndPoint: coordinate.fromLatLngToMeter(converter: converter)
+      )
+    }
+
+    func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D) {
+      guard
+        let id = floorManager.activeFloor?.id,
+        let mlPositions = analytics.recordedMLPositionsLngLat[id],
+        let converter = realConverter,
+        let path = processMLPath(coordinate: coordinate)?.path
+          .map({ $0.convertFromMeterToLatLng(converter: converter) })
+          .map({ [$0.longitude, $0.latitude] })
+      else { return }
+
+      analytics.recordedMLPositionsLngLatProcessed[id] = mlPositions.enumerated().map({ RecordedPositionLngLat(
+        airPressure: $0.element.airPressure,
+        timestamp: $0.element.timestamp,
+        lngLat: path[$0.offset]
+      )})
     }
 }
 

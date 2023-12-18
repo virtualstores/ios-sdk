@@ -9,7 +9,7 @@ import Foundation
 import Combine
 import VSFoundation
 import VSPositionKit
-import CoreGraphics
+import CoreLocation
 import UIKit
 
 final public class TT2: ITT2 {
@@ -192,6 +192,22 @@ final public class TT2: ITT2 {
             }
         }
     }
+
+    public func initRealWorldConverter() {
+      tt2Internal.initRealWorldConverter()
+    }
+
+    public func initRealWorldConverter(point: CGPoint) {
+      tt2Internal.initRealWorldConverter(point: point)
+    }
+
+    public func processMLPath(coordinate: CLLocationCoordinate2D) -> MLProcessedPath? {
+      tt2Internal.processMLPath(coordinate: coordinate)
+    }
+
+    public func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D) {
+      tt2Internal.addProcessedMLPathToAnalytics(coordinate: coordinate)
+    }
 }
 
 private extension TT2 {
@@ -301,7 +317,7 @@ private extension TT2 {
         let properties = ZoneProperties(description: nil, id: name, name: name, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
         mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevelId: rtlsOption.id, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
 
-        navigation.positionKitManager.setupMapFence(
+        navigation.positionManager.setupMapFence(
             with: data,
             rtlsOption: rtlsOption,
             floorheight: floorHeightDiff,
