@@ -19,13 +19,8 @@ final public class Navigation: INavigation {
     @Inject var modelManager: VSMLModelManager
 
     public internal(set) var currentPosition: CGPoint?
-    public private(set) var isActive: Bool = false {
-        didSet {
-            isActivePublisher.send(isActive)
-        }
-    }
-
-    public var startAngle: Double? { isActive ? userStartAngle.degrees : nil }
+    public var isActive: Bool { isActivePublisher.value }
+    public var compassHeading: Double? { heading?.degrees }
 
     var isActivePublisher: CurrentValueSubject<Bool, Never> = .init(false)
     var accuracyPublisher: CurrentValueSubject<(event: AccuracySyncEvent.Event, isFloorSwap: Bool)?,Never> = .init(nil)
@@ -39,7 +34,7 @@ final public class Navigation: INavigation {
     private var heading: TT2Course? {
         guard
           let north = positionManager.rtlsOption?.north,
-          let heading = positionManager.locationHeadingPublisher.value?.magneticHeading
+          let heading = positionManager.locationHeadingPublisher.value?.headingDirection
         else { return nil }
         //let heading = VPSCompassHeadingController.trueHeading.value
         return TT2Course(fromDegrees: -heading + 90 - north)
@@ -81,7 +76,7 @@ public extension Navigation {
         try positionManager.start()
         certainAngle = true
         positionManager.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startAngle, uncertainAngle: false)
-        isActive = true
+        isActivePublisher.send(true)
         userStartAngle = TT2Course(fromDegrees: startAngle)
     }
 
@@ -129,7 +124,7 @@ public extension Navigation {
             try positionManager.start()
             positionManager.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startWithAngle ?? heading.degrees, uncertainAngle: startWithAngle == nil)
             prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
-            isActive = true
+            isActivePublisher.send(true)
             userStartAngle = heading
         }
     }
@@ -183,6 +178,11 @@ public extension Navigation {
         }
     }
 
+    func syncAngleCorrection(angle: Double, position: CGPoint) {
+      guard isActive else { return }
+      positionManager.syncAngleCorrection(angle: angle, positions: [position])
+    }
+
     func syncPositionToNearestAccessPoint() throws {
         try start(startPosition: currentAccessPointPosition)
     }
@@ -190,7 +190,7 @@ public extension Navigation {
     func stop() {
         positionManager.stop()
         hasStartLocationAngle = false
-        isActive = false
+        isActivePublisher.send(false)
     }
 
     func prepareAngle() { positionManager.prepareAngle() }

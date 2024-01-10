@@ -157,10 +157,8 @@ internal class TT2Internal {
                 } else {
                   mapController?.updateMLPosition(point: position.position)
                 }
-                if navigation.positionManager.isRecording {
-                  if let id = floorManager.activeFloor?.id {
-                    analytics.addMLPositions(id: id, position: position)
-                  }
+                if navigation.positionManager.isRecording, let id = floorManager.activeFloor?.id {
+                  analytics.addMLPositions(id: id, position: position)
                 }
               case .rotation(heading: let heading):
                 let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
@@ -264,13 +262,16 @@ internal class TT2Internal {
       )
     }
 
-    func processMLPath(coordinate: CLLocationCoordinate2D) -> MLProcessedPath? {
+  func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool = false) -> MLProcessedPath? {
       guard
         let id = floorManager.activeFloor?.id,
         let mlPositions = analytics.recordedMLPositionsLngLat[id],
+        mlPositions.count > 0,
         let converter = realConverter
       else { return nil }
-      analytics.recordedMLPositionsLngLat[id]?.removeAll()
+      if clearAnalytics {
+        analytics.recordedMLPositionsLngLat[id]?.removeAll()
+      }
       return navigation.positionManager.processMLPath(
         path: mlPositions.map({ CLLocationCoordinate2D(latitude: $0.lngLat[1], longitude: $0.lngLat[0]).fromLatLngToMeter(converter: converter) }),
         pathEndPoint: coordinate.fromLatLngToMeter(converter: converter)
@@ -292,6 +293,11 @@ internal class TT2Internal {
         timestamp: $0.element.timestamp,
         lngLat: path[$0.offset]
       )})
+    }
+
+    func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D) {
+      guard let converter = realConverter else { return }
+      navigation.syncAngleCorrection(angle: angle, position: coordinate.fromLatLngToMeter(converter: converter))
     }
 }
 

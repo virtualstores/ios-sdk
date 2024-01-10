@@ -201,12 +201,16 @@ final public class TT2: ITT2 {
       tt2Internal.initRealWorldConverter(point: point)
     }
 
-    public func processMLPath(coordinate: CLLocationCoordinate2D) -> MLProcessedPath? {
-      tt2Internal.processMLPath(coordinate: coordinate)
+    public func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool) -> MLProcessedPath? {
+      tt2Internal.processMLPath(coordinate: coordinate, clearAnalytics: clearAnalytics)
     }
 
     public func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D) {
       tt2Internal.addProcessedMLPathToAnalytics(coordinate: coordinate)
+    }
+
+    public func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D) {
+      tt2Internal.syncAngleCorrection(angle: angle, coordinate: coordinate)
     }
 }
 

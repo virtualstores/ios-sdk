@@ -80,8 +80,9 @@ public protocol ITT2 {
 
     func initRealWorldConverter()
     func initRealWorldConverter(point: CGPoint)
-    func processMLPath(coordinate: CLLocationCoordinate2D) -> MLProcessedPath?
+    func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool) -> MLProcessedPath?
     func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D)
+    func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D)
 }
 
 public enum VSTT2Error: Error {
