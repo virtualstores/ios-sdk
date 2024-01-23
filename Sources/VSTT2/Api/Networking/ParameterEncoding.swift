@@ -45,15 +45,39 @@ enum ParameterEncoding {
         guard encodingError == nil else { throw encodingError! }
         return request
     }
+
+    func encode(request: URLRequest, parameters: Any?) throws -> URLRequest {
+        guard let parameters = parameters else { return request }
+
+        var request = request
+        var encodingError: NSError?
+
+        switch self {
+        case .json:
+            do {
+                let options = JSONSerialization.WritingOptions()
+                let data = try JSONSerialization.data(withJSONObject: parameters, options: options)
+
+                if request.value(forHTTPHeaderField: "Content-Type") == nil {
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                }
+
+                request.httpBody = data
+            } catch {
+                encodingError = error as NSError
+            }
+        }
+
+        guard encodingError == nil else { throw encodingError! }
+        return request
+    }
 }
 
 extension Encodable {
     func asDictionary() -> [String: Any] {
         do {
             let data = try JSONEncoder().encode(self)
-            guard let dictionary = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any] else {
-                throw NSError()
-            }
+            guard let dictionary = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any] else { throw NSError() }
             return dictionary
         } catch {
             Logger.init(verbosity: .silent).log(message: error.localizedDescription)

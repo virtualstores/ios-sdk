@@ -18,12 +18,17 @@ public struct Store: Codable {
     public let latitude: Double
     public let longitude: Double
     public let active: Bool
+    public let hasSensorRecordingActive: Bool
+    public let hasWiFiRecordingActive: Bool
     public let startCodes: [PositionedCode]
     public let stopCodes: [PositionedCode]
     public let rtlsOptions: [RtlsOptions]
     public let minVersion: String?
     public let serverConnection: ServerConnection
     public let statServerConnection: ServerConnection
+    public let positionServiceSettings: PositionServiceSettings?
+    public let syncPositionFilter: SyncFilter?
+    public let syncCompassFilter: SyncFilter?
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -34,12 +39,17 @@ public struct Store: Codable {
         case latitude
         case longitude
         case active
+        case hasSensorRecordingActive
+        case hasWiFiRecordingActive
         case startCodes = "startScanLocations"
         case stopCodes = "stopScanLocations"
         case rtlsOptions = "rtlsOptionsList"
         case minVersion
         case serverConnection
         case statServerConnection
+        case positionServiceSettings
+        case syncPositionFilter
+        case syncCompassFilter
     }
 
     public init(from decoder: Decoder) throws {
@@ -53,12 +63,17 @@ public struct Store: Codable {
         latitude = try container.decode(Double.self, forKey: .latitude)
         longitude = try container.decode(Double.self, forKey: .longitude)
         active = try container.decode(Bool.self, forKey: .active)
+        hasSensorRecordingActive = try container.decodeIfPresent(Bool.self, forKey: .hasSensorRecordingActive) ?? false
+        hasWiFiRecordingActive = try container.decodeIfPresent(Bool.self, forKey: .hasWiFiRecordingActive) ?? false
         startCodes = try container.decode([PositionedCode].self, forKey: .startCodes)
         stopCodes = try container.decode([PositionedCode].self, forKey: .stopCodes)
         rtlsOptions = try container.decode([RtlsOptions].self, forKey: .rtlsOptions)
         minVersion = try container.decodeIfPresent(String.self, forKey: .minVersion)
         serverConnection = try container.decode(ServerConnection.self, forKey: .serverConnection)
         statServerConnection = try container.decode(ServerConnection.self, forKey: .statServerConnection)
+        positionServiceSettings = try container.decodeIfPresent(PositionServiceSettings.self, forKey: .positionServiceSettings)
+        syncPositionFilter = try container.decodeIfPresent(SyncFilter.self, forKey: .syncPositionFilter)
+        syncCompassFilter = try container.decodeIfPresent(SyncFilter.self, forKey: .syncCompassFilter)
     }
 
     public func getCodesFor(type: PositionedCode.CodeType, floorLevel: Int) -> [PositionedCode] {

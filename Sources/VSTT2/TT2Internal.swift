@@ -9,214 +9,223 @@ import Foundation
 import VSFoundation
 import Combine
 import UIKit
+import CoreLocation
 
 internal class TT2Internal {
     /// Managers for helping VSTT2 to work with separate small modules
+    @Inject var config: EnvironmentConfig
     @Inject var navigation: Navigation
     @Inject var analytics: TT2AnalyticsManager
     @Inject var floorManager: VSTT2FloorManager
     @Inject var position: Position
-    @Inject var user: UserSettings
+    @Inject var user: UserController
+    @Inject var recording: RecordingManager
     @Inject var awsS3UploadManager: AWSS3UploadManager
+    @Inject var mlModelManager: VSMLModelManager
     
     /// Services for getting the api data
     @Inject var clientListService : ClientsListService
-    @Inject var storesListService: StoresListService
     @Inject var swapLocationsService: SwapLocationsService
     @Inject var ordersService: OrdersService
     @Inject var itemPositionService: ItemPositionService
     @Inject var shelfGroupService: ShelfGroupService
 
-    var accuracyUploader: AccuracyUploader?
+    /// Usecases
+    @Inject var fetchStoreUseCase: FetchStoreUseCase
+    @Inject var getCachedStoreUseCase: GetCachedStoreUseCase
+    @Inject var getActiveStoreUseCase: GetActiveStoreUseCase
+    @Inject var setActiveStoreUseCase: SetActiveStoreUseCase
+    
+    var deviceOrientationUploader: DeviceOrientationUploader?
     var mapController: IMapController?
-    var map: Map?
+    var wifiController: IWiFiController?
 
-    private let config: EnvironmentConfig
-    private var clientsCancellablle = Set<AnyCancellable>()
     private var cancellable = Set<AnyCancellable>()
-    private var positionBundleCancellable: AnyCancellable?
-    private var changedFloorCancellable: AnyCancellable?
-    private var directionCancellable: AnyCancellable?
-    private var realWorldOffsetCancellable: AnyCancellable?
-    private var accuracyCancellable: AnyCancellable?
-    private var recordingCancellable: AnyCancellable?
-
+    
     private var offset: Double
-
+    
     var internalClients: [Client] = []
-    var internalStores: [Store] = []
-
-    public init(config: EnvironmentConfig) {
-        self.config = config
+    var internalStores: [Store] { getCachedStoreUseCase.invoke(filterOnlyActive: false) }
+    var internalStoresActive: [Store] { getCachedStoreUseCase.invoke() }
+    var activeStore: Store { getActiveStoreUseCase.invoke() }
+    var activeClient: Client?
+    var shelfGroups: [Int64: [ShelfGroup]] = [:]
+    var automaticActivationOfUserMark: Bool = true
+    var automaticSensorRecording: Bool { activeStore.hasSensorRecordingActive }
+    
+    public init() {
         offset = 0.0
         bindPublishers()
+    }
+
+    deinit {
+        cancellable.removeAll()
     }
     
     func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence, coordinateConverter: ICoordinateConverter?) -> MapData? {
         guard let converter = coordinateConverter else { return nil }
-        
-        let mapData = MapData(rtlsOptions: rtlsOptions, converter: converter)
-        
-        return mapData
+        return MapData(rtlsOptions: rtlsOptions, converter: converter)
     }
     
-
     func getClients(completion: @escaping (Error?) -> Void) {
-        let parameters = ClientsListParameters(config: config)
-
         clientListService
-            .call(with: parameters)
+            .call(with: ClientsListParameters())
             .sink { (result) in
-              switch result {
-              case .finished: break
-              case .failure(let error): completion(error)
-              }
-            } receiveValue: { (data) in
-              self.internalClients = data.clients
-              completion(nil)
-            }.store(in: &clientsCancellablle)
-    }
-
-    func getStores(with clientId: Int64, completion: @escaping (Error?) -> ()) {
-        let parameters = StoresListParameters(clientId: clientId, config: config)
-        
-        storesListService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (result) in
                 switch result {
-                case .finished:
-                    break
-                case .failure(let error):
-                    completion(error)
-                    Logger(verbosity: .critical).log(message: "No available store")
+                case .finished: break
+                case .failure(let error): completion(error)
                 }
-            }, receiveValue: { (data) in
-                self.internalStores = data.stores
+            } receiveValue: { (data) in
+                self.internalClients = data.clients
                 completion(nil)
-            }).store(in: &cancellable)
+            }.store(in: &cancellable)
     }
     
-    func getShelfGroups(for storeId: Int64, activeFloor: RtlsOptions?, completion: @escaping ( [ShelfGroup]) -> ()) {
+    func getStores(with clientId: Int64, completion: @escaping (Error?) -> ()) {
+        fetchStoreUseCase.invoke(clientId: clientId, completion: completion)
+    }
+
+    func setActiveStore(storeId: Int64) {
+        setActiveStoreUseCase.invoke(storeId: storeId)
+    }
+    
+    func getShelfGroups(for storeId: Int64, activeFloor: RtlsOptions?, completion: @escaping ([ShelfGroup]) -> ()) {
         guard let activeFloor = activeFloor else { return }
-        let shelfGroupParameters = ShelfGroupParameters(storeId: storeId, rtlsOptionsId: activeFloor.id, config: config)
-        
-        shelfGroupService
-            .call(with: shelfGroupParameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    print(error)
-                }
-            }, receiveValue: { (shelfData) in
-                let shelfGroups = shelfData.map({ ShelfGroupDto.toShelfGroup($0) })
-                completion(shelfGroups)
-                self.map = Map(id: storeId, mapURL: activeFloor.mapBoxUrl ?? "", storeId: storeId, railScale: 0, pixelOffsetX: Int(activeFloor.startOffsetX), pixelOffsetY: Int(activeFloor.startOffsetY), pixelWidth: Int(activeFloor.rtlsOptionsWidth()), pixelHeight: Int(activeFloor.rtlsOptionsHeight()))
-            }).store(in: &cancellable)
-    }
-    
-    
-    private func bindPublishers() {
-        positionBundleCancellable = navigation.positionKitManager.positionPublisher
-            .compactMap{ $0 }
-            .sink { error in
-                Logger.init().log(message: "PositionKitError noData")
-            } receiveValue: { [weak self] positionBundle in
-                self?.floorManager.onNewPostion(location: positionBundle.position)
-                self?.mapController?.updateUserLocation(newLocation: positionBundle.position, std: positionBundle.std)
-                self?.analytics.onNewPositionBundle(point: positionBundle.position)
-            }
+        let group = DispatchGroup()
+        floorManager.floors.forEach { (rtlsOption) in
+            group.enter()
+            let shelfGroupParameters = ShelfGroupParameters(storeId: storeId, rtlsOptionsId: rtlsOption.id)
+            shelfGroupService
+                .call(with: shelfGroupParameters)
+                .sink(receiveCompletion: { (completion) in
+                    switch completion {
+                    case .finished: break
+                    case .failure(let error): print(error)
+                    }
+                }, receiveValue: { (shelfData) in
+                    let shelfGroups = ShelfGroupDto.add(floorLevelId: rtlsOption.id, shelfData).map({ ShelfGroupDto.toShelfGroup($0) })
+                    self.shelfGroups[rtlsOption.id] = shelfGroups
+                    group.leave()
+                }).store(in: &cancellable)
+        }
 
-        changedFloorCancellable = navigation.positionKitManager.changedFloorPublisher
-            .compactMap { $0 }
-            .sink { [weak self] (data) in
-                self?.floorManager.onNewFloor(floor: data)
-            }
-        
-        directionCancellable = navigation.positionKitManager.directionPublisher
-            .compactMap { $0 }
-            .sink { error in
-                Logger.init().log(message: "DirectionPublisher noData")
-            } receiveValue: { direction in
-                let heading = (self.vpsToMapboxAngle(angle: direction.angle + self.offset)).remainder(dividingBy: 360.0)
-                self.mapController?.updateUserDirection(newDirection: heading)
-            }
-
-        realWorldOffsetCancellable = navigation.positionKitManager.realWorldOffsetPublisher
-            .compactMap { $0 }
-            .sink { error in
-                Logger.init().log(message: "RealWorldOffsetPublisher noData")
-            } receiveValue: { direction in
-                self.offset = direction.angle
-            }
-
-        accuracyCancellable = navigation.accuracyPublisher
-            .compactMap { $0 }
-            .sink(receiveValue: { [weak self] (preScanLocation, scanLocation, offset) in
-                guard let id = self?.analytics.visitId else { return }
-                self?.accuracyUploader?.upload(id: String(id), articleId: "", preScanLocation: preScanLocation, offset: offset, scanLocation: scanLocation, errorHandler: { (error) in
-                    Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
-                })
-            })
-
-      recordingCancellable = navigation.positionKitManager.recordingPublisher
-          .compactMap { $0 }
-          .sink(receiveValue: { (identifier ,data) in
-              self.createAWSData(identifier: identifier, data: data)
-          })
-    }
-
-    func createAWSData(identifier: String, data: String) {
-        guard let store = self.position.store else { return }
-        let date = Date()
-        let uploadTimeFormatter = DateFormatter()
-        let uploadDayFormatter = DateFormatter()
-        uploadTimeFormatter.dateFormat = "HHmmss"
-        uploadDayFormatter.dateFormat = "yyMMdd"
-        let stringDate = uploadDayFormatter.string(from: date)
-        let time = uploadTimeFormatter.string(from: date)
-        self.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, date: date)
-        let csvData = self.createCSVData(date: stringDate, time: time, serverUrl: config.centralServerConnection.serverAddress ?? "", clientId: String(store.clientId), storeid: String(store.id))
-        let fileName = "keywords\(time).csv"
-        self.awsS3UploadManager.addAditionalData(identifier: identifier, fileName: fileName, data: csvData)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-          if let user = self.user.getLastUser() {
-            if let name = user.name, let route = user.route {
-              self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/\(name)/ios/\(route)/\(time)/")
-            } else if let name = user.name {
-              self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/\(name)/ios/undefinedRoute/\(time)/")
-            } else {
-              self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/undefined/ios/undefinedRoute/\(time)/")
-            }
-          } else {
-            self.awsS3UploadManager.sendCollectedDataToS3(folderName: "\(stringDate)/undefined/ios/undefinedRoute/\(time)/")
-          }
+        group.notify(queue: .main) {
+            guard let shelfGroups = self.shelfGroups[activeFloor.id] else { return }
+            completion(shelfGroups)
         }
     }
+    
+    private func bindPublishers() {
+        navigation.isActivePublisher
+          .sink { [weak self] (isActive) in
+              if isActive {
+                  if self?.automaticActivationOfUserMark ?? true {
+                      self?.mapController?.reset()
+                      self?.mapController?.start()
+                  }
+              } else {
+                  self?.mapController?.stop()
+              }
+          }.store(in: &cancellable)
 
-    func createCSVData(date: String, time: String, serverUrl: String, clientId: String, storeid: String) -> String {
-        var csvData = "day,name,device,route,time,gender,age,comments,serverUrl,clientID,storeID,activity\n"
-        guard let user = user.getLastUser() else { return csvData + "\(date),,,ios,,\(time),,,,\(serverUrl), \(clientId), \(storeid),,\n" }
-        let name = user.name ?? ""
-        let route = user.route ?? ""
-        let gender = user.gender ?? ""
-        let age = user.age ?? ""
-        let comments = user.comments ?? ""
-        let activity = user.activity ?? ""
-        csvData = csvData + "\(date),\(name),ios,\(route),\(time),\(gender),\(age),\(comments),\(serverUrl),\(clientId),\(storeid),\(activity)\n"
-        return csvData
+        navigation.positionManager.recordingPublisher
+            .compactMap { $0 }
+            .sink(receiveValue: { [weak self] (identifier, data, sessionId, lastFile) in
+                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderName: self?.generateAWSFolderPath(visitId: self?.analytics.visitId, additionalData: lastFile), date: Date())
+                self?.awsS3UploadManager.sendCollectedDataToS3()
+            }).store(in: &cancellable)
+
+        navigation.positionManager.outputSignalPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (signal) in
+              guard let self = self else { return }
+              switch signal {
+              case .position(position: let position):
+                navigation.currentPosition = position.position
+                floorManager.onNewPostion(location: position.position)
+                mapController?.updateUserLocation(newLocation: position.position, std: position.std)
+                analytics.onNewPositionBundle(position: position)
+              case .ux(position: let position): break
+                //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
+              case .ml(position: let position):
+                if let converter = realConverter {
+                  let coordinate = position.position.convertFromMeterToLatLng(converter: converter)
+                  mapController?.updateMLPosition(coordinate: coordinate)
+                  if let id = floorManager.activeFloor?.id {
+                    analytics.addMLPositions(id: id, coordinate: coordinate)
+                  }
+                } else {
+                  mapController?.updateMLPosition(point: position.position)
+                }
+                if navigation.positionManager.isRecording, let id = floorManager.activeFloor?.id {
+                  analytics.addMLPositions(id: id, position: position)
+                }
+              case .rotation(heading: let heading):
+                let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
+                mapController?.updateUserDirection(newDirection: heading)
+              }
+            }.store(in: &cancellable)
+        
+        navigation.accuracyPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (data) in
+                self?.analytics.accuracyUploader?.upload(syncEvent: data.event, isFloorSwap: data.isFloorSwap)
+            }.store(in: &cancellable)
+
+        recording.sendDataPublisher
+            .sink { [weak self] (_) in
+                self?.awsS3UploadManager.sendCollectedDataToS3(objects: self?.awsS3UploadManager.getAllRecordedObjects ?? [])
+            }.store(in: &cancellable)
+
+        analytics.zoneManager.onEnterPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (zone) in
+                self?.mapController?.zone.onEnterPublisher.send(zone)
+            }.store(in: &cancellable)
+
+        analytics.zoneManager.onExitPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (zone) in
+                self?.mapController?.zone.onExitPublisher.send(zone)
+            }.store(in: &cancellable)
     }
 
-    private func vpsToMapboxAngle(angle: Double) -> Double{
+    func generateAWSFolderPath(visitId: Int64?, additionalData: Bool = false) -> String? {
+        guard
+            let serverAddress = config.centralServerConnection.serverAddress?.trimServerAddress,
+            let dataServerAddress = config.analyticsServerConnection.serverAddress?.trimServerAddress,
+            let id = visitId
+        else { return nil }
+        let folderName: String = "\(serverAddress)/\(dataServerAddress)/\(id)/"
+        if additionalData, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, visitId: id) {
+            awsS3UploadManager.prepareDataToSend(identifier: "tags.json", data: tags, folderName: folderName, date: Date())
+        }
+        return folderName
+    }
+
+    func createTT2Tags(serverAddress: String, dataServerAddress: String, visitId: Int64) -> String? {
+        analytics.tt2Tags["tt2CentralServerURL"] = serverAddress
+        analytics.tt2Tags["tt2DataServerURL"] = dataServerAddress
+        analytics.tt2Tags["tt2RtlsOptionsId"] = floorManager.activeFloor?.id.description
+        analytics.tt2Tags["tt2StoreId"] = activeStore.id.description
+        analytics.tt2Tags["tt2VisitId"] = visitId.description
+        analytics.tt2Tags["tt2ClientId"] = activeClient?.clientId.description
+        let tags = TT2Tags(tags: analytics.tt2Tags)
+        guard let data = try? JSONEncoder().encode(tags) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private struct TT2Tags: Codable {
+      let tags: [String:String]
+    }
+
+    private func vpsToMapboxAngle(angle: Double) -> Double {
         90.0 - angle
     }
-
+    
     func getSwapLocations(for storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
-        let swapLocationsParameters = SwapLocationsParameters(storeId: storeId, config: config)
-        
         swapLocationsService
-            .call(with: swapLocationsParameters)
+            .call(with: SwapLocationsParameters(storeId: storeId))
             .sink(receiveCompletion: { (result) in
                 switch result {
                 case .finished:
@@ -229,41 +238,75 @@ internal class TT2Internal {
                 completion(.success(swapLocations))
             }).store(in: &cancellable)
     }
-    
-    
-    /// move this methode in manager where needed
-    /// now it's here just for testing the API
-    func postOrders(storeId: Int64, orderIds: [String], device: DeviceInformation) {
-        let parameters = OrdersParameters(storeId: storeId, orderIds: orderIds, deviceInformation: device, config: config)
-        
-        ordersService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
-                }
-            }, receiveValue: {_ in
-                
-            }).store(in: &cancellable)
+
+    func initRealWorldConverter() {
+      guard
+        let map = mapController,
+        let coordinate = map.currentGPSCoordinate
+      else { return }
+      initRealWorldConverter(coordinate: coordinate)
     }
-    
-    func getItemPosition(storeId: Int64, itemId: String) {
-        let parameters = ItemPositionParameters(storeId: storeId, barcode: itemId, config: config)
-        
-        itemPositionService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
-                }
-            }, receiveValue: { data in
-                print(data)
-            }).store(in: &cancellable)
+
+    func initRealWorldConverter(point: CGPoint) {
+      guard let map = mapController else { return }
+      initRealWorldConverter(coordinate: map.getCoordinate(point: point))
     }
+
+    private var realConverter: ICoordinateConverterReal?
+    func initRealWorldConverter(coordinate: CLLocationCoordinate2D) {
+      realConverter = RealCoordinateConverter(
+        latLngOrigin: coordinate,
+        mapAngleInDegrees: 0.0,
+        earthRadiusInMeters: 6378137.0,
+        pixelsPerMeter: 50
+      )
+    }
+
+  func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool = false) -> MLProcessedPath? {
+      guard
+        let id = floorManager.activeFloor?.id,
+        let mlPositions = analytics.recordedMLPositionsLngLat[id],
+        mlPositions.count > 0,
+        let converter = realConverter
+      else { return nil }
+      if clearAnalytics {
+        analytics.recordedMLPositionsLngLat[id]?.removeAll()
+      }
+      return navigation.positionManager.processMLPath(
+        path: mlPositions.map({ CLLocationCoordinate2D(latitude: $0.lngLat[1], longitude: $0.lngLat[0]).fromLatLngToMeter(converter: converter) }),
+        pathEndPoint: coordinate.fromLatLngToMeter(converter: converter)
+      )
+    }
+
+    func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D) {
+      guard
+        let id = floorManager.activeFloor?.id,
+        let mlPositions = analytics.recordedMLPositionsLngLat[id],
+        let converter = realConverter,
+        let path = processMLPath(coordinate: coordinate)?.path
+          .map({ $0.convertFromMeterToLatLng(converter: converter) })
+          .map({ [$0.longitude, $0.latitude] })
+      else { return }
+
+      analytics.recordedMLPositionsLngLatProcessed[id] = mlPositions.enumerated().map({ RecordedPositionLngLat(
+        airPressure: $0.element.airPressure,
+        timestamp: $0.element.timestamp,
+        lngLat: path[$0.offset]
+      )})
+    }
+
+    func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D) {
+      guard let converter = realConverter else { return }
+      navigation.syncAngleCorrection(angle: angle, position: coordinate.fromLatLngToMeter(converter: converter))
+    }
+}
+
+private extension String {
+  var trimServerAddress: String {
+    var modified = self
+    if hasPrefix("http://") { modified.removeFirst(7) }
+    if hasPrefix("https://") { modified.removeFirst(8) }
+    if hasSuffix("/api/v1") || hasSuffix("/api/v2") { modified.removeLast(7) }
+    return modified
+  }
 }

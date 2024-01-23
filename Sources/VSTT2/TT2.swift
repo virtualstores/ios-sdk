@@ -9,131 +9,139 @@ import Foundation
 import Combine
 import VSFoundation
 import VSPositionKit
-import CoreGraphics
+import CoreLocation
 import UIKit
 
 final public class TT2: ITT2 {
-    private let context = Context(VSTT2Config())
+    public var initialized: Bool { _tt2Internal != nil }
+    public var stores: [TT2Store] { tt2Internal.internalStores.map({ $0.toTT2Store() }) }
+    public var activeStores: [TT2Store] { tt2Internal.internalStoresActive.map({ $0.toTT2Store() }) }
+    public var navigation: Navigation { tt2Internal.navigation }
+    public var analytics: TT2AnalyticsManager { tt2Internal.analytics }
+    public var floor: VSTT2FloorManager { tt2Internal.floorManager }
+    public var position: Position { tt2Internal.position }
+    public var events: TT2EventManager { analytics.eventManager }
+    public var user: UserController { tt2Internal.user }
+    public var recording: IRecordingManager { tt2Internal.recording }
+
+    public var activeStore: TT2Store? { tt2Internal.activeStore.toTT2Store() }
+    public var activeFloor: RtlsOptions? { floor.activeFloor }
     
-    public var stores: [TT2Store] {
-        guard let stores = tt2Internal?.internalStores else { fatalError("tt2Internal is not initialized")}
-        
-        return stores.map({ $0.toTT2Store() })
-    }
-    
-    public var activeStores: [TT2Store] {
-        guard let stores = tt2Internal?.internalStores else { fatalError("tt2Internal is not initialized")}
-        
-        return stores.filter({ $0.active }).map({ $0.toTT2Store() })
-    }
-    
-    public var navigation: Navigation {
-        guard let navigation = tt2Internal?.navigation else { fatalError("tt2Internal is not initialized") }
-        
-        return navigation
-    }
-    
-    public var analytics: TT2AnalyticsManager {
-        guard let analytics = tt2Internal?.analytics else { fatalError("tt2Internal is not initialized") }
-        
-        return analytics
-    }
-    
-    public var floor: VSTT2FloorManager {
-        guard let floor = tt2Internal?.floorManager else { fatalError("tt2Internal is not initialized") }
-        
-        return floor
-    }
-    
-    public var position: Position {
-        guard let position = tt2Internal?.position else { fatalError("tt2Internal is not initialized") }
-        
-        return position
-    }
-    
-    public var userSettings: UserSettings {
-        guard let user = tt2Internal?.user else { fatalError("tt2Internal is not initialized") }
-        
-        return user
-    }
-    
-    public var activeStore: TT2Store?
-    
-    public var coordinateConverter: ICoordinateConverter?
-    public var mapData: MapData?
-    public var map: Map?
-    public var rtlsOption: RtlsOptions?
-    public var mapZonesTree: Tree?
+    public private(set) var coordinateConverter: ICoordinateConverter?
+    public private(set) var mapData: MapData?
+    public private(set) var map: Map?
+    public private(set) var mapZonesTree: Tree?
+
 
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
-    
+
+    static let version = "2.0.6"
+
     // MARK: Private members
-    private let config = EnvironmentConfig()
-    private var tt2Internal: TT2Internal?
+    private let context: Context
+    private var _tt2Internal: TT2Internal?
+    private var tt2Internal: TT2Internal {
+        guard let tt2Internal = _tt2Internal else { fatalError("tt2Internal is not initialized") }
+        return tt2Internal
+    }
+
     private var floorHeightDiff: Double?
+    private var activeClient: Client? { tt2Internal.activeClient }
 
-    private var switchFloorCancellable: AnyCancellable?
+    private var cancellable = Set<AnyCancellable>()
+    private var wifiCancellable = Set<AnyCancellable>()
+    private var positionKitParams: ParameterPackage = .retail
     
-    public init() {}
+    public init(with apiUrl: String, apiKey: String, settings: MLModelDownloadSettings? = nil) {
+        context = Context(VSTT2Config(environment: EnvironmentConfig()))
+        _tt2Internal = TT2Internal()
+        tt2Internal.config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
+        tt2Internal.mlModelManager.setup(settings: settings)
+        URLCache().removeAllCachedResponses()
+    }
 
-    public func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (Error?) -> ()) {
-        config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
+    deinit {
+        _tt2Internal = nil
+        cancellable.removeAll()
+        wifiCancellable.removeAll()
+    }
 
-        self.tt2Internal = TT2Internal(config: config)
-        self.tt2Internal?.getClients(completion: { (error) in
+    // MARK: Initialize
+    public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, completion: @escaping (Error?) -> ()) {
+        tt2Internal.getClients(completion: { [self] (error) in
             if let error = error {
                 completion(error)
                 return
             }
-            self.tt2Internal?.getStores(with: clientId, completion: { error in
-                completion(error)
-            })
+
+            guard
+              let client = tt2Internal.internalClients.first(where: { $0.clientId == clientId }),
+              let serverAddress = client.dataServerUrl,
+              let apiKey = client.dataServerApiKey
+            else { completion(VSTT2Error.missingData); return }
+
+            tt2Internal.activeClient = client
+            tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
+            user.setup(clientId: clientId)
+            self.positionKitParams = positionKitParams
+            tt2Internal.getStores(with: clientId, completion: completion)
         })
     }
     
-    public func setMap(map: IMapController) {
-        self.tt2Internal?.mapController = map
-    }
-    
-    public func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ()) {
+    public func initiate(store: TT2Store, completion: @escaping (Error?) -> ()) {
         ///check
-        guard let currentStore = tt2Internal?.internalStores.first(where: { $0.id == store.id }) else { return }
-        
-        self.activeStore = store
+        guard let currentStore = tt2Internal.internalStores.first(where: { $0.id == store.id }) else { return }
+
+        self.tt2Internal.setActiveStore(storeId: currentStore.id)
         self.floor.setupFloors(with: currentStore.rtlsOptions)
 
-        tt2Internal?.getSwapLocations(for: currentStore.id, completion: { [weak self] (result) in
+        tt2Internal.getSwapLocations(for: currentStore.id, completion: { [weak self] (result) in
             guard let self = self else { return }
             switch result {
             case .success(let swapLocations):
               self.floorHeightDiff = self.getHighestHeightDiff(swapLocations: swapLocations)
-              for rtlsOption in currentStore.rtlsOptions {
-                  if rtlsOption.isDefault {
-                      self.setActiveFloor(rtls: rtlsOption) { (error) in
+
+              let group = DispatchGroup()
+              group.enter()
+              if let rtls = currentStore.rtlsOptions.first(where: { $0.isDefault }) {
+                  self.setActiveFloor(rtls: rtls) { (error) in
+                      if let error = error {
                           completion(error)
                       }
+                      self.mapData?.swapLocations = swapLocations
+                      group.leave()
                   }
-              }
-
-              if self.rtlsOption == nil {
+              } else {
                   guard let rtls = currentStore.rtlsOptions.first else { return }
                   self.setActiveFloor(rtls: rtls) { (error) in
-                      completion(error)
+                      if let error = error {
+                          completion(error)
+                      }
+                      self.mapData?.swapLocations = swapLocations
+                      group.leave()
                   }
               }
 
               self.floor.setup(swapLocations: swapLocations)
-              if let startPositions = self.rtlsOption?.scanLocations?.filter({ $0.type == .start }) {
+              if let startPositions = self.activeFloor?.scanLocations?.filter({ $0.type == .start }) {
                 self.navigation.setup(startCodes: startPositions)
               }
               self.bindPublishers()
-              self.tt2Internal?.getShelfGroups(for: currentStore.id, activeFloor: self.rtlsOption) { [weak self] shelfGroups in
-                  guard let config = self?.config else { return }
-                  self?.position.setup(with: shelfGroups, config: config, store: currentStore)
+
+              group.enter()
+              self.tt2Internal.getShelfGroups(for: currentStore.id, activeFloor: self.activeFloor) { [weak self] shelfGroups in
+                  self?.position.setup(with: shelfGroups, store: currentStore)
+                  group.leave()
               }
-              if let client = self.tt2Internal?.internalClients.first(where: { $0.clientId == currentStore.clientId }) {
-                  self.tt2Internal?.accuracyUploader = AccuracyUploader(store: currentStore, connection: self.config.centralServerConnection, client: client)
+
+              group.notify(queue: .main) {
+                  self.setupMap()
+                  if let client = self.tt2Internal.internalClients.first(where: { $0.clientId == currentStore.clientId }), let converter = self.coordinateConverter {
+                      self.tt2Internal.analytics.accuracyUploader = AccuracyUploader(store: currentStore, client: client, converter: converter)
+                      self.tt2Internal.deviceOrientationUploader = DeviceOrientationUploader(store: currentStore, client: client)
+                  }
+                  completion(nil)
               }
             case .failure(let error): completion(error)
             }
@@ -141,26 +149,75 @@ final public class TT2: ITT2 {
 
         setupAnalytics(for: currentStore)
     }
-    
-    public func getMapData(mapStyle: MapStyle) -> MapData? {
-        self.mapData?.style = mapStyle
-        return self.mapData
+
+    public func initiate(storeId: Int64, completion: @escaping (Error?) -> Void) {
+        guard let store = stores.first(where: { $0.id == storeId }) else { completion(VSTT2Error.missingData); return }
+        initiate(store: store, completion: completion)
     }
 
-    public func startMap() {
-        tt2Internal?.mapController?.start()
+    // MARK: Setters
+    public func set(map: IMapController) {
+        tt2Internal.mapController = map
+        setupMap()
+    }
+
+    public func set(wifi: IWiFiController) {
+        tt2Internal.wifiController = wifi
+        bindWiFiPublishers()
+    }
+
+    public func set(automaticActivationOfUserMark: Bool) {
+        tt2Internal.automaticActivationOfUserMark = automaticActivationOfUserMark
+    }
+    
+    public func getMapData() -> MapData? {
+        mapData
     }
 
     public func stop() {
-        navigation.stop()
+        analytics.stopCollectingHeatMapData()
         analytics.stopVisit()
-        tt2Internal?.mapController?.stop()
+        navigation.stop()
+    }
+
+    public func setActiveFloor(rtls: RtlsOptions) {
+        self.setActiveFloor(rtls: rtls) { (error) in
+            if let error = error {
+                Logger(verbosity: .critical).log(message: "Floor change failed: \(error.localizedDescription)")
+            } else {
+                self.setupMap(changedFloor: true)
+                if let shelfGroups = self.tt2Internal.shelfGroups[rtls.id] {
+                    self.position.shelfGroups = shelfGroups
+                }
+            }
+        }
+    }
+
+    public func initRealWorldConverter() {
+      tt2Internal.initRealWorldConverter()
+    }
+
+    public func initRealWorldConverter(point: CGPoint) {
+      tt2Internal.initRealWorldConverter(point: point)
+    }
+
+    public func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool) -> MLProcessedPath? {
+      tt2Internal.processMLPath(coordinate: coordinate, clearAnalytics: clearAnalytics)
+    }
+
+    public func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D) {
+      tt2Internal.addProcessedMLPathToAnalytics(coordinate: coordinate)
+    }
+
+    public func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D) {
+      tt2Internal.syncAngleCorrection(angle: angle, coordinate: coordinate)
     }
 }
 
 private extension TT2 {
-    private func bindPublishers() {
-        switchFloorCancellable = floor.switchFloorPublisher
+    // MARK: Publishers
+    func bindPublishers() {
+        floor.switchFloorPublisher
           .compactMap { $0 }
           .sink(receiveValue: { (data) in
               self.navigation.changeFloorStop()
@@ -168,6 +225,10 @@ private extension TT2 {
                   if let error = error {
                       Logger(verbosity: .critical).log(message: "Floor change failed: \(error.localizedDescription)")
                   } else {
+                      self.setupMap(changedFloor: true)
+                      if let shelfGroups = self.tt2Internal.shelfGroups[data.rtlsOptions.id] {
+                          self.position.shelfGroups = shelfGroups
+                      }
                       do {
                           try self.navigation.changeFloorStart(startPosition: data.point)
                           self.floorChangePublisher.send(data.rtlsOptions.name)
@@ -176,72 +237,123 @@ private extension TT2 {
                       }
                   }
               }
-          })
+          }).store(in: &cancellable)
     }
 
-    private func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {
-        var diff: Double = 0.0
-        swapLocations.forEach { (swapLocation) in
-            swapLocation.paths.forEach { (path) in
-                diff = path.heightDiffInMeters > diff ? path.heightDiffInMeters : diff
-            }
-        }
-        return diff
+    func bindWiFiPublishers() {
+      wifiCancellable.removeAll()
+      tt2Internal.wifiController?.wifiInfoPublisher
+        .compactMap { $0 }
+        .sink(receiveCompletion: { (result) in
+          switch result {
+          case .finished: break
+          case .failure(let error): Logger(verbosity: .info).log(message: "WiFi Error: \(error)")
+          }
+        }, receiveValue: { [weak self] (info) in
+          guard
+            let zones = self?.mapZonesTree?.getZonesForCurrentFloorLevel(),
+            let zone = zones.first(where: { $0.navigationPoints[info.bssid] != nil }),
+            let point = zone.navigationPoints.first(where: { $0.key == info.bssid })?.value.point
+          else { return }
+
+          self?.navigation.currentAccessPointPosition = point
+        }).store(in: &wifiCancellable)
     }
 
-    private func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
+    func setupMap(changedFloor: Bool = false) {
+      guard
+        let rtls = activeFloor,
+        let mapData = mapData,
+        let converter = coordinateConverter,
+        let navData = floor.navgraph[rtls.id],
+        let start = floor.startCode,
+        let stop = floor.stopCode,
+        let zones = mapZonesTree?.getZonesFor(floorLevelId: rtls.id)
+      else { return }
+
+      let height = converter.convertFromMetersToPixels(input: rtls.heightInMeters)
+      let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
+
+      let convertedAndFlippedStart = start.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
+      let convertedAndFlippedStop = stop.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
+
+      let pathfinder = VPSPathfinderAdapter(
+        converter: converter,
+        height: rtls.heightInMeters,
+        width: rtls.widthInMeters,
+        pixelsPerMeter: Float(rtls.pixelsPerMeter),
+        navGraph: navGraph,
+        startPosition: convertedAndFlippedStart,
+        stopPosition: convertedAndFlippedStop
+      )
+      tt2Internal.mapController?.loadMap(with: mapData)
+      let sharedProperties = floor.zoneData[rtls.id]?.sharedProperties
+      tt2Internal.mapController?.setup(pathfinder: pathfinder, zones: zones, sharedProperties: sharedProperties, shelves: position.shelfGroups ?? [], changedFloor: changedFloor)
+    }
+
+    func getHighestHeightDiff(swapLocations: [SwapLocation]) -> Double {
+      swapLocations.map { $0.paths.map { $0.heightDiffInMeters } }.flatMap { $0 }.max() ?? 0.0
+    }
+
+    func getLowestHeightDiff(swapLocations: [SwapLocation]) -> Double {
+      swapLocations.map { $0.paths.map { $0.heightDiffInMeters } }.flatMap { $0 }.min() ?? 0.0
+    }
+
+    func setActiveFloor(rtls: RtlsOptions, completion: @escaping (Error?) -> ()) {
         guard let floorHeightDiff = floorHeightDiff else { return }
-        self.rtlsOption = rtls
-        self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zones, points) in
+        self.floor.setActiveFloor(with: rtls) { [weak self] (mapFence, zoneData) in
             if let mapFence = mapFence {
                 self?.setupMapfence(with: mapFence, floorHeightDiff: floorHeightDiff)
-                self?.mapData = self?.tt2Internal?.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
+                self?.mapData = self?.tt2Internal.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
             }
 
-            self?.setupAnalytics(for: zones, points: points)
+            self?.setupAnalytics(with: zoneData)
             completion(nil)
         }
     }
 
-    private func setupMapfence(with data: MapFence, floorHeightDiff: Double) {
-        guard let rtlsOption = self.rtlsOption, let name = self.activeStore?.name else { return }
+    func setupMapfence(with data: MapFence, floorHeightDiff: Double) {
+        guard let rtlsOption = activeFloor, let name = activeStore?.name else { return }
         
         let converter = BaseCoordinateConverter(heightInPixels: data.properties.height, widthInPixels: data.properties.width, pixelPerMeter: rtlsOption.pixelsPerMeter, pixelPerLatitude: 1000.0)
-        
-        self.coordinateConverter = converter
-        
-        self.mapZonesTree = Tree(root: Zone(id: UUID().uuidString, name: name, floorLevel: rtlsOption.floorLevel, converter: converter), converter: converter, currentFloorLevel: rtlsOption.floorLevel)
+        coordinateConverter = converter
 
-        #if DEBUG
-        let shouldRecord = false
-        #else
-        let shouldRecord = false
-        #endif
+        let properties = ZoneProperties(description: nil, id: name, name: name, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
+        mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevelId: rtlsOption.id, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
 
-        self.navigation.positionKitManager.setupMapFence(with: data, rtlsOption: rtlsOption, floorheight: floorHeightDiff, shouldRecord: shouldRecord)
+        navigation.positionManager.setupMapFence(
+            with: data,
+            rtlsOption: rtlsOption,
+            floorheight: floorHeightDiff,
+            parameterPackage: positionKitParams,
+            automaticSensorRecording: tt2Internal.automaticSensorRecording,
+            positionServiceSettings: tt2Internal.activeStore.positionServiceSettings,
+            converter: converter,
+            modelManger: tt2Internal.mlModelManager
+        )
     }
     
-    private func setupAnalytics(for store: Store) {
-        let analyticsConfig = EnvironmentConfig()
+    func setupAnalytics(for store: Store) {
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
-        
-        analyticsConfig.initCentralServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
-        analytics.setup(with: store, rtlsOptionId: self.rtlsOption?.id, config: analyticsConfig)
+        tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
+        analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id)
+        if let client = activeClient {
+            user.setup(clientId: client.clientId, positionServiceSettings: store.positionServiceSettings)
+        }
     }
     
-    private func setupAnalytics(for zones: [Int: [MapZone]]?, points: [Int: [MapZonePoint]]?) {
-        guard let rtlsOption = rtlsOption, let store = activeStore, let zones = zones else { return }
+    func setupAnalytics(with zoneData: [Int64: ZoneData]?) {
+        guard let rtlsOption = activeFloor, let store = activeStore, let zoneData = zoneData else { return }
 
-        zones.forEach { (key, value) in
-            guard let zonePoints = points?[key] else { return }
-
-            mapZonesTree?.add(key, store.name, value, zonePoints)
+        zoneData.forEach { (key, value) in
+            guard let rtls = floor.floors.first(where: { $0.id == key }) else { return }
+            mapZonesTree?.add(rtls, value.mapZones, value.mapZonesPoints)
         }
 
-        guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevel: rtlsOption.floorLevel) else { return }
+        guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevelId: rtlsOption.id) else { return }
 
         analytics.update(rtlsOptionId: rtlsOption.id)
         analytics.zoneManager.setup(with: mapZones, rtlsOptions: rtlsOption)
-        analytics.evenManager.setup(with: store.id, zones: mapZones, rtlsOptionsId: rtlsOption.id, config: config)
+        analytics.eventManager.setup(with: store.id, zones: mapZones, rtlsOptionsId: rtlsOption.id)
     }
 }

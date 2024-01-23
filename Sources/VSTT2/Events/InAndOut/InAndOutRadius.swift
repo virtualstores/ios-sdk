@@ -54,7 +54,7 @@ class InAndOutRadius {
 
     }
 
-    struct Trigger{
+    struct Trigger {
         let id: String
         let centerPoint: CGPoint
         let radius: Double

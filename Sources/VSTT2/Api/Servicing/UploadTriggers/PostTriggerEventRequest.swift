@@ -8,9 +8,6 @@
 import Foundation
 import CoreGraphics
 
-public struct AppTrigger {
-    let event: String
-}
 struct PostTriggerEventRequest {
     let rtlsOptionsId: String
     let name: String

@@ -8,26 +8,19 @@
 import Foundation
 import VSFoundation
 
-public struct OrdersParameters {
-    private let config: EnvironmentConfig
-    private let storeId: Int64
-    private let orderIds: [String]
-    private let deviceInformation: DeviceInformation
-
-    public init( storeId: Int64, orderIds: [String], deviceInformation: DeviceInformation, config: EnvironmentConfig) {
-        self.storeId = storeId
-        self.orderIds = orderIds
-        self.deviceInformation = deviceInformation
-        self.config = config
-    }
+struct OrdersParameters {
+    @Inject var config: EnvironmentConfig
+    let storeId: Int64
+    let orderIds: [String]
+    let deviceInformation: DeviceInformation
 }
 
 extension OrdersParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-
+    var type: RoutingType { .central }
+    var method: RequestType { .POST }
     var path: String { "/orders" }
-
-    var parameters: [String: Any]? {
+    var parametersDictionary: [String: Any]? {
         let parameters = ["storeId": storeId,
                           "orderIds": orderIds,
                           "device": ["id": deviceInformation.id,

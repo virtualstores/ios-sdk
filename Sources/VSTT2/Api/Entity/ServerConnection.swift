@@ -13,7 +13,7 @@ public struct ServerConnection: Codable {
     public let mqttAddress: String?
     public let storeId: Int64?
 
-    public init(apiKey: String?, serverAddress: String?, mqttAddress: String?, storeId: Int64?) {
+    public init(apiKey: String?, serverAddress: String?, mqttAddress: String? = nil, storeId: Int64? = nil) {
         self.apiKey = apiKey ?? ""
         self.serverAddress = serverAddress
         self.mqttAddress = mqttAddress

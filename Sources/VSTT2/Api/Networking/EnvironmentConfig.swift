@@ -8,36 +8,43 @@
 import Foundation
 
 /// Here we can have all setups depended what we need to use for each environment
-public class EnvironmentConfig {
-    private var _centralServerConnection: ServerConnection?
-
+class EnvironmentConfig {
     enum EndPoints: String {
-        case v1 = "/api/v1"
-        case v2 = "/api/v2"
+        case v1 = "api/v1"
+        case v2 = "api/v2"
     }
 
-    public var centralServerConnection: ServerConnection {
+    private var _centralServerConnection: ServerConnection?
+    var centralServerConnection: ServerConnection {
+        set { _centralServerConnection = newValue }
         get {
             guard let config = _centralServerConnection else { fatalError("ServerConnection not initialized") }
-
             return config
         }
     }
     
     private var _analyticsServerConnection: ServerConnection?
-    public var analyticsServerConnection: ServerConnection {
+    var analyticsServerConnection: ServerConnection {
+        set { _analyticsServerConnection = newValue }
         get {
             guard let config = _analyticsServerConnection else { fatalError("ServerConnection not initialized") }
-
             return config
         }
     }
-     
+
     func initCentralServerConnection(with url: String, endPoint: EndPoints, apiKey: String) {
-        self._centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue, mqttAddress: nil, storeId: nil)
+      if url.last == "/" {
+        centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue)
+      } else {
+        centralServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + "/" + endPoint.rawValue)
+      }
     }
     
-    func initAnalyticsServerConnection(with url: String, apiKey: String) {
-        self._analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url, mqttAddress: nil, storeId: nil)
+    func initAnalyticsServerConnection(with url: String, endPoint: EndPoints, apiKey: String) {
+      if url.last == "/" {
+        analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + endPoint.rawValue)
+      } else {
+        analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: url + "/" + endPoint.rawValue)
+      }
     }
 }

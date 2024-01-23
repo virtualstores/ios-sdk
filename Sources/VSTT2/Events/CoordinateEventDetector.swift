@@ -30,10 +30,10 @@ internal class CoordinateEventDetector: EventDetector {
     func updateInAndOut() {
         var triggers: [InAndOutRadius.Trigger] = []
 
-        events.forEach { event in
-            guard let trigger = event.eventType.getTrigger().coordinateTrigger else { return }
-            triggers.append(InAndOutRadius.Trigger(id: event.name, centerPoint: trigger.point, radius: trigger.radius))
-            triggersAndEvents[event.name] = (event, trigger)
+        events.forEach { (event) in
+            guard let id = event.id, let trigger = event.eventType.getTrigger().coordinateTrigger else { return }
+            triggers.append(InAndOutRadius.Trigger(id: id, centerPoint: trigger.point, radius: trigger.radius))
+            triggersAndEvents[id] = (event, trigger)
         }
 
         inAndOut = InAndOutRadius(triggers: triggers)
@@ -62,11 +62,12 @@ internal class CoordinateEventDetector: EventDetector {
 
 extension CoordinateEventDetector: InAndOutRadiusDelegate {
     func onEnter(trigger: InAndOutRadius.Trigger, position: CGPoint) {
-        guard let tuple = triggersAndEvents[trigger.id] else { return }
+        guard let tuple = triggersAndEvents[trigger.id], tuple.triggerType.type == .enter else { return }
         self.postEvent(event: tuple.event, position: position)
     }
 
     func onExit(trigger: InAndOutRadius.Trigger, position: CGPoint) {
-        // TODO: Will be done when coordinate trigger has support on server for onExit
+        guard let tuple = triggersAndEvents[trigger.id], tuple.triggerType.type == .exit else { return }
+        self.postEvent(event: tuple.event, position: position)
     }
 }

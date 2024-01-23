@@ -11,31 +11,30 @@ import VSFoundation
 
 public class Position: IPosition {
     @Inject var itemPositionService: ItemPositionService
+    @Inject var getPositionByBarcodeUseCase: GetPositionByBarcodeUseCase
 
     private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
-    private var shelfGroups: [ShelfGroup]?
-    private var config: EnvironmentConfig?
+    public internal(set) var shelfGroups: [ShelfGroup]?
     var store: Store?
-    private var barcodePositions: [Item] = []
     private var cancellable = Set<AnyCancellable>()
     
     public init() {}
     
-    func setup(with shelfGroups: [ShelfGroup], config: EnvironmentConfig, store: Store) {
+    func setup(with shelfGroups: [ShelfGroup], store: Store) {
         self.shelfGroups = shelfGroups
-        for group in shelfGroups {
-            for shelf in group.shelves {
-                for tier in shelf.shelfTiers {
+        shelfGroups.forEach { (group) in
+            group.shelves.forEach { (shelf) in
+                shelf.shelfTiers.forEach { (tier) in
                     self.shelfTierItemPositions[tier.id] = shelf.itemPosition
                 }
             }
         }
 
-        self.config = config
         self.store = store
+        getPositionByBarcodeUseCase.itemsRepository.reset()
     }
     
-    public func getBy(shelfName: String, completion: @escaping (ItemPosition) -> ()) {
+    public func getBy(shelfName: String, completion: @escaping (ItemPosition?) -> ()) {
         var position: ItemPosition?
         shelfGroups?.forEach { shelfGroup in
             if let shelf = shelfGroup.shelves.first(where: { $0.name == shelfName }) {
@@ -43,57 +42,47 @@ public class Position: IPosition {
             }
         }
         
-        guard let itemPosition = position else { return }
-        
-        completion(itemPosition)
+        DispatchQueue.main.async { completion(position) }
     }
 
-    public func getBy(barcode: String, completion: @escaping (Item?) -> ()) {
-        guard let store = store else { return }
+    public func getBy(barcode: String, completion: @escaping (Result<Item, Error>) -> ()) {
+        getPositionByBarcodeUseCase.invoke(barcode: barcode, completion: completion)
+    }
 
-        if let item = barcodePositions.first(where: { $0.externalId == barcode }) {
-            completion(item)
-        } else {
-            itemPositionService
-                .call(with: ItemPositionParameters(storeId: store.id, barcode: barcode, config: config))
-                .sink { (subscriberCompletion) in
-                    switch subscriberCompletion {
-                    case .finished: break
-                    case .failure(let error):
-                        Logger(verbosity: .debug).log(message: error.localizedDescription)
-                        completion(nil)
-                    }
-                } receiveValue: { [weak self] (data) in
-                  var itemPositions: [ItemPosition] = []
-                  data.forEach { (position) in
-                    guard let point = position.itemPosition, let offset = position.itemPositionOffset, let floorLevelId = store.rtlsOptions.first(where: { $0.id == (position.rtlsOptionsId ?? -1) })?.id else { return }
-                    itemPositions.append(ItemPosition(point: point, offset: offset, floorLevelId: floorLevelId))
-                  }
-                  let item = Item(name: "", externalId: barcode, itemPositions: itemPositions)
-                  self?.barcodePositions.append(item)
-                  completion(item)
-                }.store(in: &cancellable)
+    public func getBy(barcodes: [String], completion: @escaping (Result<[Item], Error>) -> ()) {
+      let group = DispatchGroup()
+      var items: [Item] = []
+      var savedError: Error?
+
+      group.enter()
+      barcodes.forEach { (barcode) in
+        getBy(barcode: barcode) { (result) in
+          switch result {
+          case .success(let item): items.append(item)
+          case .failure(let error): savedError = error
+          }
+          if let last = barcodes.last, barcode == last {
+              group.leave()
+          }
         }
-    }
+      }
 
-    public func getBy(barcodes: [String], completion: @escaping ([Item]) -> ()) {
-        let group = DispatchGroup()
-        var positions: [Item] = []
-
-        group.enter()
-        barcodes.forEach { (barcode) in
-            self.getBy(barcode: barcode) { data in
-                if let data = data {
-                    positions.append(data)
-                }
-                if let last = barcodes.last, barcode == last {
-                    group.leave()
-                }
+      group.notify(queue: .main) {
+        DispatchQueue.main.async {
+          if items.isEmpty {
+            if let error = savedError {
+              completion(.failure(error))
+            } else {
+              completion(.failure(NSError()))
             }
+          } else {
+            completion(.success(items))
+          }
         }
-
-        group.notify(queue: .main) {
-            completion(positions)
-        }
+      }
+    }
+    
+    deinit {
+        cancellable.removeAll()
     }
 }

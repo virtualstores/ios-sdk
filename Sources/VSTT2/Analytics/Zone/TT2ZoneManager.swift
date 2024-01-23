@@ -9,12 +9,13 @@ import Foundation
 import CoreGraphics
 import Combine
 import VSFoundation
-import VSPositionKit
 
 ///ZoneManager is helping handle in-out events
 public class TT2ZoneManager: TT2Zone {
     public var zoneEnteredPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
     public var zoneExitedPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
+    var onEnterPublisher: CurrentValueSubject<Zone?, Never> = .init(nil)
+    var onExitPublisher: CurrentValueSubject<Zone?, Never> = .init(nil)
     
     private var rtlsOptions: RtlsOptions?
     private var zonesPoint: [[CGPoint]] = []
@@ -37,7 +38,7 @@ public class TT2ZoneManager: TT2Zone {
         zonesPoint.forEach { polygon in
             if isPointInside(point: currentPosition, coordinates: polygon) {
                 if !self.activeInside.contains(polygon) {
-                    if let event = createZoomEnteredEvent(for: currentPosition, polygon: polygon) {
+                    if let event = createZoneEnteredEvent(for: currentPosition, polygon: polygon) {
                         self.activeInside.append(polygon)
                         self.zoneEnteredPublisher.send(event)
                     }
@@ -95,29 +96,29 @@ public class TT2ZoneManager: TT2Zone {
     }
     
     
-    private func createZoomEnteredEvent(for currentPosition: CGPoint, polygon: [CGPoint]) -> TriggerEvent? {
+    private func createZoneEnteredEvent(for currentPosition: CGPoint, polygon: [CGPoint]) -> TriggerEvent? {
         guard let zone = zones.first(where: { $0.points == polygon }), let rtlsOptions = self.rtlsOptions else { return nil }
+        onEnterPublisher.send(zone)
         
         let groupId = UUID().uuidString.uppercased()
         insideZones[groupId] = zone.polygon
         
         let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: groupId, type: .enter))
-        return TriggerEvent(rtlsOptionsId: rtlsOptions.id, name: zone.name, description: "", timestamp: Date(),
-                            userPosition: currentPosition, eventType: zoneTrigger)
+        return TriggerEvent(rtlsOptionsId: rtlsOptions.id, name: zone.name, description: "", eventType: zoneTrigger, timestamp: Date(), userPosition: currentPosition)
     }
     
-    private func exitZone(for currentPosition: CGPoint, polygon: [CGPoint]){
+    private func exitZone(for currentPosition: CGPoint, polygon: [CGPoint]) {
         guard let zone = zones.first(where: { $0.points == polygon }), let rtlsOptions = self.rtlsOptions else { return }
+        onExitPublisher.send(zone)
         insideZones.forEach { (key, value) in
             guard value == zone.polygon else { return }
             
             let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: key, type: .exit))
-            
-            let event = TriggerEvent(rtlsOptionsId: rtlsOptions.id,name: zone.name, description: "", timestamp: Date(),
-                                     userPosition: currentPosition, eventType: zoneTrigger)
+            let event = TriggerEvent(rtlsOptionsId: rtlsOptions.id,name: zone.name, description: "", eventType: zoneTrigger, timestamp: Date(), userPosition: currentPosition)
             
             zoneExitedPublisher.send(event)
             self.activeInside.removeAll(where: { $0 == polygon })
+            self.insideZones.removeValue(forKey: key)
         }
     }
 }

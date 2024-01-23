@@ -9,33 +9,31 @@
 import Foundation
 import AWSS3
 import VSFoundation
+import Combine
 
 public enum AWSS3Keys: String {
-  case dataAnalyze = "data-analyze/"
+  case dataAnalyze = "data-analyze/vps/"
+  case test = "data-analyze/ios-test/"
   case iosOfficeStepData = "ios-office-step-data/"
 }
 
-public protocol AwsS3UploadManagerDelegate {
-  var id: String { get }
-  func uploadSucceded()
-}
+public final class AWSRecordedObject: IPersistenceModel {
+  public var retainOriginalIndex = false
+  public var index: String?
 
-final class AWSRecordObject: IPersistenceModel {
-  var retainOriginalIndex = false
-  var index: String?
-
+  public init() {}
   convenience init(index: String) {
     self.init()
     self.index = index
   }
 
-  var identifier: String?
-  var data: String?
-  var date: String?
-  var folderName: String?
-  var status: String = Status.pending.rawValue
+  public var identifier: String?
+  public var data: String?
+  public var date: String?
+  public var folderName: String?
+  public var status: String = Status.pending.rawValue
 
-  enum Status: String {
+  public enum Status: String {
     case pending = "pending"
     case inProgress = "inProgress"
     case failed = "failed"
@@ -43,15 +41,30 @@ final class AWSRecordObject: IPersistenceModel {
   }
 }
 
-public class AWSS3UploadManager {
+class AWSS3UploadManager {
   @Inject var persistence: Persistence
+
+  var getAllRecordedObjects: [AWSRecordedObject] { persistence.get(arrayOf: AWSRecordedObject.self) }
+
+  var dataUploadedPublisher: CurrentValueSubject<Bool, Never> = .init(false)
 
   private static let MAX_TRIES = 20
 
-  private func insert(identifier: String, data: String, date: String) {
-    var recording = AWSRecordObject()
+  private var serialDispatch = DispatchQueue(label: "AWSS3UploadManagerSerial")
+
+  init() {
+    let region: AWSRegionType = .EUNorth1
+    let provider = AWSCognitoCredentialsProvider(regionType: region, identityPoolId: "eu-north-1:33816793-1fcf-4333-9952-bd6327a65cdf")
+    AWSServiceManager.default().defaultServiceConfiguration = AWSServiceConfiguration(region: region, credentialsProvider: provider)
+    removeRecordedObject(where: .folderIsMissing)
+    sendCollectedDataToS3(objects: getAllRecordedObjects)
+  }
+
+  private func insert(identifier: String, data: String, folderName: String?, date: String) {
+    var recording = AWSRecordedObject()
     recording.identifier = identifier
     recording.data = data
+    recording.folderName = folderName
     recording.date = date
 
     do {
@@ -61,26 +74,32 @@ public class AWSS3UploadManager {
     }
   }
 
-  func prepareDataToSend(identifier: String, data: String, date: Date) {
+  func prepareDataToSend(identifier: String, data: String, folderName: String?, date: Date) {
     let timeFormatter = DateFormatter()
     timeFormatter.dateFormat = "HHmmss"
     let timedIdentifier = identifier + timeFormatter.string(from: date)
-    insert(identifier: identifier, data: data, date: timedIdentifier)
+    insert(identifier: identifier, data: data, folderName: folderName, date: timedIdentifier)
   }
 
-  func addAditionalData(identifier: String, fileName: String, data: String) {
-    guard let object = getAllRecordedObject().first(where: { $0.identifier == identifier }), let date = object.date else { return }
-    insert(identifier: fileName, data: data, date: date)
+  func addAditionalData(identifier: String, fileName: String, folderName: String?, data: String) {
+    guard let object = getAllRecordedObjects.first(where: { $0.identifier == identifier }), let date = object.date else { return }
+    insert(identifier: fileName, data: data, folderName: folderName, date: date)
   }
 
-  func sendCollectedDataToS3(status: AWSRecordObject.Status = .pending, folderName: String = "") {
-    let arr = getAllRecordedObject().filter { $0.status == status.rawValue }
-    arr.forEach { (object) in
-      if let id = object.identifier, let convertedData = object.data?.data(using: .utf8) {
-        self.sendToS3(AWSS3Key: .dataAnalyze, key: object.folderName ?? folderName, identifier: id, data: convertedData)
-        object.folderName = folderName
-        self.updateStatus(object: object, status: .inProgress)
-      }
+  func sendCollectedDataToS3(status: AWSRecordedObject.Status = .pending) {
+    let objects = getAllRecordedObjects
+    var arr = objects.filter { $0.status == status.rawValue }
+    if status != .failed {
+      arr.append(contentsOf: objects.filter { $0.status == AWSRecordedObject.Status.failed.rawValue })
+    }
+    sendCollectedDataToS3(objects: arr)
+  }
+
+  func sendCollectedDataToS3(objects: [AWSRecordedObject]) {
+    guard objects.count > 0 else { dataUploadedPublisher.send(false); return }
+    objects.forEach { (object) in
+      retry { self.sendToS3(AWSS3Key: .dataAnalyze, object: object) }
+      updateStatus(object: object, status: .inProgress)
     }
   }
 
@@ -88,42 +107,43 @@ public class AWSS3UploadManager {
     sendCollectedDataToS3(status: .failed)
   }
 
-  func retry(_ numberOfTimes: Int = 0) {
-    DispatchQueue.global(qos: .background).async {
-      sleep(self.getWaitTimeExp(retryCount: numberOfTimes))
-      if numberOfTimes < AWSS3UploadManager.MAX_TRIES {
-
-
-        self.retry(numberOfTimes + 1)
-      } else {
-        self.retry()
-      }
+  typealias Async = (_ success: @escaping (_ identifier: String, _ key: String) -> Void, _ failure: @escaping (_ identifier: String, _ key: String, _ error: Error) -> Void) -> Void
+  func retry(_ numberOfTimes: Int = 0, task: @escaping () -> Async?) {
+    guard let asyncTask = task() else { return }
+    serialDispatch.asyncAfter(deadline: .now() + getWaitTimeExp(retryCount: numberOfTimes)) { [self] in
+      asyncTask ({ (identifier, key) in
+        self.updateRecordsAfter(uploadingFailed: false, identifier: identifier, key: key)
+        if self.getAllRecordedObjects.filter({ $0.status == AWSRecordedObject.Status.inProgress.rawValue }).count == 0 {
+          DispatchQueue.main.async { self.dataUploadedPublisher.send(true) }
+        }
+      }, { [self] (identifier, key, error) in
+        Logger().log(message: "Failure uploading file: \(error)")
+        if numberOfTimes < AWSS3UploadManager.MAX_TRIES {
+          retry(numberOfTimes + 1, task: task)
+        } else {
+          self.updateRecordsAfter(uploadingFailed: true, identifier: identifier, key: key)
+          if self.getAllRecordedObjects.filter({ $0.status == AWSRecordedObject.Status.inProgress.rawValue }).count == 0 {
+            DispatchQueue.main.async { self.dataUploadedPublisher.send(false) }
+          }
+        }
+      })
     }
   }
 
-  private func getWaitTimeExp(retryCount: Int) -> UInt32 {
-    if retryCount == 0 {
-      return 0
-    }
-    let waitTime = pow(2, retryCount)
-
-    return UInt32(truncating: waitTime as NSNumber)
+  private func getWaitTimeExp(retryCount: Int) -> Double {
+    guard retryCount > 0 else { return 0 }
+    let waitTime = Double(truncating: pow(1.4, retryCount) as NSNumber)
+    return min(waitTime, 2 * 60)
   }
 
-  private func getAllRecordedObject() -> [AWSRecordObject] {
-    persistence.get(arrayOf: AWSRecordObject.self)
+  private func updateRecordsAfter(uploadingFailed: Bool, identifier: String, key: String) {
+    guard let object = getAllRecordedObjects.filter({ $0.status == AWSRecordedObject.Status.inProgress.rawValue }).first(where: { $0.identifier == identifier && key.contains($0.folderName ?? "") }) else { return }
+    updateStatus(object: object, status: uploadingFailed ? .failed : .succeded)
   }
 
-  private func updateRecordsAfter(uploadingFailed: Bool) {
-    let arr = getAllRecordedObject()
-    let filteredArr = arr.filter { $0.status == AWSRecordObject.Status.inProgress.rawValue }
-    self.updateStatus(objects: filteredArr, status: uploadingFailed ? .failed : .succeded)
-  }
-
-  private func updateStatus(object: AWSRecordObject, status: AWSRecordObject.Status? = nil) {
-    var editableObject: AWSRecordObject
-    editableObject = object
-    editableObject.status = status?.rawValue ?? object.status
+  private func updateStatus(object: AWSRecordedObject, status: AWSRecordedObject.Status) {
+    var editableObject = object
+    editableObject.status = status.rawValue
     do {
       try persistence.save(&editableObject)
     } catch {
@@ -131,72 +151,91 @@ public class AWSS3UploadManager {
                                           message: "Update Points SQLite error")
     }
 
-    guard let status = status else { return }
     switch status {
     case .pending: break
     case .inProgress: break
-    case .failed: self.retryFailed()
-    case .succeded: self.removeRecordedObject()
+    case .failed: retryFailed()
+    case .succeded: removeRecordedObject(where: .status(.succeded))
     }
   }
 
-  private func updateStatus(objects: [AWSRecordObject], status: AWSRecordObject.Status) {
+  private func updateStatus(objects: [AWSRecordedObject], status: AWSRecordedObject.Status) {
     objects.forEach { (object) in
-      self.updateStatus(object: object, status: status)
+      updateStatus(object: object, status: status)
     }
   }
 
-  private func removeRecordedObject() {
-    let arr = getAllRecordedObject()
-    let filteredPositions = arr.filter { $0.status == AWSRecordObject.Status.succeded.rawValue }
-    for object in filteredPositions {
+  enum RemoveRecordedObjectOptions {
+    case all
+    case folderIsMissing
+    case identifier(String)
+    case status(AWSRecordedObject.Status)
+  }
+
+  func removeRecordedObject(where option: RemoveRecordedObjectOptions) {
+    let objects: [AWSRecordedObject]
+    switch option {
+    case .all: objects = getAllRecordedObjects
+    case .folderIsMissing: objects = getAllRecordedObjects.filter { $0.folderName == nil }
+    case .identifier(let identifier): objects = getAllRecordedObjects.filter { $0.identifier == identifier }
+    case .status(let status): objects = getAllRecordedObjects.filter { $0.status == status.rawValue }
+    }
+
+    objects.forEach { (object) in
       do {
         try persistence.delete(object)
       } catch {
-        Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+        Logger(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
                                             message: "Remove Points After Uploading SQLite error")
       }
     }
   }
 
-  private func sendToS3(AWSS3Key: AWSS3Keys, key: String, identifier: String, data: Data) {
-    let splitIdentifier = identifier.split(separator: ".")
-    let strippedIdentifier = splitIdentifier[0].components(separatedBy: CharacterSet.decimalDigits).joined()
-    var fileExtension = ".json"
-    if splitIdentifier.count > 1 {
-      fileExtension = "." + String(splitIdentifier[splitIdentifier.capacity - 1])
-    }
-    let getPreSignedURLRequest = AWSS3GetPreSignedURLRequest()
-    getPreSignedURLRequest.bucket = "product-information-storage"
-    getPreSignedURLRequest.key = AWSS3Key.rawValue + key + strippedIdentifier + fileExtension
-    getPreSignedURLRequest.httpMethod = .PUT
-    getPreSignedURLRequest.expires = Date(timeIntervalSinceNow: 3600)
+  private func sendToS3(AWSS3Key: AWSS3Keys, object: AWSRecordedObject) -> Async? {
+    guard let id = object.identifier, let folderName = object.folderName, let convertedData = object.data?.data(using: .utf8) else { return nil }
+    return sendToS3(AWSS3Key: AWSS3Key, key: folderName, identifier: id, data: convertedData)
+  }
 
-    //Important: set contentType for a PUT request.
-    let fileContentTypeStr = "text/plain"
-    getPreSignedURLRequest.contentType = fileContentTypeStr
-    AWSS3PreSignedURLBuilder.default().getPreSignedURL(getPreSignedURLRequest).continueWith { (task:AWSTask<NSURL>) -> Any? in
-      if let error = task.error as NSError? {
-        Logger(verbosity: .critical).log(message: "Uploading error: \(error.localizedDescription)")
-        self.updateRecordsAfter(uploadingFailed: true)
+  private func sendToS3(AWSS3Key: AWSS3Keys, key: String, identifier: String, data: Data) -> Async {
+    return { (success, failure) in
+      let splitIdentifier = identifier.split(separator: ".")
+      let strippedIdentifier = splitIdentifier[0]
+      var fileExtension = ".json"
+      if splitIdentifier.count > 1 {
+        fileExtension = "." + String(splitIdentifier[splitIdentifier.capacity - 1])
+      }
+      let getPreSignedURLRequest = AWSS3GetPreSignedURLRequest()
+      getPreSignedURLRequest.bucket = "virtualstores-public-files"
+      getPreSignedURLRequest.key = AWSS3Key.rawValue + key + strippedIdentifier + fileExtension
+      getPreSignedURLRequest.httpMethod = .PUT
+      getPreSignedURLRequest.expires = Date(timeIntervalSinceNow: 3600)
+
+      //Important: set contentType for a PUT request.
+      let fileContentTypeStr = "application/json"
+      getPreSignedURLRequest.contentType = fileContentTypeStr
+      AWSS3PreSignedURLBuilder.default().getPreSignedURL(getPreSignedURLRequest).continueWith { (task:AWSTask<NSURL>) -> Any? in
+        if let error = task.error as NSError? {
+          Logger().log(message: "Uploading error: \(error.localizedDescription)")
+          failure(identifier, key, error)
+          return nil
+        }
+
+        let presignedURL = task.result
+        var request = URLRequest(url: presignedURL! as URL)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.httpMethod = "PUT"
+        request.setValue(fileContentTypeStr, forHTTPHeaderField: "Content-Type")
+        URLSession.shared.uploadTask(with: request, from: data) { (responseData, response, error) in
+          if let error = error {
+            Logger().log(message: "Failed to upload \(identifier), trying again: \(error.localizedDescription)")
+            failure(identifier, key, error)
+          } else {
+            Logger().log(message: "Successfully uploaded \(identifier) to S3")
+            success(identifier, key)
+          }
+        }.resume()
         return nil
       }
-      
-      let presignedURL = task.result
-      var request = URLRequest(url: presignedURL! as URL)
-      request.cachePolicy = .reloadIgnoringLocalCacheData
-      request.httpMethod = "PUT"
-      request.setValue(fileContentTypeStr, forHTTPHeaderField: "Content-Type")
-      URLSession.shared.uploadTask(with: request, from: data) { (responseData, response, error) in
-        if let error = error {
-          Logger(verbosity: .critical).log(message: "Failed to upload \(identifier), trying again: \(error.localizedDescription)")
-          self.updateRecordsAfter(uploadingFailed: true)
-        } else {
-          Logger(verbosity: .info).log(message: "Successfully uploaded \(identifier) to S3")
-          self.updateRecordsAfter(uploadingFailed: false)
-        }
-      }.resume()
-      return nil
     }
   }
 }

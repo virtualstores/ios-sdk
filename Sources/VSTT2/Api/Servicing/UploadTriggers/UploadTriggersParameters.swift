@@ -9,34 +9,20 @@ import Foundation
 import VSFoundation
 import CoreGraphics
 
-public struct UploadTriggersParameters {
-    private let config: EnvironmentConfig?
-    private let apiKey: String
-    private let visitId: Int64
-    private let requestId: String
-    private let request: PostTriggerEventRequest
-    
-    init(apiKey: String, visitId: Int64, requestId: String, request: PostTriggerEventRequest, config: EnvironmentConfig?) {
-        self.apiKey = apiKey
-        self.visitId = visitId
-        self.requestId = requestId
-        self.request = request
-        self.config = config
-    }
+struct UploadTriggersParameters {
+    @Inject var config: EnvironmentConfig
+    let visitId: Int64
+    let requestId: String
+    let request: PostTriggerEventRequest
 }
 
 extension UploadTriggersParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-    
-    var queryItems: [String: String]? {
-        let parameters = ["requestId": requestId, "visitId": String(visitId)] as [String: String]
-        
-        return parameters
-    }
-    
+    var type: RoutingType { .analytics }
+    var method: RequestType { .POST }
+    var queryItems: [String: String]? { ["requestId": requestId, "visitId": String(visitId)] }
     var path: String { "/triggerevents" }
-    
-    var parameters: [String: Any]? {
+    var parametersDictionary: [String: Any]? {
         var parameters = ["name": request.name,
                           "timestamp": request.timeStamp,
                           "userPosition": [
@@ -81,6 +67,4 @@ extension UploadTriggersParameters: Routing {
         
         return dict
     }
-    
-    var headers: [String: String]? { ["apiKey" : apiKey ] }
 }

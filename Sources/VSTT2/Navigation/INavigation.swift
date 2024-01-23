@@ -6,7 +6,6 @@
 // Copyright Virtual Stores - 2021
 
 import Foundation
-import VSPositionKit
 import Combine
 import VSFoundation
 import CoreGraphics
@@ -25,14 +24,28 @@ public protocol INavigation {
     func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws
     
     /// Start the position with compass
-    func start(startPosition: CGPoint) throws
+    func start(startPosition: CGPoint, position: ItemPosition?) throws
         
     /// Synchronize the position with compass
-    func syncPosition(position: ItemPosition) throws
+    func syncPosition(position: ItemPosition, forceSync: Bool) throws
+
+    func syncPosition(identifier: String, type: SyncTypeEnum, completion: @escaping (Result<Item,Error>) -> ())
     
     /// This will stop notifying the location publishers.
     func stop()
     
     /// Provide device start angle
     func prepareAngle()
+}
+
+public enum SyncTypeEnum {
+    case compass(forceSync: Bool = false)
+    case normal(syncRotation: Bool)
+
+    internal func get() -> (compass: (Bool)?, normal: (Bool)?) {
+        switch self {
+        case .compass(let forceSync): return (compass: (forceSync), normal: nil)
+        case .normal(let syncRotation): return (compass: nil, normal: (syncRotation))
+        }
+    }
 }

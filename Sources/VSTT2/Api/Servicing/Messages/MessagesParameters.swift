@@ -8,27 +8,17 @@
 import Foundation
 import VSFoundation
 
-public struct MessagesParameters {
-    private let storeId: Int64
-    private let config: EnvironmentConfig?
-
-    public init(storeId: Int64, config: EnvironmentConfig?) {
-        self.storeId = storeId
-        self.config = config
-    }
+struct MessagesParameters {
+    @Inject var config: EnvironmentConfig
+    let storeId: Int64
 }
 
 extension MessagesParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-
+    var type: RoutingType { .central }
     var method: RequestType { .GET }
-    
     var path: String { "/messages" }
-    
     var queryItems: [String: String]? {
-        let parameters = ["storeId": String(storeId)] as [String: String]
-
-        return parameters
+        ["storeId": String(storeId)]
     }
-    
 }

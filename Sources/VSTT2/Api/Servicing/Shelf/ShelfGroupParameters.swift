@@ -8,32 +8,18 @@
 import Foundation
 import VSFoundation
 
-public struct ShelfGroupParameters {
-    private let config: EnvironmentConfig
-    private let storeId: Int64
-    private let rtlsOptionsId: Int64
-
-    public init(storeId: Int64, rtlsOptionsId: Int64, config: EnvironmentConfig) {
-        self.config = config
-        self.storeId = storeId
-        self.rtlsOptionsId = rtlsOptionsId
-    }
+struct ShelfGroupParameters {
+    @Inject var config: EnvironmentConfig
+    let storeId: Int64
+    let rtlsOptionsId: Int64
 }
 
 extension ShelfGroupParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-
-    var path: String { "/shelfgroups" }
-
-    var queryItems: [String: String]? {
-        let parameters = [
-          "storeId" : String(storeId),
-          "rtlsOptionsId": String(rtlsOptionsId)
-        ] as [String: String]
-
-        return parameters
-    }
-
+    var type: RoutingType { .central }
     var method: RequestType { .GET }
-
+    var path: String { "/shelfgroups" }
+    var queryItems: [String: String]? {
+        ["rtlsOptionsId": String(rtlsOptionsId)]
+    }
 }

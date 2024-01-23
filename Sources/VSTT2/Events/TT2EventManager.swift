@@ -11,7 +11,9 @@ import Combine
 import CoreGraphics
 
 public class TT2EventManager: TT2Event {
+    @Inject var floorManager: VSTT2FloorManager
     @Inject var messagesService: MessagesService
+    @Inject var triggerEventsService: TriggerEventsService
     @Inject var zoneEventDetector: ZoneEventDetector
     @Inject var coordinateEventDetector: CoordinateEventDetector
     
@@ -21,126 +23,110 @@ public class TT2EventManager: TT2Event {
     private var activeStoreId: Int64?
     private var rtlsOptionsId: Int64 = 0
 
-    private var messages: [Message] = []
+    public var triggerEvents: [TriggerEvent] = []
     private var latestMessageLoad: Date?
     private let reloadMessageInterval: TimeInterval = 3600.0
     private var zones: [Zone] = []
     
     private var cancellable = Set<AnyCancellable>()
-    private var zoneEnterCancellable: AnyCancellable?
-    private var coordinateEnterCancellable: AnyCancellable?
-    private var config: EnvironmentConfig?
+
+    deinit {
+        cancellable.removeAll()
+    }
     
-    internal func setup(with storeId: Int64, zones: [Zone], rtlsOptionsId: Int64, config: EnvironmentConfig?) {
+    func setup(with storeId: Int64, zones: [Zone], rtlsOptionsId: Int64) {
         self.activeStoreId = storeId
         self.zones = zones
         self.rtlsOptionsId = rtlsOptionsId
-        self.config = config
         
         zoneEventDetector.setup(with: zones)
+        latestMessageLoad = nil
         loadMessagesIfNeeded()
-        bindPubloshers()
-    }
-    
-    public func addEvent(event: TriggerEvent) {
-        switch event.eventType {
-        case .zoneTrigger(_): zoneEventDetector.add(event: event)
-        case .coordinateTrigger(_): coordinateEventDetector.add(event: event)
-        default: break
-        }
+        bindPublishers()
     }
 
-    public func removeEvent(with id: String) { }
-
-    public func onNewPosition(currentPosition: CGPoint) {
+    func onNewPosition(currentPosition: CGPoint) {
         zoneEventDetector.onNewPosition(currentPosition: currentPosition)
         coordinateEventDetector.onNewPosition(currentPosition: currentPosition)
     }
     
-    public func bindPubloshers() {
-        self.zoneEnterCancellable = zoneEventDetector.eventPublisher
+    public func add(event: TriggerEvent) {
+        switch event.eventType {
+        case .coordinateTrigger(_): coordinateEventDetector.add(event: event)
+        case .zoneTrigger(_): zoneEventDetector.add(event: event)
+        case .appTrigger(_), .shelfTrigger(_): break
+        }
+    }
+    
+    public func remove(event: TriggerEvent) {
+        switch event.eventType {
+        case .coordinateTrigger(_): coordinateEventDetector.remove(event: event)
+        case .zoneTrigger(_): zoneEventDetector.remove(event: event)
+        case .appTrigger(_), .shelfTrigger(_): break
+        }
+    }
+
+    public func remove(event id: String) {
+        if let event = coordinateEventDetector.events.first(where: { $0.name == id }) {
+            remove(event: event)
+        }
+        if let event = zoneEventDetector.events.first(where: { $0.name == id }) {
+            remove(event: event)
+        }
+    }
+    
+    private func bindPublishers() {
+        zoneEventDetector.eventPublisher
             .compactMap { $0 }
-            .sink { _ in
-                Logger.init().log(message: "zoneEnteredPublisher error")
-            } receiveValue: { [weak self] event in
+            .sink { (_) in
+                Logger().log(message: "zoneEnteredPublisher error")
+            } receiveValue: { [weak self] (event) in
                 self?.messageEventPublisher.send(event)
             }
+            .store(in: &cancellable)
         
-        self.coordinateEnterCancellable = coordinateEventDetector.eventPublisher
+        coordinateEventDetector.eventPublisher
             .compactMap { $0 }
-            .sink { _ in
-                Logger.init().log(message: "zoneEnteredPublisher error")
-            } receiveValue: { [weak self] event in
+            .sink { (_) in
+                Logger().log(message: "zoneEnteredPublisher error")
+            } receiveValue: { [weak self] (event) in
                 self?.messageEventPublisher.send(event)
             }
+            .store(in: &cancellable)
     }
     
     private func loadMessagesIfNeeded() {
         if let latestMessageLoad = latestMessageLoad {
-            if latestMessageLoad.timeIntervalSinceNow < -reloadMessageInterval {
-                loadMessages()
-            }
+            guard latestMessageLoad.timeIntervalSinceNow < -reloadMessageInterval else { return }
+            loadMessages()
         } else {
             loadMessages()
         }
     }
-
+    
     private func loadMessages() {
         guard let storeId = activeStoreId else { return }
 
-        let parameters = MessagesParameters(storeId: storeId, config: config)
-        messagesService
+        let parameters = TriggerEventsParameters(storeId: storeId)
+        triggerEventsService
             .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    Logger.init(verbosity: .debug).log(tag: Logger.createTag(fileName: #file, functionName: #function),
-                                                       message: error.localizedDescription)
+            .sink { (result) in
+                switch result {
+                case .finished: break
+                case .failure(let error): Logger(verbosity: .debug).log(tag: Logger.createTag(fileName: #file, functionName: #function), message: error.localizedDescription)
                 }
-            }, receiveValue: { [weak self] (messageDto) in
-                self?.messages = messageDto.compactMap { $0.toMessage() }
-                
-                guard let messages = self?.messages else { return }
-                
-                for (_, message) in messages.enumerated() {
-                    switch message.exposureType {
-                    case .zones:
-                        self?.createZoneEvents(for: message)
-                    case .products:
-                        self?.createCoordinatEvents(for: message)
-                    default: break
+            } receiveValue: { [weak self] (events) in
+                self?.triggerEvents = events.map { $0.toTriggerEvent(mapZones: self?.zones ?? []) }.flatMap { $0 }
+
+                self?.triggerEvents.forEach { event in
+                    let type = event.eventType.getTrigger()
+                    if type.coordinateTrigger != nil {
+                        self?.coordinateEventDetector.add(event: event)
+                    } else if type.zoneTrigger != nil {
+                        self?.zoneEventDetector.add(event: event)
                     }
                 }
                 self?.latestMessageLoad = .init()
-            }).store(in: &cancellable)
-    }
-    
-    private func createZoneEvents(for message: Message) {
-        let trigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: message.zones.first!.name, groupId: "", type: .enter))
-        let metaData = addMetaData(for: message)
-        let event = TriggerEvent(rtlsOptionsId: rtlsOptionsId, name: message.name, description: message.description, eventType: trigger, metaData: metaData)
-        self.zoneEventDetector.add(event: event)
-    }
-    
-    private func createCoordinatEvents(for message: Message) {
-        let coordinateTrigger = TriggerEvent.EventType.coordinateTrigger(TriggerEvent.CoordinateTrigger(point: .zero, radius: message.radius))
-        let metaData = addMetaData(for: message)
-        let event = TriggerEvent(rtlsOptionsId: rtlsOptionsId, name: message.name, description: message.description, eventType: coordinateTrigger, metaData: metaData)
-        self.coordinateEventDetector.add(event: event)
-    }
-
-    private func addMetaData(for message: Message) -> [String : String] {
-        let type: TriggerEvent.DefaultMetaData.MessageType = message.cardType == .big ? .large : .small
-        let defaultMetaData = TriggerEvent.DefaultMetaData()
-        let metaData = [
-            defaultMetaData.id : String(message.id),
-            defaultMetaData.title : message.title,
-            defaultMetaData.body : message.description,
-            defaultMetaData.imageUrl : message.image?.description ?? "",
-            defaultMetaData.type : type.rawValue
-        ]
-        return metaData
+            }.store(in: &cancellable)
     }
 }

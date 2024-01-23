@@ -9,12 +9,14 @@ import Foundation
 import Combine
 import Foundation
 import VSFoundation
+import CoreLocation
 
 ///
 /// Interface for TT2 SDK.
 ///  1- To get the SDK ready to work first Call initialize method. This will prepare the SDK for  all other purposes.
 ///  2- To initialize your store, call initStore
 public protocol ITT2 {
+    var initialized: Bool { get }
     /// Navigation manager
     var navigation: Navigation { get }
     
@@ -26,37 +28,65 @@ public protocol ITT2 {
     
     /// Position manager
     var position: Position { get }
+
+    /// Event Manager
+    var events: TT2EventManager { get }
     
     /// User Settings manager
-    var userSettings: UserSettings { get }
+//    var userSettings: UserSettings { get }
+
+    var user: UserController { get }
+
+    /// Recording manager
+    var recording: IRecordingManager { get }
     
     /// Active store
     var activeStore: TT2Store? { get }
     
     /// List of active stores
     var activeStores: [TT2Store] { get }
+
+    var activeFloor: RtlsOptions? { get }
     
     /// List of available stores
     var stores: [TT2Store] { get }
 
+    var mapZonesTree: Tree? { get }
+
     /// Method for initialize TT2 for specific client
-    func initialize(with apiUrl: String, apiKey: String, clientId: Int64, completion: @escaping (Error?) -> ())
+    func initialize(clientId: Int64, positionKitParams: ParameterPackage, completion: @escaping (Error?) -> ())
     
     /// Method for initiate selected Store data
-    func initiateStore(store: TT2Store, completion: @escaping (Error?) -> ())
+    func initiate(store: TT2Store, completion: @escaping (Error?) -> ())
+
+    /// Convenience method to initiate selected Store data
+    func initiate(storeId: Int64, completion: @escaping (Error?) -> Void)
     
     /// Setup the Map
-    func setMap(map: IMapController)
+    func set(map: IMapController)
+
+    /// Setup the WiFi
+    func set(wifi: IWiFiController)
+
+    /// Settings for TT2
+    func set(automaticActivationOfUserMark: Bool)
     
     /// Methode for creating MapData for MapSdk
-    func getMapData(mapStyle: MapStyle) -> MapData?
+    func getMapData() -> MapData?
 
-    func startMap()
+    func stop()
 
-    func stop() 
+    func setActiveFloor(rtls: RtlsOptions)
+
+    func initRealWorldConverter()
+    func initRealWorldConverter(point: CGPoint)
+    func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool) -> MLProcessedPath?
+    func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D)
+    func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D)
 }
 
 public enum VSTT2Error: Error {
     case noAvailableStores
     case noAvailableMapData
+    case missingData
 }

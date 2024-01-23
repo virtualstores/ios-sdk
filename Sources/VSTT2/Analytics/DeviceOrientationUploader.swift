@@ -1,0 +1,82 @@
+//
+//  DeviceOrientationUploader.swift
+//  
+//
+//  Created by Théodore Roos on 2022-07-26.
+//
+
+import Foundation
+import UIKit
+import VSFoundation
+import VSPositionKit
+
+class DeviceOrientationUploader {
+  @Inject var config: EnvironmentConfig
+  let store: Store
+  let client: Client
+
+  public enum Errors: Error {
+    case uploadFailure(HTTPURLResponse)
+  }
+
+  init(store: Store, client: Client) {
+    self.store = store
+    self.client = client
+  }
+
+  func upload(id: String, visitId: Int64, deviceOrientation: String, currentLocation: CGPoint, direction: Double, errorHandler: @escaping (Error) -> Void) {
+    guard
+      let serverAddress = config.analyticsServerConnection.serverAddress,
+      let clientName = client.name,
+      let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+      let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+    else { return }
+
+    var urlComponents = URLComponents()
+
+    let systemName = UIDevice.current.systemName
+    let systemVersion = UIDevice.current.systemVersion
+    let modelName = UIDevice.current.modelName
+
+    let userId = UserDefaults.standard.string(forKey: "USERID")
+    let xPosition = currentLocation.x
+    let yPosition = currentLocation.y
+    let combinedInfo = (userId ?? "") + ", " + deviceOrientation + ", " + "(\(xPosition), \(yPosition))" + ", " + "\(direction)"
+
+    urlComponents.scheme = "https"
+    urlComponents.host = "docs.google.com"
+    #if DEBUG
+    urlComponents.path = "/forms/d/e/1FAIpQLSeVsnwtfyL3YH5ePhAQv4VYQZpOCLK4nuzsaVnOiKfUHbg39g/formResponse"
+    #else
+    urlComponents.path = "/forms/d/e/1FAIpQLSebBRcbB13vlMu9fOVPs6RCQqcxa6E0g212Bv9vm0NDeTdRvg/formResponse"
+    #endif
+
+    urlComponents.queryItems = [
+      URLQueryItem(entry: .sessionId, value: id),
+      URLQueryItem(entry: .visitId, value: String(visitId)),
+      URLQueryItem(entry: .articleId, value: combinedInfo),
+      URLQueryItem(entry: .appVersion, value: "\(appVersion) (\(buildNumber)), \(systemName) \(systemVersion), \(modelName)"),
+      URLQueryItem(entry: .positionKitVersion, value: vpsVersion),
+      URLQueryItem(entry: .serverUrl, value: "\(serverAddress)"),
+      URLQueryItem(entry: .clientId, value: "\(client.clientId), \(clientName)"),
+      URLQueryItem(entry: .storeId, value: "\(store.id), \(store.name)"),
+      URLQueryItem(name: "submit", value: "Submit")
+    ]
+
+    guard let url = urlComponents.url else { return }
+
+    //print(url)
+    URLSession.shared.dataTask(with: url) {(data, response, error) in
+      DispatchQueue.main.async {
+        if let response = response as? HTTPURLResponse {
+          switch response.statusCode {
+          case 200...299: break
+          default: errorHandler(Errors.uploadFailure(response))
+          }
+        } else if let error = error {
+          errorHandler(error)
+        }
+      }
+    }.resume()
+  }
+}

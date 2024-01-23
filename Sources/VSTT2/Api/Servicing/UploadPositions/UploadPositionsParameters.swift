@@ -8,34 +8,23 @@
 import Foundation
 import VSFoundation
 
-public struct UploadPositionsParameters {
-    private var config: EnvironmentConfig?
-    private let visitId: Int64
-    private let requestId: String
+struct UploadPositionsParameters {
+    @Inject var config: EnvironmentConfig
+    let visitId: Int64
+    let requestId: String
     let positionGrps: [String: [RecordedPosition]]
-
-    init(visitId: Int64, requestId: String, positionGrps: [String: [RecordedPosition]], config: EnvironmentConfig?) {
-        self.visitId = visitId
-        self.requestId = requestId
-        self.positionGrps = positionGrps
-        self.config = config
-    }
 }
 
 extension UploadPositionsParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-
+    var type: RoutingType { .analytics }
+    var method: RequestType { .POST }
     var path: String { "/positions" }
-
     var queryItems: [String: String]? {
-        let parameters = ["requestId": requestId, "visitId": String(visitId)] as [String: String]
-
-        return parameters
+        ["requestId": requestId, "visitId": String(visitId)]
     }
 
-    var parameters: [String: Any]? {
-        let parameters = ["positionGrps": positionGrps.asDictionary()] as [String: Any]
-
-        return parameters
+    var parametersDictionary: [String: Any]? {
+        ["positionGrps": positionGrps.asDictionary()] as [String: Any]
     }
 }

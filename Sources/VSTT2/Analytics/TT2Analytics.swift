@@ -12,10 +12,7 @@ import Combine
 
 public protocol TT2Analytics {
     /// Start  Analytics with device data
-    func startVisit(deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String], completion: @escaping (Error?) -> Void)
-
-    /// Setup analytics Manager with needed data
-    func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int, config: EnvironmentConfig?)
+    func startVisit(deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String], completion: @escaping (Result<Int64, Error>) -> Void)
 
     /// Start  Collecting Heat Map
     func startCollectingHeatMapData() throws
@@ -31,5 +28,6 @@ public protocol TT2Analytics {
 }
 
 enum TT2AnalyticsError: Error {
+    case visitAlreadyStarted
     case visitNotStarted
 }

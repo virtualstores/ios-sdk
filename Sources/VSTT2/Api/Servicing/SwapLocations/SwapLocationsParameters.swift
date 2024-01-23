@@ -8,23 +8,16 @@
 import Foundation
 import VSFoundation
 
-public struct SwapLocationsParameters {
-    private let storeId: Int64
-    private let config: EnvironmentConfig
-
-    public init(storeId: Int64, config: EnvironmentConfig) {
-        self.storeId = storeId
-        self.config = config
-    }
+struct SwapLocationsParameters {
+    @Inject var config: EnvironmentConfig
+    let storeId: Int64
 }
 
 extension SwapLocationsParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-
-    var path: String { "/swaplocations" }
-
+    var type: RoutingType { .central }
     var method: RequestType { .GET }
-
+    var path: String { "/swaplocations" }
     var queryItems: [String: String]? {
         let parameters = ["storeId": String(storeId)] as [String: String]
 

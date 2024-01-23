@@ -10,15 +10,30 @@ import VSFoundation
 import VSPositionKit
 
 struct VSTT2Config: Config {
-    public init() { }
+    let environment: EnvironmentConfig
+    let itemsRepository: ItemsRepository
+    let storeRepository: StoreRepository
+
+    init(environment: EnvironmentConfig) {
+        self.environment = environment
+
+        itemsRepository = ItemsRepository(api: ItemsApi(config: environment))
+        storeRepository = StoreRepository(api: StoreApi(config: environment))
+    }
     
     func configure(_ injector: Injector) {
         configureManagers(injector)
         configureHelpers(injector)
         configureServices(injector)
+        configureRepositories(injector)
+        configureUseCases(injector)
     }
 
     private func configureServices(_ injector: Injector) {
+        injector.map(EnvironmentConfig.self) {
+            environment
+        }
+
         injector.map(UploadScanEventsService.self) {
             UploadScanEventsService(with: NetworkManager())
         }
@@ -31,8 +46,16 @@ struct VSTT2Config: Config {
             UploadTriggersService(with: NetworkManager())
         }
 
-        injector.map(CreateVisitsService.self) {
-            CreateVisitsService(with: NetworkManager())
+        injector.map(CreateVisitService.self) {
+            CreateVisitService(with: NetworkManager())
+        }
+
+        injector.map(StopVisitService.self) {
+            StopVisitService(with: NetworkManager())
+        }
+
+        injector.map(TagsVisitService.self) {
+            TagsVisitService(with: NetworkManager())
         }
 
         injector.map(ClientsListService.self) {
@@ -66,11 +89,47 @@ struct VSTT2Config: Config {
         injector.map(MessagesService.self) {
             MessagesService(with: NetworkManager())
         }
+
+        injector.map(TriggerEventsService.self) {
+            TriggerEventsService(with: NetworkManager())
+        }
+
+        injector.map(PutUserService.self) {
+            PutUserService(with: NetworkManager())
+        }
+
+        injector.map(GetUserService.self) {
+            GetUserService(with: NetworkManager())
+        }
+
+        injector.map(DeleteUserService.self) {
+            DeleteUserService(with: NetworkManager())
+        }
+
+        injector.map(UploadSyncEventsService.self) {
+            UploadSyncEventsService(with: NetworkManager())
+        }
+
+        injector.map(UploadStepEventsService.self) {
+            UploadStepEventsService(with: NetworkManager())
+        }
+
+        injector.map(MLInterfaceVersionsService.self) {
+            MLInterfaceVersionsService(with: NetworkManager())
+        }
+
+        injector.map(UploadGeoPositionsService.self) {
+            UploadGeoPositionsService(with: NetworkManager())
+        }
     }
 
     private func configureManagers(_ injector: Injector) {
+        injector.map(PositionManager.self) {
+            PositionManager()
+        }
+
         injector.map(Navigation.self) {
-            Navigation(positionManager: PositionManager())
+            Navigation()
         }
         
         injector.map(DownloadManager.self) {
@@ -117,12 +176,55 @@ struct VSTT2Config: Config {
             Position()
         }
         
-        injector.map(UserSettings.self) {
-            UserSettings()
+//        injector.map(UserSettings.self) {
+//            UserSettings()
+//        }
+        injector.map(UserController.self) {
+            UserController()
         }
 
         injector.map(AWSS3UploadManager.self) {
             AWSS3UploadManager()
+        }
+
+        injector.map(RecordingManager.self) {
+            RecordingManager()
+        }
+
+        injector.map(VSMLModelManager.self) {
+            VSMLModelManager()
+        }
+    }
+
+    private func configureRepositories(_ injector: Injector) {
+        injector.map(IItemsRepository.self) {
+            itemsRepository
+        }
+
+        injector.map(IStoreRepository.self) {
+            storeRepository
+        }
+    }
+
+    private func configureUseCases(_ injector: Injector) {
+        injector.map(GetPositionByBarcodeUseCase.self) {
+            GetPositionByBarcodeUseCase(storeRepository: storeRepository, itemsRepository: itemsRepository)
+        }
+
+        injector.map(FetchStoreUseCase.self) {
+            FetchStoreUseCase(repository: storeRepository)
+        }
+
+        injector.map(SetActiveStoreUseCase.self) {
+            SetActiveStoreUseCase(repository: storeRepository)
+        }
+
+        injector.map(GetCachedStoreUseCase.self) {
+            GetCachedStoreUseCase(repository: storeRepository)
+        }
+
+        injector.map(GetActiveStoreUseCase.self) {
+            GetActiveStoreUseCase(repository: storeRepository)
         }
     }
 

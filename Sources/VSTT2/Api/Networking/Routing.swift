@@ -9,14 +9,19 @@ import Foundation
 import VSFoundation
 
 protocol Routing {
-    /// Base url
-    var baseURL: String { get }
+    /// Environment config data
+    var environmentConfig: EnvironmentConfig? { get }
+    var type: RoutingType { get }
     /// Request type
     var method: RequestType { get }
+    /// Base url
+    var baseURL: String { get }
     /// Path for request
     var path: String { get }
     /// Needed parameters for request
-    var parameters: [String: Any]? { get }
+    var parametersDictionary: [String: Any]? { get }
+
+    var parameters: Any? { get }
 
     var queryItems: [String: String]? { get }
 
@@ -26,41 +31,43 @@ protocol Routing {
     var headers: [String: String]? { get }
     /// Final UrlRequest
     var urlRequest: URLRequest? { get }
-    /// Environment config data
-    var environmentConfig: EnvironmentConfig? { get }
+}
+
+enum RoutingType {
+  case central, analytics, unknown
 }
 
 extension Routing {
-    var environmentConfig: EnvironmentConfig? { nil }
+    func getServerConnection() -> ServerConnection? {
+        switch type {
+        case .central: return environmentConfig?.centralServerConnection
+        case .analytics: return environmentConfig?.analyticsServerConnection
+        case .unknown: return nil
+        }
+    }
 
     var baseURL: String {
-        guard let url = environmentConfig?.centralServerConnection.serverAddress else { fatalError("baseURL is not exist") }
-        
+        guard let url = getServerConnection()?.serverAddress else { fatalError("baseURL is not exist") }
         return url
     }
 
-    var method: RequestType { .POST }
+    var parametersDictionary: [String: Any]? { nil }
 
-    var path: String { "" }
-
-    var parameters: [String: Any]? { nil }
+    var parameters: Any? { nil }
 
     var queryItems: [String: String]? { nil }
 
-    var encoding: ParameterEncoding { ParameterEncoding.json }
+    var encoding: ParameterEncoding { .json }
 
     var headers: [String: String]? {
-        guard let apiKey = environmentConfig?.centralServerConnection.apiKey else { fatalError("apiKey is not exist") }
-
-       return  ["apiKey" : apiKey]
+        guard let apiKey = getServerConnection()?.apiKey else { fatalError("apiKey is not exist") }
+        return  ["apiKey" : apiKey]
     }
 
     var urlRequest: URLRequest? {
         @Inject var logger: Logger
 
-        let baseURLStirng = baseURL
-
-        guard var url = URL(string: baseURLStirng) else {
+        guard var url = URL(string: baseURL) else {
             #if DEV
             logger.log(message: "cannot create URL")
             #endif
@@ -79,20 +86,20 @@ extension Routing {
             return nil
         }
 
-        if let queryItems = self.queryItems {
+        if let queryItems = queryItems {
             urlComponents.queryItems = queryItems.map({ URLQueryItem(name: $0.key, value: $0.value) })
         }
 
         var urlRequest = URLRequest(url: urlComponents.url!)
         urlRequest.httpMethod = method.rawValue
 
-        if let headers = self.headers {
-            for (key, value) in headers {
+        if let headers = headers {
+          headers.forEach { (key, value) in
                 urlRequest.addValue(value, forHTTPHeaderField: key)
             }
         }
 
-        if let parameters = self.parameters {
+        if let parameters = parametersDictionary {
             do {
                 urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
             } catch {
@@ -100,8 +107,15 @@ extension Routing {
                 logger.log(message: "parameters encoding issue")
                 #endif
             }
+        } else if let parameters = parameters {
+          do {
+              urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
+          } catch {
+              #if DEV
+              logger.log(message: "parameters encoding issue")
+              #endif
+          }
         }
-
         return urlRequest
     }
 }
