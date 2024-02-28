@@ -18,7 +18,7 @@ public class TriggerEvent {
     public private(set) var metaData: [String: String]
     public private(set) var hasBeenTriggered: Bool
 
-    public var id: String? { tags[DefaultTags.id] }
+    public var id: String? { tags[.id] }
 
     var timestamp: Date
     var userPosition: CGPoint
@@ -55,12 +55,11 @@ public class TriggerEvent {
         metaData: [String: String] = [:]
     ) {
         self.init(rtlsOptionsId: rtlsOptionsId, name: name, description: description, eventType: eventType, tags: tags, metaData: metaData)
-        self.tags[DefaultTags.id] = id
+        self.tags[.id] = id
     }
     
     func updateEventData(for userPosition: CGPoint, timestamp: Date) {
         guard self.userPosition == .zero else { return }
-        
         self.userPosition = userPosition
         self.timestamp = timestamp
     }
@@ -308,24 +307,96 @@ public extension TriggerEvent {
 }
 
 public struct ScanEvent {
-    public let barcode: String
-    public let shelfId: Int?
-    public let point: CGPoint?
-    public let timestamp: Int64
-    public let type: ShelfType
-    
-    public init(barcode: String, shelfId: Int?, point: CGPoint?, timestamp: Int64, type: ShelfType) {
-        self.barcode = barcode
-        self.shelfId = shelfId
-        self.point = point
-        self.timestamp = timestamp
-        self.type = type
-    }
-    
-    public enum ShelfType: Int {
-        case unknown = 0
-        case shelf = 1
-    }
+  public let barcode: String
+  public let point: CGPoint?
+  public let timestamp: String
+  public let type: ShelfType
+  public let userPosition: CGPoint?
+  public let floorLevelId: Int64? // For old version of scan event
+  public let shelfId: Int64? // For old version of scan event
+  public let shelfTierId: Int64? // For old version of scan event
+  public let shelfTierPosition: Int64? // For old version of scan event
+  public let shelfSectionId: String? // For new version of scan event
+  public let sectionPosition: Int? // For new version of scan event
+  public let shelfPositionFromLeftToRight: Int? // For new version of scan event
+  public let zoneIds: [String]?
+
+  public enum ShelfType: Int {
+    case unknown = 0
+    case shelf = 1
+    case shelfSection = 2
+    case zone = 3
+  }
+
+  init(barcode: String, point: CGPoint?, timestamp: String, type: ShelfType, userPosition: CGPoint? = nil, floorLevelId: Int64? = nil, shelfId: Int64? = nil, shelfTierId: Int64? = nil, shelfTierPosition: Int64? = nil, shelfSectionId: String? = nil, sectionPosition: Int? = nil, shelfPositionFromLeftToRight: Int? = nil, zoneIds: [String]? = nil) {
+    self.barcode = barcode
+    self.point = point
+    self.timestamp = timestamp
+    self.type = type
+    self.userPosition = userPosition
+    self.floorLevelId = floorLevelId
+    self.shelfId = shelfId
+    self.shelfTierId = shelfTierId
+    self.shelfTierPosition = shelfTierPosition
+    self.shelfSectionId = shelfSectionId
+    self.sectionPosition = sectionPosition
+    self.shelfPositionFromLeftToRight = shelfPositionFromLeftToRight
+    self.zoneIds = zoneIds
+  }
+
+  public static func createShelfScanEvent(itemPosition: ItemPosition, userPosition: CGPoint?) -> ScanEvent {
+    ScanEvent(
+      barcode: itemPosition.identifier,
+      point: itemPosition.point,
+      timestamp: DateFormatter.standardFormatter.string(from: Date()),
+      type: .shelf,
+      userPosition: userPosition,
+      floorLevelId: itemPosition.floorLevelId,
+      shelfId: itemPosition.shelfId,
+      shelfTierId: itemPosition.shelfTierId,
+      shelfTierPosition: itemPosition.shelfTierPosition
+    )
+  }
+
+  private static func createShelfSectionScanEvent(itemPosition: ItemPosition, userPosition: CGPoint?) -> ScanEvent {
+    ScanEvent(
+      barcode: itemPosition.identifier,
+      point: itemPosition.point,
+      timestamp: DateFormatter.standardFormatter.string(from: Date()),
+      type: .shelfSection,
+      userPosition: userPosition,
+      floorLevelId: itemPosition.floorLevelId,
+      shelfSectionId: itemPosition.shelfSectionId,
+      sectionPosition: itemPosition.sectionPosition,
+      shelfPositionFromLeftToRight: itemPosition.shelfPositionFromLeftToRight
+    )
+  }
+
+  public static func createZoneScanEvent(identifier: String, floorLevelId: Int64, userPosition: CGPoint?, zones: [String]) -> ScanEvent {
+    ScanEvent(
+      barcode: identifier,
+      point: nil,
+      timestamp: DateFormatter.standardFormatter.string(from: Date()),
+      type: .zone,
+      userPosition: userPosition,
+      floorLevelId: floorLevelId,
+      shelfSectionId: nil,
+      sectionPosition: nil,
+      shelfPositionFromLeftToRight: nil,
+      zoneIds: zones
+    )
+  }
+
+  public static func createUnknownScanEvent(identfier: String, floorLevelId: Int64, userPosition: CGPoint?) -> ScanEvent {
+    ScanEvent(
+      barcode: identfier,
+      point: nil,
+      timestamp: DateFormatter.standardFormatter.string(from: Date()),
+      type: .unknown,
+      userPosition: userPosition,
+      floorLevelId: floorLevelId
+    )
+  }
 }
 
 private extension String {

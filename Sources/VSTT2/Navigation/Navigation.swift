@@ -18,14 +18,22 @@ final public class Navigation: INavigation {
     @Inject var position: Position
     @Inject var modelManager: VSMLModelManager
 
-    public internal(set) var currentPosition: CGPoint?
+    public internal(set) var currentPosition: CGPoint? {
+        didSet {
+            if let position = currentPosition {
+                inAndOutZone?.onNewPosition(currentPosition: position)
+            }
+        }
+    }
     public var isActive: Bool { isActivePublisher.value }
     public var compassHeading: Double? { heading?.degrees }
 
     var isActivePublisher: CurrentValueSubject<Bool, Never> = .init(false)
     var accuracyPublisher: CurrentValueSubject<(event: AccuracySyncEvent.Event, isFloorSwap: Bool)?,Never> = .init(nil)
+    var scanEventsPublisher: CurrentValueSubject<[ScanEvent]?, Never> = .init(nil)
 
     var currentAccessPointPosition: CGPoint = .zero
+    var inAndOutZone: InAndOutZone?
 
     private var startCodes: [PositionedCode] = []
     private var hasStartLocationAngle: Bool = false
@@ -149,9 +157,22 @@ public extension Navigation {
         }
     }
 
-    func syncPosition(identifier: String, type: SyncTypeEnum, completion: @escaping (Result<Item,Error>) -> ()) {
+    func syncPosition(identifier: String, type: SyncTypeEnum, reportScanEvent: Bool = true, completion: @escaping (Result<Item,Error>) -> ()) {
+        if let code = checkForScanLocation(identifier: identifier) {
+            do {
+                try start(code: code)
+                let item = Item(name: code.code, externalId: "", itemPositions: [ItemPosition(point: code.point, offset: .zero, floorLevelId: floor.activeFloor?.id)])
+                completion(.success(item))
+            } catch {
+                completion(.failure(error))
+            }
+            return
+        }
         if let syncRotation = type.get().normal, syncRotation {
             prepareAngle()
+        }
+        if reportScanEvent {
+          createAnalyticsScanEventForIdentifier(identfier: identifier)
         }
         position.getBy(barcode: identifier) { (result) in
             switch result {
@@ -178,6 +199,15 @@ public extension Navigation {
         }
     }
 
+    func checkForScanLocation(identifier: String) -> PositionedCode? {
+      floor
+        .floors
+        .map({ $0.scanLocations?.filter({ $0.type == .start }) })
+        .compactMap({ $0 })
+        .flatMap({ $0 })
+        .first(where: { $0.code == identifier })
+    }
+
     func syncAngleCorrection(angle: Double, position: CGPoint) {
       guard isActive else { return }
       positionManager.syncAngleCorrection(angle: angle, positions: [position])
@@ -198,8 +228,9 @@ public extension Navigation {
 
 // MARK: Internal
 extension Navigation {
-    func setup(startCodes: [PositionedCode]) {
+    func setup(startCodes: [PositionedCode], inAndOutZone: InAndOutZone) {
         self.startCodes = startCodes
+        self.inAndOutZone = inAndOutZone
     }
 
     func changeFloorStart(startPosition: CGPoint?) throws {
@@ -244,6 +275,53 @@ private extension Navigation {
 
         guard let event = event else { return }
         accuracyPublisher.send((event: event, isFloorSwap: isFloorSwap))
+    }
+
+    func createAnalyticsScanEventForIdentifier(identfier: String) {
+      var events = [ScanEvent]()
+      guard let currentFloorLevelId = floor.activeFloor?.id else { return }
+      if let zoneIds = inAndOutZone?.activeInside.map({ $0.id }), !zoneIds.isEmpty {
+        events.append(.createZoneScanEvent(identifier: identfier, floorLevelId: currentFloorLevelId, userPosition: currentPosition, zones: zoneIds))
+      }
+      
+      func addShelScanEvent(position: ItemPosition) {
+        if position.floorLevelId == currentFloorLevelId {
+          events.append(.createShelfScanEvent(itemPosition: position, userPosition: currentPosition))
+        }
+      }
+
+      func addUnknownScanEvent() {
+        events.append(.createUnknownScanEvent(identfier: identfier, floorLevelId: currentFloorLevelId, userPosition: currentPosition))
+      }
+
+      let group = DispatchGroup()
+      group.enter()
+      position.getBy(shelfName: identfier) { (position) in
+        if let position = position {
+          addShelScanEvent(position: position)
+          group.leave()
+        } else {
+          self.position.getBy(barcode: identfier) { (result) in
+            switch result {
+            case .success(let item):
+              if let position = item.itemPosition {
+                addShelScanEvent(position: position)
+              }
+            case .failure(_): 
+              addUnknownScanEvent()
+            }
+            group.leave()
+          }
+        }
+      }
+
+      group.notify(queue: .main) {
+        if events.isEmpty {
+          addUnknownScanEvent()
+        }
+
+        self.scanEventsPublisher.send(events)
+      }
     }
 
     func startWithAngle(startPosition: CGPoint) -> Double? {
