@@ -217,7 +217,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
             eventManager.onNewPosition(currentPosition: position.position)
         }
     }
-    
+
     public func addTriggerEvent(for event: TriggerEvent) {
         let event = postTriggerEvent(for: event)
         uploadTriggerEvents(request: event)
@@ -236,12 +236,12 @@ final public class TT2AnalyticsManager: TT2Analytics {
                 /// No data returned
             }).store(in: &cancellable)
     }
-    
+
     private func bindPublishers() {
        zoneManager.zoneEnteredPublisher
             .compactMap { $0 }
             .sink { _ in
-                Logger.init().log(message: "zoneEnteredPublisher error")
+                Logger().log(message: "zoneEnteredPublisher error")
             } receiveValue: { [weak self] (data) in
                 guard let event = self?.postTriggerEvent(for: data) else { return }
                 
@@ -252,7 +252,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
          zoneManager.zoneExitedPublisher
             .compactMap { $0 }
             .sink { _ in
-                Logger.init().log(message: "zoneExitedPublisher error")
+                Logger().log(message: "zoneExitedPublisher error")
             } receiveValue: { [weak self] (data) in
                 guard let event = self?.postTriggerEvent(for: data) else { return }
                 
@@ -287,6 +287,13 @@ final public class TT2AnalyticsManager: TT2Analytics {
     private func postTriggerEvent(for event: TriggerEvent) -> PostTriggerEventRequest {
         let eventType = event.eventType.getTrigger()
         let timestamp = DateFormatter.standardFormatter.string(from: event.timestamp)
+        if let pointId = eventType.zoneTrigger?.entryPoint?.id {
+            switch eventType.zoneTrigger?.type {
+            case .enter: event.add(tags: ["entryPointEnterId": pointId])
+            case .exit: event.add(tags: ["entryPointExitId": pointId])
+            default: break
+            }
+        }
         return  PostTriggerEventRequest(
             rtlsOptionsId: String(event.rtlsOptionsId),
             name: event.name,
@@ -337,10 +344,10 @@ private extension TT2AnalyticsManager {
                     self?.positionUploadWorker.removePoints()
                 case .failure(let error):
                     self?.positionUploadWorker.updatePointsAfter(uploadingFailed: true)
-                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
+                    Logger(verbosity: .debug).log(message: error.localizedDescription)
                 }
             }, receiveValue: { [weak self] (_) in
-                Logger.init(verbosity: .debug).log(message: "Recorded Positions Uploaded")
+                Logger(verbosity: .debug).log(message: "Recorded Positions Uploaded")
                 self?.positionUploadWorker.updatePointsAfter(uploadingFailed: false)
             }).store(in: &cancellable)
     }
@@ -355,10 +362,9 @@ private extension TT2AnalyticsManager {
             .call(with: parameters)
             .sink(receiveCompletion: { (completion) in
                 switch completion {
-                case .finished:
-                    break
+                case .finished: break
                 case .failure(let error):
-                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
+                    Logger(verbosity: .debug).log(message: error.localizedDescription)
                 }
             }, receiveValue: { (_) in
                 Logger(verbosity: .debug).log(message: "\(request.name), uploadTriggerEvents success")

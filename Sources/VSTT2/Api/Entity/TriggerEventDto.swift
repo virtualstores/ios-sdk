@@ -30,7 +30,7 @@ struct TriggerEventDto: Codable {
     let type: TriggerType
 
     var asTriggerEventZone: TriggerEvent.ZoneTrigger {
-      TriggerEvent.ZoneTrigger(zoneId: id, groupId: UUID().uuidString.uppercased(), type: TriggerEvent.TriggerType(rawValue: type.rawValue) ?? .enter)
+      TriggerEvent.ZoneTrigger(zoneId: id, groupId: UUID().uuidString.uppercased(), type: TriggerEvent.TriggerType(rawValue: type.rawValue) ?? .enter, entryPoint: nil)
     }
   }
 

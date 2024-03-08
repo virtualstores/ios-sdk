@@ -321,8 +321,8 @@ private extension TT2 {
         let converter = BaseCoordinateConverter(heightInPixels: data.properties.height, widthInPixels: data.properties.width, pixelPerMeter: rtlsOption.pixelsPerMeter, pixelPerLatitude: 1000.0)
         coordinateConverter = converter
 
-        let properties = ZoneProperties(description: nil, id: name, name: name, names: [], parentId: nil, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
-        mapZonesTree = Tree(root: Zone(id: UUID().uuidString, properties: properties, floorLevelId: rtlsOption.id, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
+        let properties = ZoneProperties(id: name, name: name, names: [name])
+        mapZonesTree = Tree(root: Zone(id: UUID().uuidString, floorLevelId: rtlsOption.id, properties: properties, converter: converter), converter: converter, currentFloorLevelId: rtlsOption.id)
 
         navigation.positionManager.setupMapFence(
             with: data,
@@ -353,7 +353,7 @@ private extension TT2 {
             mapZonesTree?.add(rtls, value.mapZones, value.mapZonesPoints)
         }
 
-        guard let mapZones = self.mapZonesTree?.getZonesFor(floorLevelId: rtlsOption.id) else { return }
+        guard let mapZones = mapZonesTree?.getZonesFor(floorLevelId: rtlsOption.id) else { return }
 
         analytics.update(rtlsOptionId: rtlsOption.id)
         analytics.zoneManager.setup(with: mapZones, rtlsOptions: rtlsOption)
