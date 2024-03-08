@@ -40,6 +40,7 @@ public class MapZoneParser: NSObject {
                         id: properties["id"] as? String ?? "",
                         name: properties["name"] as? String ?? "",
                         names: properties["names"] as? [String] ?? [],
+                        entryPoints: properties["entryPoints"] as? [NSDictionary],
                         parentId: properties["parentId"] as? String,
                         fillColor: properties["fillColor"] as? String,
                         fillColorSelected: properties["fillColorSelected"] as? String,

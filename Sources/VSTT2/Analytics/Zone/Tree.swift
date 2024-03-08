@@ -34,23 +34,22 @@ public class Tree {
             let width = converter.convertFromMetersToMapCoordinate(input: rtls.widthInMeters)
             let height = converter.convertFromMetersToMapCoordinate(input: rtls.heightInMeters)
             let polygon = [CGPoint(x: 0.0, y: 0.0), CGPoint(x: 0.0, y: height), CGPoint(x: width, y: height), CGPoint(x: width, y: 0.0)]
-            let properties = ZoneProperties(description: nil, id: floorLevelName, name: floorLevelName, names: [], parentId: root.id, fillColor: nil, fillColorSelected: nil, lineColor: nil, lineColorSelected: nil)
-            root.addChild(child: Zone(id: floorLevelName, properties: properties, polygon: polygon, floorLevelId: floorLevelId, converter: converter))
+            let properties = ZoneProperties(description: nil, id: floorLevelName, name: floorLevelName, names: [floorLevelName], parentId: root.id)
+            root.addChild(child: Zone(id: floorLevelName, floorLevelId: floorLevelId, properties: properties, polygon: polygon, converter: converter))
         }
 
         let parentId = mapZone.properties.parentId
         var navigationPoints: [String : (point: CGPoint, properties: PointProperties)] = [:] //mapZonePoints.map { $0.coordinate.fromLatLngToMeter(converter: converter) }
         mapZonePoints.forEach { navigationPoints[$0.description] = ($0.coordinate.fromLatLngToMeter(converter: converter), $0.properties) }
         if let id = parentId, let zone = getZoneWith(id: id) {
-            zone.addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, parent: zone, floorLevelId: floorLevelId, converter: converter))
+            zone.addChild(child: Zone(id: mapZone.id, floorLevelId: floorLevelId, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, parent: zone, converter: converter))
         } else if parentId != nil {
-            zonesToAdd.append(Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, floorLevelId: floorLevelId, converter: converter))
+            zonesToAdd.append(Zone(id: mapZone.id, floorLevelId: floorLevelId, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, converter: converter))
         } else {
-            (getZoneWith(id: floorLevelName) ?? root).addChild(child: Zone(id: mapZone.id, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, floorLevelId: floorLevelId, converter: converter))
+            (getZoneWith(id: floorLevelName) ?? root).addChild(child: Zone(id: mapZone.id, floorLevelId: floorLevelId, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, converter: converter))
         }
-        zonesToAdd.forEach { zone in
+        zonesToAdd.forEach { (zone) in
             if let id = parentId, let parentZone = getZoneWith(id: id) {
-                zone.parent = parentZone
                 parentZone.addChild(child: zone)
                 zonesToAdd.removeAll(where: { $0 == zone})
             }
@@ -88,10 +87,7 @@ public class Tree {
     public func getZonesFor(floorLevelId: Int64, includeParent: Bool = false) -> [Zone]? {
         var zones = getAllZones()?.all(where: { $0.floorLevelId == floorLevelId })
         if !includeParent {
-            let names = root.children.values.map { $0.name }
-            names.forEach { name in
-              zones?.removeAll(where: { $0.name == name })
-            }
+            root.children.values.map({ $0.name }).forEach({ (name) in zones?.removeAll(where: { $0.name == name }) })
         }
         return zones
     }

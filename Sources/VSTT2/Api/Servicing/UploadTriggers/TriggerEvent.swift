@@ -209,15 +209,27 @@ public class TriggerEvent {
         public let zoneId: String
         public let groupId: String
         public let type: TriggerType
+        public let entryPoint: EntryPoint?
 
-        public init(zoneId: String, groupId: String, type: TriggerType) {
+        public init(zoneId: String, groupId: String, type: TriggerType, entryPoint: EntryPoint?) {
             self.zoneId = zoneId
             self.groupId = groupId
             self.type = type
+            self.entryPoint = entryPoint
         }
         
         var asPostTrigger: PostTriggerEventRequest.ZoneTrigger {
             PostTriggerEventRequest.ZoneTrigger(zoneId: zoneId, groupId: groupId, type: PostTriggerEventRequest.ZoneTrigger.ZoneType.init(rawValue: type.rawValue) ?? .enter)
+        }
+
+        public struct EntryPoint {
+            let line: [CGPoint]
+            let id: String
+
+            public init(line: [CGPoint], id: String) {
+                self.line = line
+                self.id = id
+            }
         }
     }
 

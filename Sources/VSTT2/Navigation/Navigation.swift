@@ -174,23 +174,42 @@ public extension Navigation {
         if reportScanEvent {
           createAnalyticsScanEventForIdentifier(identfier: identifier)
         }
+        func doSync(position: ItemPosition) throws {
+            switch type {
+            case .compass(let forceSync):
+              try self.syncPosition(position: position, forceSync: forceSync)
+            case .normal(let syncRotation):
+              try self.syncPosition(position: position, syncRotation: syncRotation, forceSync: true)
+            }
+        }
+        position.getBy(shelfName: identifier) { (position) in
+          if let position = position {
+            do {
+              try doSync(position: position)
+              let item = Item(name: "", externalId: position.identifier, itemPositions: [position])
+              completion(.success(item))
+            } catch {
+              completion(.failure(error))
+            }
+            return
+          }
+        }
         position.getBy(barcode: identifier) { (result) in
             switch result {
             case .success(let item):
                 do {
                     if item.uniquePositions.isEmpty {
                         self.prepareAccuracyUpload(identifier: identifier)
+                        throw NSError(domain: "No unique positions", code: 400)
                     } else if item.uniquePositions.count > 1 {
                         self.prepareAccuracyUpload(item: item)
+                        throw NSError(domain: "Unique positions more than 1", code: 400)
                     } else if let position = item.itemPosition {
-                        switch type {
-                        case .compass(let forceSync):
-                            try self.syncPosition(position: position, forceSync: forceSync)
-                        case .normal(let syncRotation):
-                            try self.syncPosition(position: position, syncRotation: syncRotation, forceSync: true)
-                        }
+                        try doSync(position: position)
+                        completion(.success(item))
+                    } else {
+                        throw NSError(domain: "Case not handled", code: 400)
                     }
-                    completion(.success(item))
                 } catch {
                     completion(.failure(error))
                 }
