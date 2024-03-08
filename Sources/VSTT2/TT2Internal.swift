@@ -104,14 +104,15 @@ internal class TT2Internal {
                     }
                 }, receiveValue: { (shelfData) in
                     let shelfGroups = ShelfGroupDto.add(floorLevelId: rtlsOption.id, shelfData).map({ ShelfGroupDto.toShelfGroup($0) })
-                    self.shelfGroups[rtlsOption.id] = shelfGroups
+                    if shelfGroups.count > 0 {
+                        self.shelfGroups[rtlsOption.id] = shelfGroups
+                    }
                     group.leave()
                 }).store(in: &cancellable)
         }
 
         group.notify(queue: .main) {
-            guard let shelfGroups = self.shelfGroups[activeFloor.id] else { return }
-            completion(shelfGroups)
+            completion(self.shelfGroups[activeFloor.id] ?? [])
         }
     }
     
@@ -171,6 +172,12 @@ internal class TT2Internal {
             .sink { [weak self] (data) in
                 self?.analytics.accuracyUploader?.upload(syncEvent: data.event, isFloorSwap: data.isFloorSwap)
             }.store(in: &cancellable)
+
+      navigation.scanEventsPublisher
+        .compactMap { $0 }
+        .sink { [weak self] (events) in
+          events.forEach { self?.analytics.postScanEvents(scanEvent: $0) }
+        }.store(in: &cancellable)
 
         recording.sendDataPublisher
             .sink { [weak self] (_) in

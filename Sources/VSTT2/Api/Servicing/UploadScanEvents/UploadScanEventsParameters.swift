@@ -18,16 +18,12 @@ struct UploadScanEventsParameters {
     @Inject var config: EnvironmentConfig
     private let visitId: Int64
     private let requestId: String
-    private let position: ItemPosition
-    private let timestamp: String
-    private let scanType: ScanEventType
+    private let scanEvent: ScanEvent
 
-    init(visitId: Int64, requestId: String, position: ItemPosition, timestamp: String, type: ScanEventType) {
+    init(visitId: Int64, requestId: String, scanEvent: ScanEvent) {
         self.visitId = visitId
         self.requestId = requestId
-        self.position = position
-        self.timestamp = timestamp
-        self.scanType = type
+        self.scanEvent = scanEvent
     }
 }
 
@@ -36,42 +32,69 @@ extension UploadScanEventsParameters: Routing {
     var type: RoutingType { .analytics }
     var method: RequestType { .POST }
     var path: String { "/scanevents" }
-    var queryItems: [String: String]? {
-        ["visitId": String(visitId), "requestId": requestId]
-    }
-
-    var parameters: Any? {
-        [ scanType.asParameters(position: position, timestamp: timestamp) ]
-    }
+    var queryItems: [String: String]? { ["visitId": String(visitId), "requestId": requestId] }
+    var parameters: Any? { [ scanEvent.asParameters ] }
 }
 
-extension ScanEventType {
-  func asParameters(position: ItemPosition, timestamp: String) -> [String:Any] {
-    switch self {
+private extension ScanEvent {
+  var asParameters: [String:Any] {
+    switch type {
     case .shelf:
       return [
-        "barcode": position.identifier,
-        "shelfId": position.shelfId as Any,
-        "shelfTierId": position.shelfTierId as Any,
-        "shelfTierPosition": position.shelfTierPosition as Any,
-        "x": Double(position.point.x),
-        "y": Double(position.point.y),
+        "barcode": barcode,
+        "shelfId": shelfId as Any,
+        "shelfTierId": shelfTierId as Any,
+        "shelfTierPosition": shelfTierPosition as Any,
+        "x": point?.x as Any,
+        "y": point?.y as Any,
         "timestamp": timestamp,
-        "type": self.rawValue
+        "type": "SHELF",
+        "userPosition": [
+          "type": "METER",
+          "coordinate": userPosition?.asArray as Any
+        ]
       ]
-    //case .shelfSection:
-    //  return [
-    //    "barcode": position.identifier,
-    //    "shelfSectionId": String(),
-    //    "rtlsOptionsId": Int64(),
-    //    "sectionPosition": Int64(),
-    //    "shelfPositionFromLeftToRight": Int64(),
-    //    "x": Double(position.point.x),
-    //    "y": Double(position.point.y),
-    //    "timestamp": timestamp,
-    //    "type": self.rawValue
-    //  ]
-    default: fatalError("Case not handled, please use .shelf")
+    case .shelfSection:
+      return [
+        "barcode": barcode,
+        "shelfSectionId": shelfSectionId as Any,
+        "rtlsOptionsId": floorLevelId as Any,
+        "sectionPosition": sectionPosition as Any,
+        "shelfPositionFromLeftToRight": shelfPositionFromLeftToRight as Any,
+        "x": point?.x as Any,
+        "y": point?.y as Any,
+        "timestamp": timestamp,
+        "type": "SHELF_SECTION",
+        "userPosition": [
+          "type": "METER",
+          "coordinate": userPosition?.asArray as Any
+        ]
+      ]
+    case .zone:
+      return [
+        "barcode": barcode,
+        "rtlsOptionsId": floorLevelId as Any,
+        "timestamp": timestamp,
+        "type": "ZONE",
+        "userPosition": [
+          "type": "METER",
+          "coordinate": userPosition?.asArray as Any
+        ],
+        "zoneIds": zoneIds as Any
+      ]
+    case .unknown:
+      return [
+        "barcode": barcode,
+        "rtlsOptionsId": floorLevelId as Any,
+        "x": point?.x as Any,
+        "y": point?.y as Any,
+        "timestamp": timestamp,
+        "type": "UNKNOWN",
+        "userPosition": [
+          "type": "METER",
+          "coordinate": userPosition?.asArray as Any
+        ]
+      ]
     }
   }
 }

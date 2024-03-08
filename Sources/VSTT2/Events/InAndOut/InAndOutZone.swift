@@ -16,7 +16,7 @@ protocol InAndOutZoneDelegate {
 class InAndOutZone {
     let triggers: [Trigger]
     var delegate: InAndOutZoneDelegate?
-    private var activeInside: [Trigger] = []
+    private(set) var activeInside: [Trigger] = []
 
     init(triggers: [Trigger]) {
       self.triggers = triggers
@@ -33,9 +33,10 @@ class InAndOutZone {
         triggers.forEach { trigger in
             if (isPointInside(point: currentPosition, coordinates: trigger.polygon)) {
               if !activeInside.contains(where: { $0.id == trigger.id }) {
-                    delegate?.onEnter(trigger: trigger, position: currentPosition)
-                    activeInside.append(trigger)
-                }
+                  delegate?.onEnter(trigger: trigger, position: currentPosition)
+                  activeInside.append(trigger)
+                  print("ActiveInside", trigger.id)
+              }
             } else {
                 if activeInside.contains(where: { $0.id == trigger.id }) {
                     delegate?.onExit(trigger: trigger, position: currentPosition)

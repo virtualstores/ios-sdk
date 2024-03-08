@@ -100,12 +100,12 @@ final public class TT2: ITT2 {
             guard let self = self else { return }
             switch result {
             case .success(let swapLocations):
-              self.floorHeightDiff = self.getHighestHeightDiff(swapLocations: swapLocations)
+              floorHeightDiff = getHighestHeightDiff(swapLocations: swapLocations)
 
               let group = DispatchGroup()
               group.enter()
               if let rtls = currentStore.rtlsOptions.first(where: { $0.isDefault }) {
-                  self.setActiveFloor(rtls: rtls) { (error) in
+                  setActiveFloor(rtls: rtls) { (error) in
                       if let error = error {
                           completion(error)
                       }
@@ -114,7 +114,7 @@ final public class TT2: ITT2 {
                   }
               } else {
                   guard let rtls = currentStore.rtlsOptions.first else { return }
-                  self.setActiveFloor(rtls: rtls) { (error) in
+                  setActiveFloor(rtls: rtls) { (error) in
                       if let error = error {
                           completion(error)
                       }
@@ -123,19 +123,22 @@ final public class TT2: ITT2 {
                   }
               }
 
-              self.floor.setup(swapLocations: swapLocations)
-              if let startPositions = self.activeFloor?.scanLocations?.filter({ $0.type == .start }) {
-                self.navigation.setup(startCodes: startPositions)
-              }
-              self.bindPublishers()
+              floor.setup(swapLocations: swapLocations)
+              bindPublishers()
 
               group.enter()
-              self.tt2Internal.getShelfGroups(for: currentStore.id, activeFloor: self.activeFloor) { [weak self] shelfGroups in
+              tt2Internal.getShelfGroups(for: currentStore.id, activeFloor: activeFloor) { [weak self] shelfGroups in
                   self?.position.setup(with: shelfGroups, store: currentStore)
                   group.leave()
               }
 
               group.notify(queue: .main) {
+                  if let startPositions = self.activeFloor?.scanLocations?.filter({ $0.type == .start }), let zones = self.mapZonesTree?.getZonesForCurrentFloorLevel() {
+                      self.navigation.setup(
+                        startCodes: startPositions,
+                        inAndOutZone: InAndOutZone(triggers: zones.map({ InAndOutZone.Trigger(id: $0.name, polygon: $0.points) }))
+                      )
+                  }
                   self.setupMap()
                   if let client = self.tt2Internal.internalClients.first(where: { $0.clientId == currentStore.clientId }), let converter = self.coordinateConverter {
                       self.tt2Internal.analytics.accuracyUploader = AccuracyUploader(store: currentStore, client: client, converter: converter)

@@ -50,10 +50,11 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     public func startVisit(deviceInformation: DeviceInformation, tags: [String:String] = [:], metaData: [String:String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
-        guard
-            let storeId = store?.statServerConnection.storeId,
-            visitId == nil
-        else { completion(.failure(TT2AnalyticsError.visitAlreadyStarted)); return }
+        guard 
+          let storeId = store?.statServerConnection.storeId,
+          mlModelManager.currentVersion != nil
+        else { completion(.failure(VSTT2Error.missingData)); return }
+        guard visitId == nil else { completion(.failure(TT2AnalyticsError.visitAlreadyStarted)); return }
 
         var editedTags = tags
         tt2VisitStartTags.forEach { editedTags[$0.key] = $0.value }
@@ -111,13 +112,8 @@ final public class TT2AnalyticsManager: TT2Analytics {
         if let event = mlPositionsLngLatToTriggerEvent() {
           addTriggerEvent(for: event)
         }
-        let parameters = StopVisitParameters(
-          requestId: UUID().uuidString.uppercased(),
-          visitId: visitId,
-          stopTimestamp: DateFormatter.standardFormatter.string(from: Date())
-        )
         stopVisitService
-            .call(with: parameters)
+            .call(with: StopVisitParameters(requestId: UUID().uuidString.uppercased(), visitId: visitId, stopTimestamp: DateFormatter.standardFormatter.string(from: Date())))
             .sink { [weak self] (result) in
                 switch result {
                 case .finished: self?.positionUploadWorker.removeAllPoints()
@@ -227,16 +223,11 @@ final public class TT2AnalyticsManager: TT2Analytics {
         uploadTriggerEvents(request: event)
     }
 
-    public func postScanEvents(position: ItemPosition) {
+    public func postScanEvents(scanEvent: ScanEvent) {
         guard let visitId = visitId else { return }
         uploadScanEventsService
-            .call(with: UploadScanEventsParameters(
-                visitId: visitId,
-                requestId: UUID().uuidString.uppercased(),
-                position: position,
-                timestamp: DateFormatter.standardFormatter.string(from: Date()),
-                type: .shelf
-            )).sink(receiveCompletion: { (completion) in
+            .call(with: UploadScanEventsParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), scanEvent: scanEvent))
+            .sink(receiveCompletion: { (completion) in
                 switch completion {
                 case .finished: break
                 case .failure(let error): Logger(verbosity: .warning).log(message: error.localizedDescription)
