@@ -7,7 +7,7 @@
 
 import Foundation
 import Combine
-import CoreGraphics
+import UIKit
 
 /// Event interface. Will give all data which need iOS app for Events
 public protocol TT2Event {
@@ -25,4 +25,6 @@ public protocol TT2Event {
 
     /// Method for being able to remove event
     func remove(event id: String)
+
+    func enableAutoShow(view: UIView?)
 }
