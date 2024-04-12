@@ -21,8 +21,8 @@ public class TriggerEvent {
     public var id: String? { tags[.id] }
 
     var timestamp: Date
-    var userPosition: CGPoint
-    
+    var userPosition: CGPoint?
+
     init(
         rtlsOptionsId: Int64,
         name: String,
@@ -32,7 +32,7 @@ public class TriggerEvent {
         metaData: [String: String] = [:],
         hasBeenTriggered: Bool = false,
         timestamp: Date = Date(),
-        userPosition: CGPoint = .zero
+        userPosition: CGPoint? = nil
     ) {
         self.rtlsOptionsId = rtlsOptionsId
         self.name = name
@@ -42,7 +42,7 @@ public class TriggerEvent {
         self.metaData = metaData
         self.hasBeenTriggered = false
         self.timestamp = Date()
-        self.userPosition = .zero
+        self.userPosition = userPosition
     }
 
     public convenience init(
@@ -90,15 +90,20 @@ public class TriggerEvent {
         }
     }
 
-    public struct DefaultTags {
+    public enum DefaultTags {
         public static let id: String = "@message.id"
         public static let pollId: String = "@message.content.poll.id"
         public static let name: String = "@message.name"
         public static let messageShown: String = "messageShown"
         public static let pollResponse: String = "@message.content.poll.option"
+        public static let displayType: String = "@message.display.type"
+
+        public enum DisplayTypeEnum: String {
+          case image = "IMAGE"
+        }
     }
 
-    public struct DefaultMetaData {
+    public enum DefaultMetaData {
         public static let title: String = "@message.content.title"
         public static let body: String = "@message.content.body"
         public static let imageUrl: String = "@message.content.imageUrl"
@@ -114,6 +119,7 @@ public class TriggerEvent {
         public enum MessageSize: String {
             case small = "SMALL"
             case large = "LARGE"
+            case big = "BIG"
         }
     }
     
@@ -160,6 +166,14 @@ public class TriggerEvent {
           type: .init(rawValue: type) ?? (poll == nil ? .popUp : .poll),
           size: .init(rawValue: metaData[DefaultMetaData.size] ?? "")
         )
+    }
+
+    public func convertEventToImageMessage() -> (imageUrl: String, size: DefaultMetaData.MessageSize, type: DefaultTags.DisplayTypeEnum?)? {
+      guard
+        let imageUrl = metaData[DefaultMetaData.imageUrl],
+        let size = DefaultMetaData.MessageSize(rawValue: metaData[DefaultMetaData.size] ?? "")
+      else { return nil }
+      return (imageUrl, size, DefaultTags.DisplayTypeEnum(rawValue: tags[DefaultTags.displayType] ?? ""))
     }
 
     public enum TriggerType: String {

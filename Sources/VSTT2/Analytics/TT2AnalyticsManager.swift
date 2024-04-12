@@ -154,10 +154,6 @@ final public class TT2AnalyticsManager: TT2Analytics {
       recordedGPSPositionsLatLng.append(position)
     }
 
-    struct MLPositionRecording: Codable {
-      let positions: [RecordedPosition]
-    }
-
     func mlPositionsToTriggerEvent() -> TriggerEvent? {
       defer { recordedMLPositions.removeAll() }
       guard
@@ -238,27 +234,31 @@ final public class TT2AnalyticsManager: TT2Analytics {
     }
 
     private func bindPublishers() {
-       zoneManager.zoneEnteredPublisher
+        zoneManager.zoneEnteredPublisher
             .compactMap { $0 }
             .sink { _ in
                 Logger().log(message: "zoneEnteredPublisher error")
             } receiveValue: { [weak self] (data) in
                 guard let event = self?.postTriggerEvent(for: data) else { return }
-                
                 self?.uploadTriggerEvents(request: event)
             }
             .store(in: &cancellable)
-        
+
          zoneManager.zoneExitedPublisher
             .compactMap { $0 }
             .sink { _ in
                 Logger().log(message: "zoneExitedPublisher error")
             } receiveValue: { [weak self] (data) in
                 guard let event = self?.postTriggerEvent(for: data) else { return }
-                
                 self?.uploadTriggerEvents(request: event)
             }
             .store(in: &cancellable)
+
+        eventManager.messageShownPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (event) in
+                self?.addTriggerEvent(for: event)
+            }.store(in: &cancellable)
     }
 
     func updateVisitWithMLTags(mlUser: MlUser) {
@@ -298,7 +298,7 @@ final public class TT2AnalyticsManager: TT2Analytics {
             rtlsOptionsId: String(event.rtlsOptionsId),
             name: event.name,
             timeStamp: timestamp,
-            userPosition: event.userPosition,
+            userPosition: event.userPosition ?? currentPosition ?? .zero,
             appTrigger: eventType.appTrigger?.asPostTrigger,
             coordinateTrigger: eventType.coordinateTrigger?.asPostTrigger,
             shelfTrigger: eventType.shelfTrigger?.asPostTrigger,

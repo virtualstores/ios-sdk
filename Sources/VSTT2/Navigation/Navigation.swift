@@ -139,7 +139,7 @@ public extension Navigation {
 
     func syncPosition(position: ItemPosition, forceSync: Bool = false) throws  {
         guard let heading = heading, isActive else {
-            try self.start(startPosition: position.pointWithOffset, position: position)
+            try start(startPosition: position.pointWithOffset, position: position)
             return
         }
 
@@ -172,14 +172,14 @@ public extension Navigation {
             prepareAngle()
         }
         if reportScanEvent {
-          createAnalyticsScanEventForIdentifier(identfier: identifier)
+            createAnalyticsScanEventForIdentifier(identfier: identifier)
         }
         func doSync(position: ItemPosition) throws {
             switch type {
             case .compass(let forceSync):
-              try self.syncPosition(position: position, forceSync: forceSync)
+              try syncPosition(position: position, forceSync: forceSync)
             case .normal(let syncRotation):
-              try self.syncPosition(position: position, syncRotation: syncRotation, forceSync: true)
+              try syncPosition(position: position, syncRotation: syncRotation, forceSync: true)
             }
         }
         position.getBy(shelfName: identifier) { (position) in
@@ -191,30 +191,30 @@ public extension Navigation {
             } catch {
               completion(.failure(error))
             }
-            return
-          }
-        }
-        position.getBy(barcode: identifier) { (result) in
-            switch result {
-            case .success(let item):
+          } else {
+            self.position.getBy(barcode: identifier) { (result) in
+              switch result {
+              case .success(let item):
                 do {
-                    if item.uniquePositions.isEmpty {
-                        self.prepareAccuracyUpload(identifier: identifier)
-                        throw NSError(domain: "No unique positions", code: 400)
-                    } else if item.uniquePositions.count > 1 {
-                        self.prepareAccuracyUpload(item: item)
-                        throw NSError(domain: "Unique positions more than 1", code: 400)
-                    } else if let position = item.itemPosition {
-                        try doSync(position: position)
-                        completion(.success(item))
-                    } else {
-                        throw NSError(domain: "Case not handled", code: 400)
-                    }
+                  if item.uniquePositions.isEmpty {
+                    self.prepareAccuracyUpload(identifier: identifier)
+                    throw NSError(domain: "No unique positions", code: 400)
+                  } else if item.uniquePositions.count > 1 {
+                    self.prepareAccuracyUpload(item: item)
+                    throw NSError(domain: "Unique positions more than 1", code: 400)
+                  } else if let position = item.itemPosition {
+                    try doSync(position: position)
+                    completion(.success(item))
+                  } else {
+                    throw NSError(domain: "Case not handled", code: 400)
+                  }
                 } catch {
-                    completion(.failure(error))
+                  completion(.failure(error))
                 }
-            case .failure(let error): completion(.failure(error))
+              case .failure(let error): completion(.failure(error))
+              }
             }
+          }
         }
     }
 

@@ -35,7 +35,6 @@ class InAndOutZone {
               if !activeInside.contains(where: { $0.id == trigger.id }) {
                   delegate?.onEnter(trigger: trigger, position: currentPosition)
                   activeInside.append(trigger)
-                  print("ActiveInside", trigger.id)
               }
             } else {
                 if activeInside.contains(where: { $0.id == trigger.id }) {
