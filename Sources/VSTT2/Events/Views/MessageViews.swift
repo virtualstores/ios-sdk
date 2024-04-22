@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import AVFoundation
 
 class CloseButton: UIView, NibLoadable {
   var onClose = {}
@@ -27,31 +28,37 @@ class CloseButton: UIView, NibLoadable {
 }
 
 class MessageViews {
-  let type: TriggerEvent.DefaultMetaData.MessageSize
+  static let shared = MessageViews()
   let imageView = UIImageView(frame: .zero)
   let button = CloseButton(frame: .zero)
+  var type = TriggerEvent.DefaultMetaData.MessageSize.small
   var onClose = {}
+  var presenting = false
 
-  init(type: TriggerEvent.DefaultMetaData.MessageSize) {
-    self.type = type
-  }
+  private init() {}
 
   //@objc func handleTap(_ gesture: UITapGestureRecognizer?) {
   //  print("Pressing background", gesture?.view)
   //  gesture?.view?.removeFromSuperview()
   //}
 
-  func load(imageUrl: String, view: UIView) {
+  func load(type: TriggerEvent.DefaultMetaData.MessageSize, imageUrl: String, view: UIView, completion: @escaping (Error?) -> ()) {
+    guard !presenting else { return }
+    self.type = type
     imageView.load(url: imageUrl) { (error) in
       if let error = error {
         print("Load image error", error)
+        completion(error)
       } else {
+        completion(nil)
         self.createMessage(view: view)
       }
     }
   }
 
   func createMessage(view: UIView) {
+    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+    presenting = true
     let background = UIView(frame: view.frame)
     background.backgroundColor = .black.withAlphaComponent(0.6)
     view.addSubview(background)
@@ -65,7 +72,10 @@ class MessageViews {
     imageView.addConstraint(item: imageView, attribute: .height, attribute: .width, multiplier: imageView.image!.size.height / imageView.image!.size.width)
     button.addConstraint(item: button, attribute: .width, attribute: .notAnAttribute, constant: 30)
     button.addConstraint(item: button, attribute: .height, attribute: .notAnAttribute, constant: 30)
-    button.onClose = onClose
+    button.onClose = { [weak self] in
+      self?.onClose()
+      self?.presenting = false
+    }
     switch type {
     case .small:
       background.addConstraint(item: imageView, attribute: .top, attribute: .topMargin)

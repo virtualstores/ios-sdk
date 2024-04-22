@@ -164,6 +164,7 @@ internal class TT2Internal {
               case .rotation(heading: let heading):
                 let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
                 mapController?.updateUserDirection(newDirection: heading)
+              case .rescueMode: analytics.rescueMode()
               }
             }.store(in: &cancellable)
         

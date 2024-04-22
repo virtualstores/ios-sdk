@@ -86,8 +86,13 @@ private extension TT2EventManager {
     else { messageEventPublisher.send(event); return }
     switch converted.type {
     case .image:
-      let message = MessageViews(type: converted.size)
-      message.load(imageUrl: converted.imageUrl, view: view)
+      guard !event.hasBeenTriggered else { return }
+      let message = MessageViews.shared//(type: converted.size)
+      message.load(type: converted.size, imageUrl: converted.imageUrl, view: view) { (error) in
+        if error == nil {
+          event.updateEventStatus(hasBeenTriggered: true)
+        }
+      }
       message.onClose = { [weak self] in
         self?.messageShownPublisher.send(event.toMessageShown)
       }
@@ -158,5 +163,7 @@ extension TT2EventManager: TT2Event {
 
   public func enableAutoShow(view: UIView?) {
     self.view = view
+    //let event = TriggerEvent(rtlsOptionsId: 0, name: "Test", description: "", eventType: .coordinateTrigger(TriggerEvent.CoordinateTrigger(point: .zero, radius: 0, type: .enter)), tags: [TriggerEvent.DefaultTags.displayType: TriggerEvent.DefaultTags.DisplayTypeEnum.image.rawValue], metaData: [TriggerEvent.DefaultMetaData.imageUrl: "https://virtualstores-assets.s3.eu-north-1.amazonaws.com/images/information-manager/2024-04-10-c35da29e-dd3f-4676-a051-34229796a6f5.png", TriggerEvent.DefaultMetaData.size: "SMALL"])
+    //handle(event: event)
   }
 }

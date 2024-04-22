@@ -7,7 +7,7 @@
 
 import Foundation
 import VSFoundation
-import CoreGraphics
+import CoreLocation
 import Combine
 
 public protocol TT2Analytics {
@@ -25,6 +25,8 @@ public protocol TT2Analytics {
     
     /// Method for adding event from app
     func addTriggerEvent(for event: TriggerEvent)
+
+    func addGPSPositions(id: Int64, coordinate: CLLocationCoordinate2D)
 }
 
 enum TT2AnalyticsError: Error {

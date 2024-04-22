@@ -20,7 +20,7 @@ final public class TT2: ITT2 {
     public var analytics: TT2AnalyticsManager { tt2Internal.analytics }
     public var floor: VSTT2FloorManager { tt2Internal.floorManager }
     public var position: Position { tt2Internal.position }
-    public var events: TT2EventManager { analytics.eventManager }
+    public var events: TT2EventManager { tt2Internal.analytics.eventManager }
     public var user: UserController { tt2Internal.user }
     public var recording: IRecordingManager { tt2Internal.recording }
 
@@ -36,7 +36,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.1.0"
+    static let version = "2.2.0"
 
     // MARK: Private members
     private let context: Context
@@ -339,7 +339,7 @@ private extension TT2 {
     func setupAnalytics(for store: Store) {
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
         tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
-        analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id)
+        tt2Internal.analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id)
         if let client = activeClient {
             user.setup(clientId: client.clientId, positionServiceSettings: store.positionServiceSettings)
         }
@@ -355,8 +355,8 @@ private extension TT2 {
 
         guard let mapZones = mapZonesTree?.getZonesFor(floorLevelId: rtlsOption.id) else { return }
 
-        analytics.update(rtlsOptionId: rtlsOption.id)
-        analytics.zoneManager.setup(with: mapZones, rtlsOptions: rtlsOption)
-        analytics.eventManager.setup(with: store.id, zones: mapZones, rtlsOptionsId: rtlsOption.id)
+        tt2Internal.analytics.update(rtlsOptionId: rtlsOption.id)
+        tt2Internal.analytics.zoneManager.setup(with: mapZones, rtlsOptions: rtlsOption)
+        tt2Internal.analytics.eventManager.setup(with: store.id, zones: mapZones, rtlsOptionsId: rtlsOption.id)
     }
 }
