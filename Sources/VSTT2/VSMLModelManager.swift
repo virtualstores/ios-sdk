@@ -80,7 +80,7 @@ class VSMLModelManager {
             case .success(let url):
               //print("File", "Success", url)
               let config = MLModelConfiguration()
-              config.computeUnits = .cpuOnly
+              config.computeUnits = .all
               _model = try? MLModel(contentsOf: url, configuration: config)
               //let parameter = try! self.model.parameterValue(for: .biases)
               //print("File", "Parameter", parameter)

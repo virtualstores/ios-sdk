@@ -163,11 +163,15 @@ private extension TT2AnalyticsManager {
       var string = "{"
       navigationManager
         .positionManager
-        .vpsParams
+        .vpsParticleFilterParams
         .sorted(by: {
           guard let key1 = Int($0.key), let key2 = Int($1.key) else { return $0.key < $1.key }
           return key1 < key2
         })
+        .forEach { string = string + "\($0.key)=\($0.value), " }
+      navigationManager
+        .positionManager
+        .vpsParticleFilterSettings
         .forEach { string = string + "\($0.key)=\($0.value), " }
       if string.hasSuffix(", ") { string.removeLast(2) }
       string = string + "}"
