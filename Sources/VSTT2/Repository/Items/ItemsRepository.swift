@@ -14,17 +14,15 @@ protocol IItemsRepository {
   func reset()
 }
 
-class ItemsRepository: IItemsRepository {
-  let api: IItemsApi
+class ItemsRepository {
+  let api: IItemsApi = ItemsApi()
 
   var cachedItems: [String:Item] = [:]
 
   private var serialDispatch = DispatchQueue(label: "TT2ItemsRepository")
+}
 
-  init(api: IItemsApi) {
-    self.api = api
-  }
-
+extension ItemsRepository: IItemsRepository {
   func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ()) {
     api.getBy(storeId: storeId, barcode: barcode, completion: completion)
   }

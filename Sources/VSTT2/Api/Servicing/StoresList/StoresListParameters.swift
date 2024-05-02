@@ -9,8 +9,12 @@ import Foundation
 import VSFoundation
 
 struct StoresListParameters {
-    let config: EnvironmentConfig
+    @Inject var config: EnvironmentConfig
     let clientId: Int64
+
+    init(clientId: Int64) {
+        self.clientId = clientId
+    }
 }
 
 extension StoresListParameters: Routing {

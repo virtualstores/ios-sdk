@@ -9,13 +9,8 @@ import Foundation
 import VSFoundation
 
 class GetPositionByBarcodeUseCase {
-  let storeRepository: IStoreRepository
-  let itemsRepository: IItemsRepository
-
-  init(storeRepository: IStoreRepository, itemsRepository: IItemsRepository) {
-    self.storeRepository = storeRepository
-    self.itemsRepository = itemsRepository
-  }
+  @Inject var itemsRepository: IItemsRepository
+  @Inject var storeRepository: IStoreRepository
 
   func invoke(barcode: String, completion: @escaping (Result<Item, Error>) -> Void) {
     if let item = itemsRepository.getCachedItems(by: barcode) {
@@ -24,7 +19,7 @@ class GetPositionByBarcodeUseCase {
       itemsRepository.getBy(storeId: storeRepository.activeStore.id, barcode: barcode) { (result) in
         switch result {
         case .success(let data):
-          let item = PositionBusiness().handleSuccesResult(barcode: barcode, data: data)
+          let item = PositionBusiness().handleSuccessResult(barcode: barcode, data: data)
           self.itemsRepository.addCachedItem(item: item)
           DispatchQueue.main.async { completion(.success(item)) }
         case .failure(let error): DispatchQueue.main.async { completion(.failure(error)) }
@@ -35,7 +30,7 @@ class GetPositionByBarcodeUseCase {
 }
 
 class PositionBusiness {
-  func handleSuccesResult(barcode: String, data: [BarcodePosition]) -> Item {
+  func handleSuccessResult(barcode: String, data: [BarcodePosition]) -> Item {
     let itemPositions = data.map { $0.toItemPosition }.compactMap { $0 }
     return Item(name: "", externalId: barcode, itemPositions: itemPositions)
   }

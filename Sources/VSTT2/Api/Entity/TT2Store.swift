@@ -17,6 +17,4 @@ public struct TT2Store {
     public let latitude: Double
     public let longitude: Double
     public let active: Bool
-    public let startScanLocations: [PositionedCode]
-    public let stopScanLocations: [PositionedCode]
 }

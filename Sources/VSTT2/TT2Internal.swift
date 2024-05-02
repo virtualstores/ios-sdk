@@ -30,7 +30,12 @@ internal class TT2Internal {
     @Inject var itemPositionService: ItemPositionService
     @Inject var shelfGroupService: ShelfGroupService
 
-    /// Usecases
+    /// Usecases - Client
+    @Inject var fetchClientUseCase: FetchClientsUseCase
+    @Inject var getActiveClientUseCase: GetActiveClientUseCase
+    @Inject var getCachedClientsUseCase: GetCachedClientsUseCase
+    @Inject var setActiveClientUseCase: SetActiveClientUseCase
+    /// Usecases - Store
     @Inject var fetchStoreUseCase: FetchStoreUseCase
     @Inject var getCachedStoreUseCase: GetCachedStoreUseCase
     @Inject var getActiveStoreUseCase: GetActiveStoreUseCase
@@ -44,11 +49,11 @@ internal class TT2Internal {
     
     private var offset: Double
     
-    var internalClients: [Client] = []
+    var internalClients: [Client] { getCachedClientsUseCase.invoke() }
+    var activeClient: Client { getActiveClientUseCase.invoke() }
     var internalStores: [Store] { getCachedStoreUseCase.invoke(filterOnlyActive: false) }
     var internalStoresActive: [Store] { getCachedStoreUseCase.invoke() }
     var activeStore: Store { getActiveStoreUseCase.invoke() }
-    var activeClient: Client?
     var shelfGroups: [Int64: [ShelfGroup]] = [:]
     var automaticActivationOfUserMark: Bool = true
     var automaticSensorRecording: Bool { activeStore.hasSensorRecordingActive }
@@ -67,18 +72,8 @@ internal class TT2Internal {
         return MapData(rtlsOptions: rtlsOptions, converter: converter)
     }
     
-    func getClients(completion: @escaping (Error?) -> Void) {
-        clientListService
-            .call(with: ClientsListParameters())
-            .sink { (result) in
-                switch result {
-                case .finished: break
-                case .failure(let error): completion(error)
-                }
-            } receiveValue: { (data) in
-                self.internalClients = data.clients
-                completion(nil)
-            }.store(in: &cancellable)
+    func getClients(completion: @escaping (Result<[Client], Error>) -> Void) {
+        fetchClientUseCase.invoke(completion: completion)
     }
     
     func getStores(with clientId: Int64, completion: @escaping (Error?) -> ()) {
@@ -212,19 +207,18 @@ internal class TT2Internal {
     }
 
     func createTT2Tags(serverAddress: String, dataServerAddress: String, visitId: Int64) -> String? {
+        struct TT2Tags: Codable {
+          let tags: [String:String]
+        }
         analytics.tt2Tags["tt2CentralServerURL"] = serverAddress
         analytics.tt2Tags["tt2DataServerURL"] = dataServerAddress
         analytics.tt2Tags["tt2RtlsOptionsId"] = floorManager.activeFloor?.id.description
         analytics.tt2Tags["tt2StoreId"] = activeStore.id.description
         analytics.tt2Tags["tt2VisitId"] = visitId.description
-        analytics.tt2Tags["tt2ClientId"] = activeClient?.clientId.description
+        analytics.tt2Tags["tt2ClientId"] = activeClient.clientId.description
         let tags = TT2Tags(tags: analytics.tt2Tags)
         guard let data = try? JSONEncoder().encode(tags) else { return nil }
         return String(data: data, encoding: .utf8)
-    }
-
-    private struct TT2Tags: Codable {
-      let tags: [String:String]
     }
 
     private func vpsToMapboxAngle(angle: Double) -> Double {

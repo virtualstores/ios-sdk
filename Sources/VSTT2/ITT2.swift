@@ -41,7 +41,7 @@ public protocol ITT2 {
     var recording: IRecordingManager { get }
     
     /// Active store
-    var activeStore: TT2Store? { get }
+    var activeStore: TT2Store { get }
     
     /// List of active stores
     var activeStores: [TT2Store] { get }

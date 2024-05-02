@@ -16,18 +16,17 @@ protocol IStoreRepository {
   func setActiveStore(store: Store)
 }
 
-class StoreRepository: IStoreRepository {
-  let api: IStoreApi
+class StoreRepository {
+  let api: IStoreApi = StoreApi()
 
   var cachedStores: [Store] = []
   private var _activeStore: Store?
+}
+
+extension StoreRepository: IStoreRepository {
   var activeStore: Store {
     guard let store = _activeStore else { fatalError("Store not initialized") }
     return store
-  }
-
-  init(api: IStoreApi) {
-    self.api = api
   }
 
   func getStores(clientId: Int64, completion: @escaping (Result<[Store], Error>) -> Void) {

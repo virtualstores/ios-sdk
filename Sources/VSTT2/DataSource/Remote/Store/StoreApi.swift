@@ -13,20 +13,15 @@ protocol IStoreApi {
   func getStores(clientId: Int64, completion: @escaping (Result<[Store], Error>) -> Void)
 }
 
-class StoreApi: IStoreApi {
-  let config: EnvironmentConfig
-
+class StoreApi {
   let service = StoresListService(with: NetworkManager())
-
   var cancellable = Set<AnyCancellable>()
+}
 
-  init(config: EnvironmentConfig) {
-    self.config = config
-  }
-
+extension StoreApi: IStoreApi {
   func getStores(clientId: Int64, completion: @escaping (Result<[Store], Error>) -> Void) {
     service
-      .call(with: StoresListParameters(config: config, clientId: clientId))
+      .call(with: StoresListParameters(clientId: clientId))
       .sink(receiveCompletion: { (result) in
         switch result {
         case .finished:

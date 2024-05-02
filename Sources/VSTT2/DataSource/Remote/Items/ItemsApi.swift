@@ -10,12 +10,8 @@ import Combine
 import VSFoundation
 
 class ItemsApi: IItemsApi {
+  @Inject var config: EnvironmentConfig
   let service = ItemPositionService(with: NetworkManager())
-  let config: EnvironmentConfig
-
-  init(config: EnvironmentConfig) {
-    self.config = config
-  }
 
   private var cancellable = Set<AnyCancellable>()
 

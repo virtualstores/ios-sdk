@@ -24,7 +24,7 @@ final public class TT2: ITT2 {
     public var user: UserController { tt2Internal.user }
     public var recording: IRecordingManager { tt2Internal.recording }
 
-    public var activeStore: TT2Store? { tt2Internal.activeStore.toTT2Store() }
+    public var activeStore: TT2Store { tt2Internal.activeStore.toTT2Store() }
     public var activeFloor: RtlsOptions? { floor.activeFloor }
     
     public private(set) var coordinateConverter: ICoordinateConverter?
@@ -47,7 +47,7 @@ final public class TT2: ITT2 {
     }
 
     private var floorHeightDiff: Double?
-    private var activeClient: Client? { tt2Internal.activeClient }
+    private var activeClient: Client { tt2Internal.activeClient }
 
     private var cancellable = Set<AnyCancellable>()
     private var wifiCancellable = Set<AnyCancellable>()
@@ -69,23 +69,23 @@ final public class TT2: ITT2 {
 
     // MARK: Initialize
     public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, completion: @escaping (Error?) -> ()) {
-        tt2Internal.getClients(completion: { [self] (error) in
-            if let error = error {
+        tt2Internal.getClients(completion: { [self] (result) in
+            switch result {
+            case .success(let clients):
+                guard
+                  let client = clients.first(where: { $0.clientId == clientId }),
+                  let serverAddress = client.dataServerUrl,
+                  let apiKey = client.dataServerApiKey
+                else { completion(VSTT2Error.missingData); return }
+
+                tt2Internal.setActiveClientUseCase.invoke(clientId: clientId)
+                tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
+                user.setup(clientId: clientId)
+                self.positionKitParams = positionKitParams
+                tt2Internal.getStores(with: clientId, completion: completion)
+            case .failure(let error):
                 completion(error)
-                return
             }
-
-            guard
-              let client = tt2Internal.internalClients.first(where: { $0.clientId == clientId }),
-              let serverAddress = client.dataServerUrl,
-              let apiKey = client.dataServerApiKey
-            else { completion(VSTT2Error.missingData); return }
-
-            tt2Internal.activeClient = client
-            tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
-            user.setup(clientId: clientId)
-            self.positionKitParams = positionKitParams
-            tt2Internal.getStores(with: clientId, completion: completion)
         })
     }
     
@@ -316,8 +316,8 @@ private extension TT2 {
     }
 
     func setupMapfence(with data: MapFence, floorHeightDiff: Double) {
-        guard let rtlsOption = activeFloor, let name = activeStore?.name else { return }
-        
+        guard let rtlsOption = activeFloor else { return }
+        let name = activeStore.name
         let converter = BaseCoordinateConverter(heightInPixels: data.properties.height, widthInPixels: data.properties.width, pixelPerMeter: rtlsOption.pixelsPerMeter, pixelPerLatitude: 1000.0)
         coordinateConverter = converter
 
@@ -340,13 +340,11 @@ private extension TT2 {
         guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
         tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
         tt2Internal.analytics.setup(with: store, rtlsOptionId: self.activeFloor?.id)
-        if let client = activeClient {
-            user.setup(clientId: client.clientId, positionServiceSettings: store.positionServiceSettings)
-        }
+        user.setup(clientId: activeClient.clientId, positionServiceSettings: store.positionServiceSettings)
     }
     
     func setupAnalytics(with zoneData: [Int64: ZoneData]?) {
-        guard let rtlsOption = activeFloor, let store = activeStore, let zoneData = zoneData else { return }
+        guard let rtlsOption = activeFloor, let zoneData = zoneData else { return }
 
         zoneData.forEach { (key, value) in
             guard let rtls = floor.floors.first(where: { $0.id == key }) else { return }
@@ -357,6 +355,6 @@ private extension TT2 {
 
         tt2Internal.analytics.update(rtlsOptionId: rtlsOption.id)
         tt2Internal.analytics.zoneManager.setup(with: mapZones, rtlsOptions: rtlsOption)
-        tt2Internal.analytics.eventManager.setup(with: store.id, zones: mapZones, rtlsOptionsId: rtlsOption.id)
+        tt2Internal.analytics.eventManager.setup(with: activeStore.id, zones: mapZones, rtlsOptionsId: rtlsOption.id)
     }
 }
