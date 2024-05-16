@@ -13,16 +13,12 @@ import CoreGraphics
 public class VSTT2FloorManager: VSTT2Floor {
     @Inject var downloadManager: DownloadManager
     @Inject var mapFenceDataService: MapFenceDataService
-    @Inject var swapLocationsService: SwapLocationsService
 
     private var floorPicker: FloorPicker?
 
     public var activeFloor: RtlsOptions?
     public var floors: [RtlsOptions] = []
-    public var zones: Data?
-    public var triggerEvents: [TriggerEvent]?
-    public var zoneData: [Int64 : ZoneData] = [:]
-    public var offsetZones: Data?
+    public var zoneData: [Int64: ZoneData] = [:]
 
     public var switchFloorPublisher: CurrentValueSubject<(rtlsOptions: RtlsOptions, point: CGPoint?)?, Never> = .init(nil)
 

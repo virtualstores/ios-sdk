@@ -1,5 +1,5 @@
 //
-//  GetPositionByBarcodeUseCase.swift
+//  PositionUseCase.swift
 //  
 //
 //  Created by Théodore Roos on 2022-12-15.

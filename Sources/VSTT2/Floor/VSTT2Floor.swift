@@ -12,19 +12,13 @@ import Combine
 public protocol VSTT2Floor {
     /// Active Floor data
     var activeFloor: RtlsOptions? { get }
-    
+
     /// All available floors which user can have
     var floors: [RtlsOptions] { get }
-    
-    /// Zones  in floor
-    var zones: Data? { get }
-    
-    /// TriggerEvents  for showing in floor
-    var triggerEvents: [TriggerEvent]? { get }
-    
+
     /// Methode for setup Active Floor with options
     func setActiveFloor(with rtlsOptions: RtlsOptions)
-    
+
     /// Methode for setup Active Floor with floorLevel
     func setActiveFloor(with floorLevel: Int)
 

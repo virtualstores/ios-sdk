@@ -93,8 +93,8 @@ final public class TT2: ITT2 {
         ///check
         guard let currentStore = tt2Internal.internalStores.first(where: { $0.id == store.id }) else { return }
 
-        self.tt2Internal.setActiveStore(storeId: currentStore.id)
-        self.floor.setupFloors(with: currentStore.rtlsOptions)
+        tt2Internal.setActiveStore(storeId: currentStore.id)
+        floor.setupFloors(with: currentStore.rtlsOptions)
 
         tt2Internal.getSwapLocations(for: currentStore.id, completion: { [weak self] (result) in
             guard let self = self else { return }

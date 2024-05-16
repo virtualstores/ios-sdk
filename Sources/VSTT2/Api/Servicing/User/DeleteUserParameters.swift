@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  DeleteUserParameters.swift
 //  
 //
 //  Created by Théodore Roos on 2022-09-13.
