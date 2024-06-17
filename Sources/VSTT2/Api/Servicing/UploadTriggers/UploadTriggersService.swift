@@ -1,5 +1,5 @@
 //
-// UploadPositionsService
+// UploadTriggersService
 // VSTT2
 //
 // Created by Hripsime on 2022-01-13.

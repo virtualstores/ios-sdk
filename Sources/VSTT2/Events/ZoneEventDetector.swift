@@ -10,12 +10,13 @@ import CoreGraphics
 import VSFoundation
 import Combine
 
-internal class ZoneEventDetector: EventDetector {
+internal class ZoneEventDetector: IEventDetector {
+    var eventPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
+    var eventsPublisher: CurrentValueSubject<[TriggerEvent]?, Never> = .init(nil)
+
     var events: [TriggerEvent] = []
     var triggersAndEvents: [String: (event: TriggerEvent, triggerType: TriggerEvent.ZoneTrigger)] = [:]
     var inAndOut: InAndOutZone?
-    
-    public var eventPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
 
     private var zones: [Zone]?
 
@@ -37,9 +38,9 @@ internal class ZoneEventDetector: EventDetector {
         var triggers: [InAndOutZone.Trigger] = []
 
         events.forEach { (event) in
-            guard let id = event.id, let trigger = event.eventType.getTrigger().zoneTrigger, let zone = zones?.first(where: { $0.name == trigger.zoneId }) else { return }
-            triggers.append(InAndOutZone.Trigger(id: id, polygon: zone.points))
-            triggersAndEvents[id] = (event, trigger)
+            guard let trigger = event.eventType.getTrigger().zoneTrigger, let zone = zones?.first(where: { $0.name == trigger.zoneId }) else { return }
+            triggers.append(InAndOutZone.Trigger(id: event.id, polygon: zone.points))
+            triggersAndEvents[event.id] = (event, trigger)
         }
 
         inAndOut = InAndOutZone(triggers: triggers)

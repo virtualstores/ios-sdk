@@ -13,6 +13,7 @@ struct CommonCryptoAES {
   let data: Data
 
   func decrypt() -> Data? {
+    guard let sha256 = sha256(string: key) else { return nil }
     var outputBuffer = [UInt8](repeating: 0, count: data.count)
     var numBytesEncrypted = 0
     let dataPart = data.dataPart
@@ -20,7 +21,7 @@ struct CommonCryptoAES {
       CCOperation(kCCDecrypt),
       CCAlgorithm(kCCAlgorithmAES),
       CCOptions(kCCOptionPKCS7Padding),
-      Array(sha256(string: key)!),
+      Array(sha256),
       32,
       data.iv,
       dataPart,

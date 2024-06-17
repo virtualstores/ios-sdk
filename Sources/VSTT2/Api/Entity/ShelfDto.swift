@@ -61,7 +61,7 @@ extension ShelfDto {
         let shape = points.map({ (point) -> CGPoint in CGPoint(x: point.x!, y: point.y!) })
 
         return Shelf(id: dto.shelfId ?? 0,
-                     name: dto.name ?? "",
+                     name: dto.name,
                      itemPosition: itemPosition,
                      shelfGroupPosition: Int(dto.shelfGroupId ?? 0),
                      shelfTiers: dto.shelfTiers?.map(ShelfTierDto.toShelfTier) ?? [],

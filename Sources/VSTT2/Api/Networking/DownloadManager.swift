@@ -12,8 +12,14 @@ import VSFoundation
 
 final class DownloadManager {
     func loadData(from url: URL, completion: @escaping (Result<Data, Error>) -> Void) {
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+        let date = Date()
+        print("<--", "GET", url)
+        let task = URLSession.shared.dataTask(with: url) { (data, response, error) in
             if let data = data {
+                if let response = response as? HTTPURLResponse {
+                    let timeInterval = Date().timeIntervalSince(date)
+                    print("-->", response.statusCode, response.url?.absoluteString ?? "", "[\(data.count) b]", String(format: "[%.03f s]", timeInterval))
+                }
                 completion(.success(data))
             } else if let error = error {
                 completion(.failure(error))
@@ -24,7 +30,6 @@ final class DownloadManager {
         
         task.resume()
     }
-    
 
     @available(iOS 15.0.0, *)
     func downloadData(from url: URL) async throws -> Data {

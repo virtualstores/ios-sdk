@@ -13,13 +13,13 @@ protocol IFloorApi {
   func getMapFence(url: String, completion: @escaping (Result<MapFence, Error>) -> ())
   func getMapZones(url: URL, completion: @escaping (Result<ZoneData, Error>) -> ())
   func getNavGraph(url: URL, completion: @escaping (Result<Data, Error>) -> ())
-  func getSwapLocations(completion: @escaping (Result<[SwapLocation], Error>) -> ())
+  func getShelfGroups(rtlsOptionsId: Int64, completion: @escaping (Result<[ShelfGroup], Error>) -> ())
 }
 
 class FloorApi {
-  @Inject var downloadManager: DownloadManager
-  @Inject var mapFenceService: MapFenceDataService
-  @Inject var swapLocationsService: SwapLocationsService
+  private let downloadManager = DownloadManager()
+  private let mapFenceService = MapFenceDataService(with: NetworkManager())
+  private let shelfGroupService = ShelfGroupService(with: NetworkManager())
   private var cancellable = Set<AnyCancellable>()
 }
 
@@ -62,7 +62,16 @@ extension FloorApi: IFloorApi {
     }
   }
 
-  func getSwapLocations(completion: @escaping (Result<[SwapLocation], Error>) -> ()) {
-
+  func getShelfGroups(rtlsOptionsId: Int64, completion: @escaping (Result<[ShelfGroup], Error>) -> ()) {
+    shelfGroupService
+      .call(with: ShelfGroupParameters(rtlsOptionsId: rtlsOptionsId))
+      .sink { (result) in
+        switch result {
+        case .finished: break
+        case .failure(let error): completion(.failure(error))
+        }
+      } receiveValue: { (data) in
+        completion(.success(ShelfGroupDto.add(floorLevelId: rtlsOptionsId, data).map({ ShelfGroupDto.toShelfGroup($0) })))
+      }.store(in: &cancellable)
   }
 }

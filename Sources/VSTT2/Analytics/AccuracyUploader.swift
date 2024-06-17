@@ -15,27 +15,25 @@ class AccuracyUploader {
   @Inject var analytics: TT2AnalyticsManager
   @Inject var config: EnvironmentConfig
   @Inject var syncEventsService: UploadSyncEventsService
-  @Inject var floorManager: VSTT2FloorManager
   @Inject var persistence: Persistence
 
-  let store: Store
-  let client: Client
-  let converter: ICoordinateConverter
+  @Inject var getActiveClient: GetActiveClientUseCase
+  @Inject var getActiveMapFence: GetActiveMapFenceUseCase
+  @Inject var getActiveStore: GetActiveStoreUseCase
+  @Inject var activeFloor: GetActiveFloorUseCase
 
-  var stepEventUploader: StepEventUploader? { analytics.stepEventUploader }
+  @Inject var converter: GetActiveCoordinateConverterUseCase
+
+  var client: Client { getActiveClient.invoke() }
+  var store: Store { getActiveStore.invoke() }
+  var stepEventUploader: StepEventUploader { analytics.stepEventUploader }
 
   var numberOfRescueModes: Int64 = 0
 
   private var cancellable = Set<AnyCancellable>()
 
-  public enum Errors: Error {
+  enum Errors: Error {
     case uploadFailure(HTTPURLResponse)
-  }
-
-  init(store: Store, client: Client, converter: ICoordinateConverter) {
-    self.store = store
-    self.client = client
-    self.converter = converter
   }
 
   deinit {
@@ -114,8 +112,8 @@ class AccuracyUploader {
   func upload(syncEvent: AccuracySyncEvent.Event, isFloorSwap: Bool) {
     guard
       let visitId = analytics.visitId,
-      let rtlsOptionsId = analytics.rtlsOptionId,
-      let mapFence = floorManager.mapFence[rtlsOptionsId]
+      let mapFence = getActiveMapFence.invoke(),
+      let converter = converter.invoke()
     else { return }
     let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     let identifier: String
@@ -195,9 +193,9 @@ class AccuracyUploader {
     //if (tags["isWifiResetSync"]! as NSString).boolValue {
     //  tags["wifiResetSyncRadius"] = String(0)
     //}
-    let distance: Double = stepEventUploader?.events.map { $0.distance }.sum() ?? 0.0
+    let distance: Double = stepEventUploader.events.map { $0.distance }.sum()
     let event = SyncEvent(
-      rtlsOptionsId: rtlsOptionsId,
+      rtlsOptionsId: activeFloor.invoke().id,
       identifier: identifier,
       isRightAisle: !isFloorSwap ? isRightAisle : false,
       isFloorSwap: isFloorSwap,
@@ -222,7 +220,7 @@ class AccuracyUploader {
       var persistence = parameters.asPersistence
       try self.persistence.save(&persistence)
       upload(parameters: parameters)
-      stepEventUploader?.upload()
+      stepEventUploader.upload()
       numberOfRescueModes = 0
     } catch {
       Logger(verbosity: .error).log(message: "UploadSyncEventsParametersSaveError \(error)")

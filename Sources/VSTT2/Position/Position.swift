@@ -10,18 +10,19 @@ import Combine
 import VSFoundation
 
 public class Position: IPosition {
-    @Inject var itemPositionService: ItemPositionService
+    @Inject var activeStore: GetActiveStoreUseCase
+    @Inject var activeShelfGroups: GetActiveShelfGroupsUseCase
     @Inject var getPositionByBarcodeUseCase: GetPositionByBarcodeUseCase
 
+    public var shelfGroups: [ShelfGroup]? { activeShelfGroups.invoke() }
+
     private var shelfTierItemPositions: [Int64: ItemPosition] = [:]
-    public internal(set) var shelfGroups: [ShelfGroup]?
-    var store: Store?
+    private var store: Store { activeStore.invoke() }
     private var cancellable = Set<AnyCancellable>()
     
     public init() {}
     
     func setup(with shelfGroups: [ShelfGroup], store: Store) {
-        self.shelfGroups = shelfGroups
         shelfGroups.forEach { (group) in
             group.shelves.forEach { (shelf) in
                 shelf.shelfTiers.forEach { (tier) in
@@ -30,7 +31,6 @@ public class Position: IPosition {
             }
         }
 
-        self.store = store
         getPositionByBarcodeUseCase.itemsRepository.reset()
     }
     
@@ -73,7 +73,7 @@ public class Position: IPosition {
             if let error = savedError {
               completion(.failure(error))
             } else {
-              completion(.failure(NSError()))
+              completion(.failure(NSError(domain: "No positions found", code: 400)))
             }
           } else {
             completion(.success(items))

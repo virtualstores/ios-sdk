@@ -18,8 +18,9 @@ public class TriggerEvent {
     public private(set) var metaData: [String: String]
     public private(set) var hasBeenTriggered: Bool
 
-    public var id: String? { tags[.id] }
+    public var messageId: String? { tags[.id] }
 
+    var id = UUID().uuidString
     var timestamp: Date
     var userPosition: CGPoint?
 
@@ -97,6 +98,7 @@ public class TriggerEvent {
         public static let messageShown: String = "messageShown"
         public static let pollResponse: String = "@message.content.poll.option"
         public static let displayType: String = "@message.display.type"
+        public static let shareOfVoice: String = "@message.shareOfVoice"
 
         public enum DisplayTypeEnum: String {
           case image = "IMAGE"
@@ -166,6 +168,10 @@ public class TriggerEvent {
           type: .init(rawValue: type) ?? (poll == nil ? .popUp : .poll),
           size: .init(rawValue: metaData[DefaultMetaData.size] ?? "")
         )
+    }
+
+    func shareOfVoice() -> Double {
+        tags[DefaultTags.shareOfVoice]?.asDouble ?? 1.0
     }
 
     public func convertEventToImageMessage() -> (imageUrl: String, size: DefaultMetaData.MessageSize, type: DefaultTags.DisplayTypeEnum?)? {
@@ -429,4 +435,5 @@ private extension String {
   static let id: String = TriggerEvent.DefaultTags.id
   static let messageShown: String = TriggerEvent.DefaultTags.messageShown
   static let pollResponse: String = TriggerEvent.DefaultTags.pollResponse
+  var asDouble: Double? { Double(self) }
 }

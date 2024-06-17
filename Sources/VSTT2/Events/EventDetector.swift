@@ -1,31 +1,106 @@
 //
-// EventDetector
-// VSTT2
+//  EventDetector.swift
 //
-// Created by Hripsime on 2022-01-25
-// Copyright Virtual Stores - 2022
+//
+//  Created by Théodore Roos on 2024-05-16.
+//
 
 import Foundation
-import CoreGraphics
-import VSFoundation
 import Combine
+import VSFoundation
 
-protocol EventDetector {
-    /// List of events which can have each event type
-    var events: [TriggerEvent] { get }
-    
-    /// Zoone event publisher for sending data to the app
-    var eventPublisher: CurrentValueSubject<TriggerEvent?, Never> { get }
+class EventDetector {
+  @Inject var decideWhichTriggerEvent: DecideWhichTriggerEventToDisplayUseCase
+  var events: [TriggerEvent] = []
+  var eventPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
 
-    /// Setup methode for using zone list for checking user zone place
-    func setup(with zones: [Zone])
-    
-    /// Methode which will receave user position change each time
-    func onNewPosition(currentPosition: CGPoint)
-    
-    /// Methode for being able to addEvent
-    func add(event: TriggerEvent)
+  private var inAndOut: InAndOut?
+  private var zones: [Zone]?
+  private var triggersAndEvents: [String: (triggerType: TriggerEvent.TriggerType, event: TriggerEvent)] = [:]
+  private var positionCount = 0
+  private var positionThreshhold = 5
+}
 
-    /// Methode for being able to removeEvent
-    func remove(event: TriggerEvent)
+private extension EventDetector {
+  func updateInAndOut() {
+    var triggers = [InAndOut.ITrigger]()
+    events.forEach { (event) in
+      switch event.eventType {
+      case .appTrigger(_): break
+      case .coordinateTrigger(let trigger):
+        triggers.append(InAndOut.Radius(id: event.id, centerPoint: trigger.point, radius: trigger.radius))
+      case .shelfTrigger(_): break
+      case .zoneTrigger(let trigger):
+        guard let zone = zones?.first(where: { $0.name == trigger.zoneId }) else { return }
+        triggers.append(InAndOut.Zone(id: event.id, zoneId: zone.id, polygon: zone.points))
+        triggersAndEvents[event.id] = (trigger.type, event)
+      }
+    }
+    inAndOut = .init(triggers: triggers)
+    inAndOut?.add(delegate: self)
+  }
+
+  func postEvent(event: TriggerEvent, position: CGPoint) {
+    event.updateEventData(for: position, timestamp: Date())
+    guard event.userPosition != .zero/*, !event.hasBeenTriggered*/ else { return }
+    eventPublisher.send(event)
+  }
+}
+
+extension EventDetector: IEventDetector {
+  func setup(with zones: [Zone]) {
+    self.zones = zones
+  }
+
+  func onNewPosition(currentPosition: CGPoint) {
+    positionCount += 1
+    guard positionCount >= positionThreshhold else { return }
+    positionCount = 0
+    inAndOut?.onNewPosition(currentPosition: currentPosition)
+  }
+
+  func add(event: TriggerEvent) {
+    events.append(event)
+    updateInAndOut()
+  }
+
+  func set(events: [TriggerEvent]) {
+    self.events = events
+    updateInAndOut()
+  }
+
+  func remove(event: TriggerEvent) {
+    events.removeAll(where: { $0.name == event.name })
+    updateInAndOut()
+  }
+}
+
+extension EventDetector: InAndOut.IDelegate {
+  func onEnter(trigger: InAndOut.ITrigger, position: CGPoint) {
+    //handle(triggers: [trigger], position: position, type: .enter)
+  }
+
+  func onExit(trigger: InAndOut.ITrigger, position: CGPoint) {
+    //handle(triggers: [trigger], position: position, type: .exit)
+  }
+
+  func onEnter(triggers: [InAndOut.ITrigger], position: CGPoint) {
+    handle(triggers: triggers, position: position, type: .enter)
+  }
+
+  func onExit(triggers: [InAndOut.ITrigger], position: CGPoint) {
+    handle(triggers: triggers, position: position, type: .exit)
+  }
+
+  func handle(triggers: [InAndOut.ITrigger], position: CGPoint, type: TriggerEvent.TriggerType) {
+    let events = triggersAndEvents
+      .filter({ $0.value.triggerType == type })
+      .filter({ (triggerAndEvent) in triggers.contains(where: { $0.id == triggerAndEvent.key }) })
+      .map({ $0.value.event })
+    guard
+      !events.isEmpty,
+      let event = decideWhichTriggerEvent.invoke(triggerEvents: events)
+    else { return }
+    postEvent(event: event, position: position)
+  }
 }

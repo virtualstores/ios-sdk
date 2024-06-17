@@ -6,194 +6,73 @@
 //
 
 import Foundation
-import Combine
 import CoreML
 import VSFoundation
-import ZIPFoundation
-import vps
+import VSPositionKit
 
 class VSMLModelManager {
-  @Inject var mlInterfaceVersionService: MLInterfaceVersionsService
-  private var cancellable = Set<AnyCancellable>()
+  @Inject var compileModel: CompileModelUseCase
+  @Inject var fetchMLInterfaceVersions: FetchMLInterfaceVersionsUseCase
+  @Inject var getMLCatalog: GetMLCatalogUseCase
+  @Inject var getMLModel: GetMLModelUseCase
+  @Inject var getMLVersion: GetMLVersionUseCase
+  @Inject var getNLModel: GetNLModelUseCase
+  @Inject var getNLVersion: GetNLVersionUseCase
+  @Inject var getVPSMLModelParams: GetVPSMLModelParamsUseCase
+  @Inject var getVPSNLModelParams: GetVPSNLModelParamsUseCase
+  @Inject var loadMLVersion: LoadMLVersionUseCase
+  @Inject var loadNLVersion: LoadNLVersionUseCase
+  @Inject var setMLVersion: SetMLVersionUseCase
+  @Inject var setNLVersion: SetNLVersionUseCase
 
-  private let fileManager = FileManager.default
-  private var mlInterfaceVersion: String { "1" } // TODO: Get this from VPS in future
-  //private var info: [MLInterfaceInfo] = []
-  var currentVersion: MLInterfaceVersions.Interface.Device.Version? {
-    get {
-      guard let data = UserDefaults.standard.value(forKey: "TT2CURRENTMLINTERFACEVERSION") as? Data else { return nil }
-      return try? JSONDecoder().decode(MLInterfaceVersions.Interface.Device.Version.self, from: data)
-    }
-    set {
-      guard let encoded = try? JSONEncoder().encode(newValue) else { return }
-      UserDefaults.standard.setValue(encoded, forKey: "TT2CURRENTMLINTERFACEVERSION")
-    }
-  }
-  private var _model: MLModel?
-  private var _params: VPSModelParams?
-  private var modelName = ""
-  var pathDirectory: URL? {
-    try? fileManager
-      .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-      .appendingPathComponent("MLModel")
-  }
-  var pathMLModel: URL? { pathDirectory?.appendingPathComponent(modelName).appendingPathExtension("mlpackage") }
-  var pathEncrypted: URL? { pathDirectory?.appendingPathExtension("encrypted") }
-
-  init() {
-    if let path = pathDirectory {
-      try? fileManager.removeItem(at: path)
-    }
-  }
-
-  func setup(settings: MLModelDownloadSettings?) {
-    if let path = pathDirectory {
-      try? fileManager.removeItem(at: path)
-    }
-    loadVersion { [self] (result) in
-      switch result {
-      case .success(let versions):
-        //print("File", "Success getting Version")
-        guard let interface = versions.interfaces[settings?.interfaceVersion ?? mlInterfaceVersion]?.iOS else { return }
-        var version: MLInterfaceVersions.Interface.Device.Version?
-        if let v = interface.versions[settings?.modelVersion ?? interface.latestVersion], !v.deprecated {
-          version = v
-        } else if let v = interface.versions.first(where: { !$0.value.deprecated }) {
-          version = v.value
-        }
-        guard let version = version else { return }
-        if let featureSequence = convert(featureSequence: version.featureSequence) {
-          _params = VPSModelParams(
-            frameSize: version.frameSize,
-            useSmooting: version.smoothing,
-            featureSequence: featureSequence
-          )
-        }
-        loadModel(version: version) { [self] (error) in
-          if let error = error {
-            print("File", "Error getting MLModel", error)
-            return
-          }
-          currentVersion = version
-          compileModel { [self] (result) in
-            switch result {
-            case .success(let url):
-              //print("File", "Success", url)
-              let config = MLModelConfiguration()
-              config.computeUnits = .all
-              _model = try? MLModel(contentsOf: url, configuration: config)
-              //let parameter = try! self.model.parameterValue(for: .biases)
-              //print("File", "Parameter", parameter)
-              if let path = self.pathDirectory {
-                try? fileManager.removeItem(at: path)
-                try? fileManager.removeItem(at: url)
-              }
-              //print("File", "IT WORKS!!!!!!!!!!!!!!!!!!!!!!")
-            case .failure(let error): print("File", "Error compiling model", error.localizedDescription)
-            }
-          }
-        }
-      case .failure(let error): print("File", "Error getting Version", error)
+  func setup(params: TT2ModelParams?) {
+    fetchMLInterfaceVersions.invoke { [weak self] (error) in
+      if let error = error {
+        print("File", "Error getting Version", error)
+      } else if let catalog = self?.getMLCatalog.invoke() {
+        self?.handle(mlCatalog: catalog, params: params ?? .init())
       }
     }
   }
 
-  func loadVersion(completion: @escaping (Result<MLInterfaceVersions, Error>) -> Void) {
-    mlInterfaceVersionService
-      .call(with: MLInterfaceVersionsParameters())
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(.failure(error))
-        }
-      } receiveValue: { (versions) in
-        //versions.printInterfaces()
-        completion(.success(versions))
-      }.store(in: &cancellable)
-  }
-
-  func loadModel(version: MLInterfaceVersions.Interface.Device.Version, completion: @escaping (Error?) -> Void) {
-    if let currentVersion = currentVersion, currentVersion.modelVersion == version.modelVersion {
-      //print("LOADING SAVED MODEL")
-      do {
-        guard let path = pathDirectory, let pathEncrypted = pathEncrypted else { return }
-        guard let decrypted = try decrypt(id: version.id, at: pathEncrypted) else { throw NSError() }
-        try unzipInMemory(data: decrypted, to: path)
-        completion(nil)
-      } catch {
-        completion(error)
-      }
-    } else {
-      guard let url = URL(string: version.modelUrl) else { return }
-      currentVersion = nil
-      //print("VERSION", version.modelVersion)
-      URLSession.shared.dataTask(with: url) { [self] (data, response, error) in
-        //print("DOWNLOADING MODEL")
-        //guard let response = response as? HTTPURLResponse else { return }
-        //print("File", "MLResponse", response.statusCode)
-        if error != nil {
-          completion(error)
+  func handle(mlCatalog: MLInterfaceVersions.MLCatalog, params: TT2ModelParams) {
+    if let version = mlCatalog.getLatestSupportedVelocityModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
+      //print("MLVersion", mlVersion)
+      loadMLVersion.invoke(version: version) { [weak self] (error) in
+        if let error = error {
+          print("Error loading MLVersion", error)
           return
         }
-
-        do {
-          guard let data = data, let path = pathDirectory, let pathEncrypted = pathEncrypted else { return }
-          try data.write(to: pathEncrypted, options: .atomic)
-          guard let decrypted = try decrypt(id: version.id, at: pathEncrypted) else { throw NSError() }
-          try unzipInMemory(data: decrypted, to: path)
-          completion(nil)
-        } catch {
-          completion(error)
+        self?.setMLVersion.invoke(version: version)
+        self?.compileModel.invoke(type: .ml) { (error) in
+          if let error = error {
+            print("Error compiling MLVersion", error)
+          }
         }
-      }.resume()
-    }
-  }
-
-  func decrypt(id: String, at sourceURL: URL) throws -> Data? {
-    guard let data = fileManager.contents(atPath: sourceURL.relativePath) else { throw NSError(domain: "Gunnis did not like this", code: 500) }
-    return CommonCryptoAES(key: id.gunnis, data: data).decrypt()
-  }
-
-  func compileModel(completion: @escaping (Result<URL, Error>) -> Void) {
-    guard let path = pathMLModel else { return }
-    if #available(iOS 16.0, *) {
-      MLModel.compileModel(at: path, completionHandler: completion)
-    } else {
-      do {
-        completion(.success(try MLModel.compileModel(at: path)))
-      } catch {
-        completion(.failure(error))
       }
     }
-  }
-
-  func unzipInMemory(data: Data, to destinationURL: URL) throws {
-    guard let archive = Archive(data: data, accessMode: .read) else { throw NSError() } // TODO: Create better error message
-    try archive.filter({ !$0.path.contains("__MACOSX/") }).forEach { (entry) in
-      //print("PATH", entry.path)
-      if entry.path.hasSuffix(".mlpackage/") {
-        var modelName = entry.path
-        modelName.removeLast(".mlpackage/".count)
-        //print("SAVE PATH COMPONENT", modelName)
-        self.modelName = modelName
+    if let version = mlCatalog.getLatestSupportedNLModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
+      loadNLVersion.invoke(version: version) { [weak self] (error) in
+        if let error = error {
+          print("Error loading NLVersion", error)
+          return
+        }
+        self?.setNLVersion.invoke(version: version)
+        self?.compileModel.invoke(type: .nl) { (error) in
+          if let error = error {
+            print("Error compiling NLVersion", error)
+          }
+        }
       }
-      _ = try archive.extract(entry, to: destinationURL.appendingPathComponent(entry.path))
     }
-  }
-
-  func convert(featureSequence: [String]) -> [VPSFeaturesEntriesEnum]? {
-    let convertedSequence = featureSequence.map({ VPSFeaturesEntriesEnum(rawValue: $0.lowercased()) }).compactMap({ $0 })
-    return convertedSequence.count == featureSequence.count ? convertedSequence : nil
   }
 }
 
 extension VSMLModelManager: VPSModelManager {
-  var model: MLModel? { _model }
-  var params: VPSModelParams? { _params }
-}
-
-extension String {
-  var gunnis: String { Gunnis().gunnis(input: self) }
+  var mlModel: MLModel? { getMLModel.invoke() }
+  var nlModel: MLModel? { getNLModel.invoke() }
+  var mlParams: VPSMLModelParams? { getVPSMLModelParams.invoke() }
+  var nlParams: VPSNLModelParams? { getVPSNLModelParams.invoke() }
 }
 
 extension Array {
@@ -203,12 +82,14 @@ extension Array {
   }
 }
 
-public struct MLModelDownloadSettings {
-  public let interfaceVersion: String
-  public let modelVersion: String?
+public struct TT2ModelParams {
+  let target: Int
+  let targetMLModelVersion: Int?
+  let targetNLModelVersion: Int?
 
-  public init(interfaceVersion: String, modelVersion: String? = nil) {
-    self.interfaceVersion = interfaceVersion
-    self.modelVersion = modelVersion
+  public init(target: Int = 1, targetMLModelVersion: Int? = nil, targetNLModelVersion: Int? = nil) {
+    self.target = target
+    self.targetMLModelVersion = targetMLModelVersion
+    self.targetNLModelVersion = targetNLModelVersion
   }
 }

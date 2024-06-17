@@ -10,7 +10,6 @@ import VSFoundation
 
 struct ShelfGroupParameters {
     @Inject var config: EnvironmentConfig
-    let storeId: Int64
     let rtlsOptionsId: Int64
 }
 

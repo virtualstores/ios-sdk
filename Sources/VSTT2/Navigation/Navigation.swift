@@ -12,7 +12,7 @@ import VSPositionKit
 import CoreGraphics
 import UIKit
 
-final public class Navigation: INavigation {
+final public class Navigation {
     @Inject var positionManager: PositionManager
     @Inject var floor: VSTT2FloorManager
     @Inject var position: Position
@@ -25,8 +25,6 @@ final public class Navigation: INavigation {
             }
         }
     }
-    public var isActive: Bool { isActivePublisher.value }
-    public var compassHeading: Double? { heading?.degrees }
 
     var isActivePublisher: CurrentValueSubject<Bool, Never> = .init(false)
     var accuracyPublisher: CurrentValueSubject<(event: AccuracySyncEvent.Event, isFloorSwap: Bool)?,Never> = .init(nil)
@@ -52,8 +50,8 @@ final public class Navigation: INavigation {
 
     var onValidateFloorCompletion: (() throws -> ())?
     func validateFloorLevel(floorId: Int64?, completion: @escaping (Bool) throws -> Void) throws {
-      guard let floorId = floorId, let currentFloorId = floor.activeFloor?.id else { try completion(true); return }
-      if currentFloorId == floorId {
+      guard let floorId = floorId else { try completion(true); return }
+      if floor.activeFloor.id == floorId {
         try completion(true)
       } else {
         guard let rtls = floor.floors.first(where: { $0.id == floorId }) else { return }
@@ -64,9 +62,12 @@ final public class Navigation: INavigation {
 }
 
 // MARK: INavigation
-public extension Navigation {
-    func start(startPosition: CGPoint, startAngle: Double) throws {
-        guard modelManager.model != nil, modelManager.params != nil else { throw VSTT2Error.missingData }
+extension Navigation: INavigation {
+    public var isActive: Bool { isActivePublisher.value }
+    public var compassHeading: Double? { heading?.degrees }
+
+    public func start(startPosition: CGPoint, startAngle: Double) throws {
+        guard modelManager.mlModel != nil, modelManager.mlParams != nil else { throw VSTT2Error.missingData }
         guard !isActive else {
             self.stop()
             var err: Error?
@@ -88,7 +89,7 @@ public extension Navigation {
         userStartAngle = TT2Course(fromDegrees: startAngle)
     }
 
-    func start(code: PositionedCode) throws {
+    public func start(code: PositionedCode) throws {
         try floor.floors.forEach {
             guard $0.scanLocations?.first(where: { $0.code == code.code }) != nil else { return }
             try validateFloorLevel(floorId: $0.id) { [self] (isValid) in
@@ -98,8 +99,8 @@ public extension Navigation {
         }
     }
 
-    func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
-        let angle = atan2(-position.offset.dx, -position.offset.dy)*180.0/Double.pi
+    public func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws {
+        let angle = atan2(-position.offset.dy, -position.offset.dx).radiansToDegrees
         guard isActive else {
           try start(startPosition: position.point, startAngle: angle)
           return
@@ -111,8 +112,8 @@ public extension Navigation {
         }
     }
 
-    func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
-        guard modelManager.model != nil, modelManager.params != nil, let heading = heading else { throw VSTT2Error.missingData }
+    public func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
+        guard modelManager.mlModel != nil, modelManager.mlParams != nil, let heading = heading else { throw VSTT2Error.missingData }
         guard !isActive else {
             self.stop()
             var err: Error?
@@ -137,7 +138,7 @@ public extension Navigation {
         }
     }
 
-    func syncPosition(position: ItemPosition, forceSync: Bool = false) throws  {
+    public func syncPosition(position: ItemPosition, forceSync: Bool = false) throws  {
         guard let heading = heading, isActive else {
             try start(startPosition: position.pointWithOffset, position: position)
             return
@@ -157,11 +158,11 @@ public extension Navigation {
         }
     }
 
-    func syncPosition(identifier: String, type: SyncTypeEnum, reportScanEvent: Bool = true, completion: @escaping (Result<Item,Error>) -> ()) {
+    public func syncPosition(identifier: String, type: SyncTypeEnum, reportScanEvent: Bool = true, completion: @escaping (Result<Item,Error>) -> ()) {
         if let code = checkForScanLocation(identifier: identifier) {
             do {
                 try start(code: code)
-                let item = Item(name: code.code, externalId: "", itemPositions: [ItemPosition(point: code.point, offset: .zero, floorLevelId: floor.activeFloor?.id)])
+                let item = Item(name: code.code, externalId: "", itemPositions: [ItemPosition(point: code.point, offset: .zero, floorLevelId: floor.activeFloor.id)])
                 completion(.success(item))
             } catch {
                 completion(.failure(error))
@@ -218,6 +219,22 @@ public extension Navigation {
         }
     }
 
+    public func stop() {
+        positionManager.stop()
+        hasStartLocationAngle = false
+        isActivePublisher.send(false)
+    }
+
+    public func prepareAngle() { positionManager.prepareAngle() }
+}
+
+// MARK: Internal
+extension Navigation {
+    func setup(startCodes: [PositionedCode], inAndOutZone: InAndOutZone) {
+        self.startCodes = startCodes
+        self.inAndOutZone = inAndOutZone
+    }
+
     func checkForScanLocation(identifier: String) -> PositionedCode? {
       floor
         .floors
@@ -233,23 +250,7 @@ public extension Navigation {
     }
 
     func syncPositionToNearestAccessPoint() throws {
-        try start(startPosition: currentAccessPointPosition)
-    }
-
-    func stop() {
-        positionManager.stop()
-        hasStartLocationAngle = false
-        isActivePublisher.send(false)
-    }
-
-    func prepareAngle() { positionManager.prepareAngle() }
-}
-
-// MARK: Internal
-extension Navigation {
-    func setup(startCodes: [PositionedCode], inAndOutZone: InAndOutZone) {
-        self.startCodes = startCodes
-        self.inAndOutZone = inAndOutZone
+      try start(startPosition: currentAccessPointPosition)
     }
 
     func changeFloorStart(startPosition: CGPoint?) throws {
@@ -298,7 +299,7 @@ private extension Navigation {
 
     func createAnalyticsScanEventForIdentifier(identfier: String) {
       var events = [ScanEvent]()
-      guard let currentFloorLevelId = floor.activeFloor?.id else { return }
+      let currentFloorLevelId = floor.activeFloor.id
       if let zoneIds = inAndOutZone?.activeInside.map({ $0.id }), !zoneIds.isEmpty {
         events.append(.createZoneScanEvent(identifier: identfier, floorLevelId: currentFloorLevelId, userPosition: currentPosition, zones: zoneIds))
       }

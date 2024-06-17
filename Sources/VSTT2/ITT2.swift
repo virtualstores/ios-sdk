@@ -24,18 +24,16 @@ public protocol ITT2 {
     var analytics: TT2AnalyticsManager { get }
     
     /// Floor manager
-    var floor: VSTT2FloorManager { get }
+    var floor: VSTT2Floor { get }
     
     /// Position manager
     var position: Position { get }
 
     /// Event Manager
     var events: TT2EventManager { get }
-    
-    /// User Settings manager
-//    var userSettings: UserSettings { get }
 
-    var user: UserController { get }
+    /// User Settings manager
+    var user: IUserManager { get }
 
     /// Recording manager
     var recording: IRecordingManager { get }
@@ -46,12 +44,12 @@ public protocol ITT2 {
     /// List of active stores
     var activeStores: [TT2Store] { get }
 
-    var activeFloor: RtlsOptions? { get }
+    var activeFloor: RtlsOptions { get }
     
     /// List of available stores
     var stores: [TT2Store] { get }
 
-    var mapZonesTree: Tree? { get }
+    var zonesTree: TT2ZonesTree? { get }
 
     /// Method for initialize TT2 for specific client
     func initialize(clientId: Int64, positionKitParams: ParameterPackage, completion: @escaping (Error?) -> ())

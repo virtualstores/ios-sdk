@@ -11,11 +11,9 @@ import Combine
 import UIKit
 
 public class TT2EventManager {
-  @Inject var floorManager: VSTT2FloorManager
   @Inject var messagesService: MessagesService
   @Inject var triggerEventsService: TriggerEventsService
-  @Inject var zoneEventDetector: ZoneEventDetector
-  @Inject var coordinateEventDetector: CoordinateEventDetector
+  @Inject var eventDetector: EventDetector
 
   public var messageEventPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
   public var pointOfInterestPublisher: CurrentValueSubject<PointOfInterest?, Never> = .init(nil)
@@ -30,8 +28,13 @@ public class TT2EventManager {
   private let reloadMessageInterval: TimeInterval = 3600.0
   private var zones: [Zone] = []
   private var view: UIView?
+  private var inAndOut: InAndOut?
 
   private var cancellable = Set<AnyCancellable>()
+
+  init() {
+    bindPublishers()
+  }
 
   deinit {
     cancellable.removeAll()
@@ -42,36 +45,23 @@ public class TT2EventManager {
     self.zones = zones
     self.rtlsOptionsId = rtlsOptionsId
 
-    zoneEventDetector.setup(with: zones)
+    eventDetector.setup(with: zones)
     latestMessageLoad = nil
     loadMessagesIfNeeded()
-    bindPublishers()
+
   }
 
   func onNewPosition(currentPosition: CGPoint) {
-    zoneEventDetector.onNewPosition(currentPosition: currentPosition)
-    coordinateEventDetector.onNewPosition(currentPosition: currentPosition)
+    eventDetector.onNewPosition(currentPosition: currentPosition)
   }
 }
 
 private extension TT2EventManager {
   func bindPublishers() {
-    zoneEventDetector.eventPublisher
+    eventDetector.eventPublisher
       .compactMap { $0 }
-      .sink { (_) in
-        Logger().log(message: "zoneEnteredPublisher error")
-      } receiveValue: { [weak self] (event) in
-        DispatchQueue.main.async {
-          self?.handle(event: event)
-        }
-      }
-      .store(in: &cancellable)
-
-    coordinateEventDetector.eventPublisher
-      .compactMap { $0 }
-      .sink { (_) in
-        Logger().log(message: "zoneEnteredPublisher error")
-      } receiveValue: { [weak self] (event) in
+      .sink { [weak self] (event) in
+        print("EventDetector")
         DispatchQueue.main.async {
           self?.handle(event: event)
         }
@@ -122,14 +112,7 @@ private extension TT2EventManager {
         }
       } receiveValue: { [weak self] (events) in
         self?.triggerEvents = events.map { $0.toTriggerEvent(mapZones: self?.zones ?? []) }.flatMap { $0 }
-        self?.triggerEvents.forEach { event in
-          let type = event.eventType.getTrigger()
-          if type.coordinateTrigger != nil {
-            self?.coordinateEventDetector.add(event: event)
-          } else if type.zoneTrigger != nil {
-            self?.zoneEventDetector.add(event: event)
-          }
-        }
+        self?.eventDetector.set(events: self?.triggerEvents ?? [])
         self?.latestMessageLoad = .init()
       }.store(in: &cancellable)
   }
@@ -137,33 +120,20 @@ private extension TT2EventManager {
 
 extension TT2EventManager: TT2Event {
   public func add(event: TriggerEvent) {
-    switch event.eventType {
-    case .coordinateTrigger(_): coordinateEventDetector.add(event: event)
-    case .zoneTrigger(_): zoneEventDetector.add(event: event)
-    case .appTrigger(_), .shelfTrigger(_): break
-    }
+    eventDetector.add(event: event)
   }
 
   public func remove(event: TriggerEvent) {
-    switch event.eventType {
-    case .coordinateTrigger(_): coordinateEventDetector.remove(event: event)
-    case .zoneTrigger(_): zoneEventDetector.remove(event: event)
-    case .appTrigger(_), .shelfTrigger(_): break
-    }
+    eventDetector.remove(event: event)
   }
 
   public func remove(event id: String) {
-    if let event = coordinateEventDetector.events.first(where: { $0.name == id }) {
-      remove(event: event)
-    }
-    if let event = zoneEventDetector.events.first(where: { $0.name == id }) {
+    if let event = eventDetector.events.first(where: { $0.name == id }) {
       remove(event: event)
     }
   }
 
   public func enableAutoShow(view: UIView?) {
     self.view = view
-    //let event = TriggerEvent(rtlsOptionsId: 0, name: "Test", description: "", eventType: .coordinateTrigger(TriggerEvent.CoordinateTrigger(point: .zero, radius: 0, type: .enter)), tags: [TriggerEvent.DefaultTags.displayType: TriggerEvent.DefaultTags.DisplayTypeEnum.image.rawValue], metaData: [TriggerEvent.DefaultMetaData.imageUrl: "https://virtualstores-assets.s3.eu-north-1.amazonaws.com/images/information-manager/2024-04-10-c35da29e-dd3f-4676-a051-34229796a6f5.png", TriggerEvent.DefaultMetaData.size: "SMALL"])
-    //handle(event: event)
   }
 }
