@@ -9,7 +9,7 @@ import Foundation
 import VSFoundation
 import CoreGraphics
 
-public class Tree {
+public class TT2ZonesTree {
     public let root: Zone
     public private(set) var activeZones: [Zone] = []
     public internal(set) var currentFloorLevelId: Int64

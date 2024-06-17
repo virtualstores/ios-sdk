@@ -12,16 +12,14 @@ import VSPositionKit
 
 class DeviceOrientationUploader {
   @Inject var config: EnvironmentConfig
-  let store: Store
-  let client: Client
+  @Inject var getActiveClient: GetActiveClientUseCase
+  @Inject var getActiveStore: GetActiveStoreUseCase
+
+  var client: Client { getActiveClient.invoke() }
+  var store: Store { getActiveStore.invoke() }
 
   public enum Errors: Error {
     case uploadFailure(HTTPURLResponse)
-  }
-
-  init(store: Store, client: Client) {
-    self.store = store
-    self.client = client
   }
 
   func upload(id: String, visitId: Int64, deviceOrientation: String, currentLocation: CGPoint, direction: Double, errorHandler: @escaping (Error) -> Void) {

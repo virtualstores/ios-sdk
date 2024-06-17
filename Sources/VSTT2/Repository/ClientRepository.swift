@@ -17,7 +17,7 @@ protocol IClientRepository {
 }
 
 class ClientRepository {
-  let api: IClientsApi = ClientsApi()
+  private let api: IClientsApi = ClientsApi()
   private var _activeClient: Client?
   private var clients: [Client] = []
 }

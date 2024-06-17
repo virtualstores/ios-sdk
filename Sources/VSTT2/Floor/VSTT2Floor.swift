@@ -11,17 +11,14 @@ import Combine
 
 public protocol VSTT2Floor {
     /// Active Floor data
-    var activeFloor: RtlsOptions? { get }
+    var activeFloor: RtlsOptions { get }
 
     /// All available floors which user can have
     var floors: [RtlsOptions] { get }
 
-    /// Methode for setup Active Floor with options
+    /// Method for setup Active Floor with options
     func setActiveFloor(with rtlsOptions: RtlsOptions)
 
-    /// Methode for setup Active Floor with floorLevel
+    /// Method for setup Active Floor with floorLevel
     func setActiveFloor(with floorLevel: Int)
-
-    /// update Analytics when floor changed
-    func updateFloorInAnalyticsController()
 }

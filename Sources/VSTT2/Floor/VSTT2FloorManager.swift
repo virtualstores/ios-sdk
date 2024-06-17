@@ -10,170 +10,156 @@ import VSFoundation
 import Combine
 import CoreGraphics
 
-public class VSTT2FloorManager: VSTT2Floor {
-    @Inject var downloadManager: DownloadManager
-    @Inject var mapFenceDataService: MapFenceDataService
+class VSTT2FloorManager {
+  @Inject var createConverters: CreateCoordinateConvertersUseCase
+  @Inject var fetchMapFence: FetchMapFenceUseCase
+  @Inject var fetchMapZones: FetchMapZonesUseCase
+  @Inject var fetchNavGraph: FetchNavGraphUseCase
+  @Inject var fetchShelfGroups: FetchShelfGroupsUseCase
+  @Inject var getActiveConverter: GetActiveCoordinateConverterUseCase
+  @Inject var getActiveFloor: GetActiveFloorUseCase
+  @Inject var getActiveMapFence: GetActiveMapFenceUseCase
+  @Inject var getActiveMapZones: GetActiveMapZonesUseCase
+  @Inject var getActiveNavGraph: GetActiveNavGraphUseCase
+  @Inject var getActiveShelfGroups: GetActiveShelfGroupsUseCase
+  @Inject var getFloors: GetCachedFloorsUseCase
+  @Inject var getMapZones: GetMapZonesUseCase
+  @Inject var setActiveFloor: SetActiveFloorUseCase
+  @Inject var setFloors: SetFloorsUseCase
 
-    private var floorPicker: FloorPicker?
+  var switchFloorPublisher: CurrentValueSubject<(rtlsOptions: RtlsOptions, point: CGPoint?)?, Never> = .init(nil)
 
-    public var activeFloor: RtlsOptions?
-    public var floors: [RtlsOptions] = []
-    public var zoneData: [Int64: ZoneData] = [:]
+  private var cancellable = Set<AnyCancellable>()
+  private let dispatchGroup = DispatchGroup()
 
-    public var switchFloorPublisher: CurrentValueSubject<(rtlsOptions: RtlsOptions, point: CGPoint?)?, Never> = .init(nil)
+  private(set) var swapLocations: [SwapLocation] = []
+  private lazy var floorPicker: FloorPicker = {
+    FloorPicker(rtlsOptionId: activeFloor.id, swapLocations: swapLocations)
+  }()
 
-    public var startCode: PositionedCode? { activeFloor?.scanLocations?.first(where: { $0.type == .start }) }
-    public var stopCode: PositionedCode? { activeFloor?.scanLocations?.first(where: { $0.type == .stop }) ?? startCode }
-
-    private(set) var mapFence: [Int64: MapFence] = [:]
-    private(set) var navgraph: [Int64: Data] = [:]
-
-    private var cancellable = Set<AnyCancellable>()
-    private let dispatchGroup = DispatchGroup()
-
-    init() {}
-
-    func setup(swapLocations: [SwapLocation]) {
-        if let activeFloor = activeFloor {
-            self.floorPicker = FloorPicker(rtlsOptionId: activeFloor.id, swapLocations: swapLocations)
-
-            self.floorPicker?.switchFloorPublisher
-                .sink(receiveValue: { [weak self] (data) in
-                    guard let rtlsOptions = self?.floors.first(where: { $0.id == data?.rtlsOptionsId }), let point = data?.point else { return }
-                    self?.switchFloorPublisher.send((rtlsOptions: rtlsOptions, point: point))
-                }).store(in: &cancellable)
-        }
-    }
-
-    public func setActiveFloor(with rtlsOptions: RtlsOptions) {
-        self.setActiveFloor(with: rtlsOptions) { (mapFence, zoneData) in }
-    }
-    
-    public func setActiveFloor(with floorLevel: Int) { }
-    
-    public func updateFloorInAnalyticsController() { }
-    
-    func setupFloors(with rtlsOptions: [RtlsOptions]) {
-        self.floors = rtlsOptions
-    }
-    
-    internal func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence?, zoneData: [Int64: ZoneData]?)) -> ()) {
-        guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
-                
-        self.activeFloor = rtlsOptions
-        
-        getFloorData { (mapFence, zoneData) in
-            completion((mapFence: mapFence, zoneData: zoneData))
-        }
-    }
-  
-    func onNewPostion(location: CGPoint) {
-        self.floorPicker?.onNewPosition(location: location)
-    }
-
-    func onNewFloor(floor: Int) {
-//        floorPicker?.changeFloorTo = floor
-        floorPicker?.changeOfFloor(floor: floor)
-    }
-    
-    deinit {
-        cancellable.removeAll()
-    }
+  deinit {
+    cancellable.removeAll()
+  }
 }
 
 private extension VSTT2FloorManager {
-    private func getFloorData(completion: @escaping ((mapFence: MapFence?, zoneData: [Int64: ZoneData]?)) -> ()) {
-        mapFence.removeAll()
-        zoneData.removeAll()
-        navgraph.removeAll()
-        getMapFenceData()
-        getMapZones()
-        getNavGraph()
-        
-        dispatchGroup.notify(queue: .main) {
-            DispatchQueue.main.async {
-                if let id = self.activeFloor?.id, let mapFance = self.mapFence[id] {
-                    completion((mapFence: mapFance, zoneData: self.zoneData))
-                }
-            }
-        }
-    }
-    
-    private func getMapFenceData() {
-        guard mapFence.isEmpty else { return }
-        floors.forEach { (rtls) in
-            guard let url = rtls.mapFenceUrl else { return }
-            dispatchGroup.enter()
-            mapFenceDataService
-                .call(with: MapFenceDataParameters(url: url))
-                .sink(receiveCompletion: { (completion) in
-                    switch completion {
-                    case .finished: break
-                    case .failure(let error): Logger(verbosity: .debug).log(message: "GetMapFenceDataError \(error)")
-                    }
-                }, receiveValue: { [weak self] (data) in
-                  guard let self = self else { return }
-                  DispatchQueue.main.async {
-                    self.mapFence[rtls.id] = data
-                    self.dispatchGroup.leave()
-                  }
-                }).store(in: &cancellable)
-        }
-    }
-    
-    private func getMapZones() {
-        guard zoneData.isEmpty else { return }
-        floors.forEach { rtls in
-          guard
-            let mapZonesUrl = rtls.mapZonesUrl?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-            let url = URL(string: mapZonesUrl)
-          else { return }
-          dispatchGroup.enter()
+  func getFloorData(completion: @escaping ((mapFence: MapFence?, zoneData: [Int64: ZoneData]?)) -> ()) {
+    getMapFenceData()
+    getMapZonesData()
+    getNavGraph()
+    getShelfGroups()
 
-          downloadManager.loadData(from: url) { result in
-              switch result {
-              case .success(let data):
-                  let mapData = MapZoneParser.getMapZonesData(fromJsonData: data)
-
-                  DispatchQueue.main.async {
-                      self.zoneData[rtls.id] = mapData
-                      self.dispatchGroup.leave()
-                  }
-              case .failure(let error):
-                  Logger(verbosity: .debug).log(message: error.localizedDescription)
-              }
-          }
+    dispatchGroup.notify(queue: .main) {
+      DispatchQueue.main.async {
+        self.createConverters.invoke()
+        if let mapFence = self.getActiveMapFence.invoke() {
+          completion((mapFence: mapFence, zoneData: self.zoneData))
         }
+      }
     }
-    
-    private func getNavGraph() {
-        guard navgraph.isEmpty else { return }
-        floors.forEach { (rtls) in
-            guard let navGraphUrl = rtls.navGraphUrl, let url = URL(string: navGraphUrl.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? navGraphUrl) else { return }
-            dispatchGroup.enter()
+  }
 
-            downloadManager.loadData(from: url) { result in
-                switch result {
-                case .success(let data):
-                    DispatchQueue.main.async {
-                        self.navgraph[rtls.id] = data
-                        self.dispatchGroup.leave()
-                    }
-                case .failure(let error):
-                    Logger.init().log(message: error.localizedDescription)
-                }
-            }
+  func getMapFenceData() {
+    dispatchGroup.enter()
+    fetchMapFence.invoke { (error) in
+      if error == nil {
+        DispatchQueue.main.async {
+          self.dispatchGroup.leave()
         }
+      }
     }
+  }
+
+  func getMapZonesData() {
+    dispatchGroup.enter()
+    fetchMapZones.invoke { (error) in
+      if error == nil {
+        DispatchQueue.main.async {
+          self.dispatchGroup.leave()
+        }
+      }
+    }
+  }
+
+  func getNavGraph() {
+    dispatchGroup.enter()
+    fetchNavGraph.invoke { (error) in
+      if error == nil {
+        DispatchQueue.main.async {
+          self.dispatchGroup.leave()
+        }
+      }
+    }
+  }
+
+  func getShelfGroups() {
+    dispatchGroup.enter()
+    fetchShelfGroups.invoke() { (error) in
+      if error == nil {
+        DispatchQueue.main.async {
+          self.dispatchGroup.leave()
+        }
+      }
+    }
+  }
+}
+
+extension VSTT2FloorManager {
+  var zoneData: [Int64: ZoneData] { getMapZones.invoke() }
+  var startCode: PositionedCode? { activeFloor.scanLocations?.first(where: { $0.type == .start }) }
+  var stopCode: PositionedCode? { activeFloor.scanLocations?.first(where: { $0.type == .stop }) ?? startCode }
+
+  func setup(swapLocations: [SwapLocation]) {
+    self.swapLocations = swapLocations
+    floorPicker.switchFloorPublisher
+      .compactMap { $0 }
+      .sink(receiveValue: { [weak self] (data) in
+        guard let rtlsOptions = self?.floors.first(where: { $0.id == data.rtlsOptionsId }) else { return }
+        self?.switchFloorPublisher.send((rtlsOptions: rtlsOptions, point: data.point))
+      }).store(in: &cancellable)
+  }
+
+  func setupFloors(with rtlsOptions: [RtlsOptions]) {
+    setFloors.invoke(cachedFloors: rtlsOptions)
+  }
+
+  func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence?, zoneData: [Int64: ZoneData]?)) -> ()) {
+    guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
+
+    setActiveFloor.invoke(rtlsOptionsId: rtlsOptions.id)
+
+    getFloorData { (mapFence, zoneData) in
+      completion((mapFence: mapFence, zoneData: zoneData))
+    }
+  }
+
+  func onNewPostion(location: CGPoint) {
+    floorPicker.onNewPosition(location: location)
+  }
+
+  func onNewFloor(floor: Int) {
+    floorPicker.changeOfFloor(floor: floor)
+  }
+}
+
+extension VSTT2FloorManager: VSTT2Floor {
+  public var activeFloor: RtlsOptions { getActiveFloor.invoke() }
+  public var floors: [RtlsOptions] { getFloors.invoke() }
+
+  public func setActiveFloor(with rtlsOptions: RtlsOptions) {
+    setActiveFloor(with: rtlsOptions) { (mapFence, zoneData) in }
+  }
+
+  public func setActiveFloor(with floorLevel: Int) { }
 }
 
 class GraphLoader {
-  func getGraph(fromFile: String, pixelHeight: Double) -> TT2NavGraph {
-    return GraphDeserializer.deserialize(fromJsonFile: fromFile, pixelHeight: pixelHeight)
+  static func getGraph(fromFile: String, pixelHeight: Double) -> TT2NavGraph {
+    GraphDeserializer.deserialize(fromJsonFile: fromFile, pixelHeight: pixelHeight)
   }
 
-  func getGraph(fromData: Data, pixelHeight: Double) -> TT2NavGraph {
-    return GraphDeserializer.deserialize(fromJsonData: fromData, pixelHeight: pixelHeight)
+  static func getGraph(fromData: Data, pixelHeight: Double) -> TT2NavGraph {
+    GraphDeserializer.deserialize(fromJsonData: fromData, pixelHeight: pixelHeight)
   }
 }
 

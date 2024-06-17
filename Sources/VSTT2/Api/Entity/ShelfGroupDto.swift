@@ -77,7 +77,7 @@ extension ShelfGroupDto {
         )
 
         return ShelfGroup(id: dto.shelfGroupId ?? 0,
-                          name: dto.name ?? "",
+                          name: dto.name,
                           itemPosition: itemPosition,
                           shelves: dto.shelves?.map(ShelfDto.toShelf) ?? [])
     }

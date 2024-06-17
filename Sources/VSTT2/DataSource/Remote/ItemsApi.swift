@@ -9,15 +9,19 @@ import Foundation
 import Combine
 import VSFoundation
 
-class ItemsApi: IItemsApi {
-  @Inject var config: EnvironmentConfig
-  let service = ItemPositionService(with: NetworkManager())
+protocol IItemsApi {
+  func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ())
+}
 
+class ItemsApi {
+  private let service = ItemPositionService(with: NetworkManager())
   private var cancellable = Set<AnyCancellable>()
+}
 
+extension ItemsApi: IItemsApi {
   func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ()) {
     service
-      .call(with: ItemPositionParameters(config: config, storeId: storeId, barcode: barcode))
+      .call(with: ItemPositionParameters(storeId: storeId, barcode: barcode))
       .sink { (subscriberCompletion) in
         switch subscriberCompletion {
         case .finished: break

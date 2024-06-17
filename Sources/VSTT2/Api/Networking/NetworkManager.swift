@@ -33,6 +33,7 @@ final class NetworkManager: DataHandler {
                 let timeInterval = Date().timeIntervalSince(date)
                 print("-->", response.statusCode, response.url?.absoluteString ?? "", "[\(result.data.count) b]", String(format: "[%.03f s]", timeInterval))
               }
+              //print("Data", String(data: result.data, encoding: .utf8))
               return result.data
             }
             .decode(type: T.self, decoder: JSONDecoder())

@@ -17,8 +17,7 @@ protocol IItemsRepository {
 class ItemsRepository {
   let api: IItemsApi = ItemsApi()
 
-  var cachedItems: [String:Item] = [:]
-
+  private var cachedItems: [String:Item] = [:]
   private var serialDispatch = DispatchQueue(label: "TT2ItemsRepository")
 }
 

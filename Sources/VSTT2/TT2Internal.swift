@@ -18,30 +18,25 @@ internal class TT2Internal {
     @Inject var analytics: TT2AnalyticsManager
     @Inject var floorManager: VSTT2FloorManager
     @Inject var position: Position
-    @Inject var user: UserController
+    @Inject var user: IUserManager
     @Inject var recording: RecordingManager
     @Inject var awsS3UploadManager: AWSS3UploadManager
     @Inject var mlModelManager: VSMLModelManager
-    
-    /// Services for getting the api data
-    @Inject var clientListService : ClientsListService
-    @Inject var swapLocationsService: SwapLocationsService
-    @Inject var ordersService: OrdersService
-    @Inject var itemPositionService: ItemPositionService
-    @Inject var shelfGroupService: ShelfGroupService
 
     /// Usecases - Client
-    @Inject var fetchClientUseCase: FetchClientsUseCase
-    @Inject var getActiveClientUseCase: GetActiveClientUseCase
-    @Inject var getCachedClientsUseCase: GetCachedClientsUseCase
-    @Inject var setActiveClientUseCase: SetActiveClientUseCase
+    @Inject var fetchClient: FetchClientsUseCase
+    @Inject var getActiveClient: GetActiveClientUseCase
+    @Inject var getCachedClients: GetCachedClientsUseCase
+    @Inject var setActiveClient: SetActiveClientUseCase
     /// Usecases - Store
-    @Inject var fetchStoreUseCase: FetchStoreUseCase
-    @Inject var getCachedStoreUseCase: GetCachedStoreUseCase
-    @Inject var getActiveStoreUseCase: GetActiveStoreUseCase
-    @Inject var setActiveStoreUseCase: SetActiveStoreUseCase
+    @Inject var fetchStore: FetchStoreUseCase
+    @Inject var fetchSwapLocations: FetchSwapLocationsUseCase
+    @Inject var getActiveStore: GetActiveStoreUseCase
+    @Inject var getCachedStore: GetCachedStoreUseCase
+    @Inject var getCachedSwapLocations: GetCachedSwapLocationsUseCase
+    @Inject var setActiveStore: SetActiveStoreUseCase
     
-    var deviceOrientationUploader: DeviceOrientationUploader?
+    let deviceOrientationUploader: DeviceOrientationUploader = .init()
     var mapController: IMapController?
     var wifiController: IWiFiController?
 
@@ -49,16 +44,15 @@ internal class TT2Internal {
     
     private var offset: Double
     
-    var internalClients: [Client] { getCachedClientsUseCase.invoke() }
-    var activeClient: Client { getActiveClientUseCase.invoke() }
-    var internalStores: [Store] { getCachedStoreUseCase.invoke(filterOnlyActive: false) }
-    var internalStoresActive: [Store] { getCachedStoreUseCase.invoke() }
-    var activeStore: Store { getActiveStoreUseCase.invoke() }
-    var shelfGroups: [Int64: [ShelfGroup]] = [:]
+    var internalClients: [Client] { getCachedClients.invoke() }
+    var activeClient: Client { getActiveClient.invoke() }
+    var internalStores: [Store] { getCachedStore.invoke(filterOnlyActive: false) }
+    var internalStoresActive: [Store] { getCachedStore.invoke() }
+    var activeStore: Store { getActiveStore.invoke() }
     var automaticActivationOfUserMark: Bool = true
     var automaticSensorRecording: Bool { activeStore.hasSensorRecordingActive }
     
-    public init() {
+    init() {
         offset = 0.0
         bindPublishers()
     }
@@ -73,50 +67,32 @@ internal class TT2Internal {
     }
     
     func getClients(completion: @escaping (Result<[Client], Error>) -> Void) {
-        fetchClientUseCase.invoke(completion: completion)
+        fetchClient.invoke(completion: completion)
     }
     
     func getStores(with clientId: Int64, completion: @escaping (Error?) -> ()) {
-        fetchStoreUseCase.invoke(clientId: clientId, completion: completion)
+        fetchStore.invoke(clientId: clientId, completion: completion)
+    }
+
+    func getSwapLocations(completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
+        fetchSwapLocations.invoke { (error) in
+            switch error {
+            case .none: completion(.success(self.getCachedSwapLocations.invoke()))
+            case .some(let error): completion(.failure(error))
+            }
+        }
     }
 
     func setActiveStore(storeId: Int64) {
-        setActiveStoreUseCase.invoke(storeId: storeId)
-    }
-    
-    func getShelfGroups(for storeId: Int64, activeFloor: RtlsOptions?, completion: @escaping ([ShelfGroup]) -> ()) {
-        guard let activeFloor = activeFloor else { return }
-        let group = DispatchGroup()
-        floorManager.floors.forEach { (rtlsOption) in
-            group.enter()
-            let shelfGroupParameters = ShelfGroupParameters(storeId: storeId, rtlsOptionsId: rtlsOption.id)
-            shelfGroupService
-                .call(with: shelfGroupParameters)
-                .sink(receiveCompletion: { (completion) in
-                    switch completion {
-                    case .finished: break
-                    case .failure(let error): print(error)
-                    }
-                }, receiveValue: { (shelfData) in
-                    let shelfGroups = ShelfGroupDto.add(floorLevelId: rtlsOption.id, shelfData).map({ ShelfGroupDto.toShelfGroup($0) })
-                    if shelfGroups.count > 0 {
-                        self.shelfGroups[rtlsOption.id] = shelfGroups
-                    }
-                    group.leave()
-                }).store(in: &cancellable)
-        }
-
-        group.notify(queue: .main) {
-            completion(self.shelfGroups[activeFloor.id] ?? [])
-        }
+        setActiveStore.invoke(storeId: storeId)
     }
     
     private func bindPublishers() {
         navigation.isActivePublisher
           .sink { [weak self] (isActive) in
               if isActive {
+                  self?.mapController?.reset()
                   if self?.automaticActivationOfUserMark ?? true {
-                      self?.mapController?.reset()
                       self?.mapController?.start()
                   }
               } else {
@@ -147,15 +123,15 @@ internal class TT2Internal {
                 if let converter = realConverter {
                   let coordinate = position.position.convertFromMeterToLatLng(converter: converter)
                   mapController?.updateMLPosition(coordinate: coordinate)
-                  if let id = floorManager.activeFloor?.id {
-                    analytics.addMLPositions(id: id, coordinate: coordinate)
-                  }
+                  analytics.addMLPositions(id: floorManager.activeFloor.id, coordinate: coordinate)
                 } else {
                   mapController?.updateMLPosition(point: position.position)
                 }
-                if navigation.positionManager.isRecording, let id = floorManager.activeFloor?.id {
-                  analytics.addMLPositions(id: id, position: position)
+                if navigation.positionManager.isRecording {
+                  analytics.addMLPositions(id: floorManager.activeFloor.id, position: position)
                 }
+              case .particles(positions: let positions):
+                mapController?.updateParticlePositions(positions: positions)
               case .rotation(heading: let heading):
                 let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
                 mapController?.updateUserDirection(newDirection: heading)
@@ -166,7 +142,7 @@ internal class TT2Internal {
         navigation.accuracyPublisher
             .compactMap { $0 }
             .sink { [weak self] (data) in
-                self?.analytics.accuracyUploader?.upload(syncEvent: data.event, isFloorSwap: data.isFloorSwap)
+                self?.analytics.accuracyUploader.upload(syncEvent: data.event, isFloorSwap: data.isFloorSwap)
             }.store(in: &cancellable)
 
       navigation.scanEventsPublisher
@@ -212,7 +188,7 @@ internal class TT2Internal {
         }
         analytics.tt2Tags["tt2CentralServerURL"] = serverAddress
         analytics.tt2Tags["tt2DataServerURL"] = dataServerAddress
-        analytics.tt2Tags["tt2RtlsOptionsId"] = floorManager.activeFloor?.id.description
+        analytics.tt2Tags["tt2RtlsOptionsId"] = floorManager.activeFloor.id.description
         analytics.tt2Tags["tt2StoreId"] = activeStore.id.description
         analytics.tt2Tags["tt2VisitId"] = visitId.description
         analytics.tt2Tags["tt2ClientId"] = activeClient.clientId.description
@@ -223,22 +199,6 @@ internal class TT2Internal {
 
     private func vpsToMapboxAngle(angle: Double) -> Double {
         90.0 - angle
-    }
-    
-    func getSwapLocations(for storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
-        swapLocationsService
-            .call(with: SwapLocationsParameters(storeId: storeId))
-            .sink(receiveCompletion: { (result) in
-                switch result {
-                case .finished:
-                    break
-                case .failure(let error):
-                    Logger.init(verbosity: .debug).log(message: error.localizedDescription)
-                    completion(.failure(error))
-                }
-            }, receiveValue: { (swapLocations) in
-                completion(.success(swapLocations))
-            }).store(in: &cancellable)
     }
 
     func initRealWorldConverter() {
@@ -266,13 +226,12 @@ internal class TT2Internal {
 
   func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool = false) -> MLProcessedPath? {
       guard
-        let id = floorManager.activeFloor?.id,
-        let mlPositions = analytics.recordedMLPositionsLngLat[id],
+        let mlPositions = analytics.recordedMLPositionsLngLat[floorManager.activeFloor.id],
         mlPositions.count > 0,
         let converter = realConverter
       else { return nil }
       if clearAnalytics {
-        analytics.recordedMLPositionsLngLat[id]?.removeAll()
+        analytics.recordedMLPositionsLngLat[floorManager.activeFloor.id]?.removeAll()
       }
       return navigation.positionManager.processMLPath(
         path: mlPositions.map({ CLLocationCoordinate2D(latitude: $0.lngLat[1], longitude: $0.lngLat[0]).fromLatLngToMeter(converter: converter) }),
@@ -282,15 +241,14 @@ internal class TT2Internal {
 
     func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D) {
       guard
-        let id = floorManager.activeFloor?.id,
-        let mlPositions = analytics.recordedMLPositionsLngLat[id],
+        let mlPositions = analytics.recordedMLPositionsLngLat[floorManager.activeFloor.id],
         let converter = realConverter,
         let path = processMLPath(coordinate: coordinate)?.path
           .map({ $0.convertFromMeterToLatLng(converter: converter) })
           .map({ [$0.longitude, $0.latitude] })
       else { return }
 
-      analytics.recordedMLPositionsLngLatProcessed[id] = mlPositions.enumerated().map({ RecordedPositionLngLat(
+      analytics.recordedMLPositionsLngLatProcessed[floorManager.activeFloor.id] = mlPositions.enumerated().map({ RecordedPositionLngLat(
         airPressure: $0.element.airPressure,
         timestamp: $0.element.timestamp,
         lngLat: path[$0.offset]

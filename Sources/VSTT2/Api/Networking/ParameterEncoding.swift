@@ -77,10 +77,12 @@ extension Encodable {
     func asDictionary() -> [String: Any] {
         do {
             let data = try JSONEncoder().encode(self)
-            guard let dictionary = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any] else { throw NSError() }
+            guard
+              let dictionary = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any]
+            else { throw NSError(domain: "Problem encoding", code: 400) }
             return dictionary
         } catch {
-            Logger.init(verbosity: .silent).log(message: error.localizedDescription)
+            Logger(verbosity: .silent).log(message: error.localizedDescription)
         }
 
         return [:]

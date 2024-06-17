@@ -10,9 +10,10 @@ import CoreGraphics
 import VSFoundation
 import Combine
 
-internal class CoordinateEventDetector: EventDetector {
+internal class CoordinateEventDetector: IEventDetector {
     var eventPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
-    
+    var eventsPublisher: CurrentValueSubject<[TriggerEvent]?, Never> = .init(nil)
+
     var events: [TriggerEvent] = []
     var triggersAndEvents: [String: (event: TriggerEvent, triggerType: TriggerEvent.CoordinateTrigger)] = [:]
     var inAndOut: InAndOutRadius?
@@ -31,9 +32,9 @@ internal class CoordinateEventDetector: EventDetector {
         var triggers: [InAndOutRadius.Trigger] = []
 
         events.forEach { (event) in
-            guard let id = event.id, let trigger = event.eventType.getTrigger().coordinateTrigger else { return }
-            triggers.append(InAndOutRadius.Trigger(id: id, centerPoint: trigger.point, radius: trigger.radius))
-            triggersAndEvents[id] = (event, trigger)
+            guard let trigger = event.eventType.getTrigger().coordinateTrigger else { return }
+            triggers.append(InAndOutRadius.Trigger(id: event.id, centerPoint: trigger.point, radius: trigger.radius))
+            triggersAndEvents[event.id] = (event, trigger)
         }
 
         inAndOut = InAndOutRadius(triggers: triggers)

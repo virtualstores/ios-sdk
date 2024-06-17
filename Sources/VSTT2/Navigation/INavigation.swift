@@ -13,7 +13,8 @@ import CoreGraphics
 public protocol INavigation {
     /// Flag for checking if sdk is active
     var isActive: Bool { get }
-    
+    var compassHeading: Double? { get }
+
     /// Synchronize the position manager with  startPosition and startAngel
     func start(startPosition: CGPoint, startAngle: Double) throws
  

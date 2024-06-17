@@ -9,7 +9,7 @@ import Foundation
 import VSFoundation
 
 struct ItemPositionParameters {
-    let config: EnvironmentConfig
+    @Inject var config: EnvironmentConfig
     let storeId: Int64
     let barcode: String
 }
@@ -24,9 +24,9 @@ extension ItemPositionParameters: Routing {
     var type: RoutingType { .central }
 
     var queryItems: [String: String]? {
-        let parameters = ["storeId": String(storeId),
-                          "barcode": barcode] as [String: String]
-
-        return parameters
+        [
+          "storeId": String(storeId),
+          "barcode": barcode
+        ]
     }
 }

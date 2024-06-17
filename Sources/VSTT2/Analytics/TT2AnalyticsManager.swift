@@ -13,26 +13,31 @@ import UIKit
 import VSPositionKit
 
 final public class TT2AnalyticsManager {
-    @Inject var createVisitService: CreateVisitService
-    @Inject var stopVisitService: StopVisitService
-    @Inject var tagsVisitService: TagsVisitService
-    @Inject var uploadPositionsService: UploadPositionsService
-    @Inject var uploadTriggersService: UploadTriggersService
-    @Inject var uploadScanEventsService: UploadScanEventsService
     @Inject var positionUploadWorker: PositionUploadWorker
-    @Inject var uploadGeopositionsService: UploadGeoPositionsService
     @Inject var zoneManager: TT2ZoneManager
     @Inject var eventManager: TT2EventManager
-    @Inject var mlModelManager: VSMLModelManager
     @Inject var navigationManager: Navigation
 
-    var accuracyUploader: AccuracyUploader?
-    var stepEventUploader: StepEventUploader?
+    @Inject var activeFloor: GetActiveFloorUseCase
+    @Inject var activeStore: GetActiveStoreUseCase
+    @Inject var activeVisitId: GetActiveVisitIDUseCase
+    @Inject var createVisit: CreateVisitUseCase
+    @Inject var endVisit: StopVisitUseCase
+    @Inject var getMLVersion: GetMLVersionUseCase
+    @Inject var getNLVersion: GetNLVersionUseCase
+    @Inject var updateTags: UpdateTagsForActiveVisitUseCase
+    @Inject var uploadGeopositions: UploadGeopositionsForActiveVisitUseCase
+    @Inject var uploadPositions: UploadPositionsForVisitUseCase
+    @Inject var uploadScanEvent: UploadScanEventForActiveVisitUseCase
+    @Inject var uploadTriggerEvent: UploadTriggerEventForActiveVisitUseCase
+
+    lazy var accuracyUploader: AccuracyUploader = { .init() }()
+    lazy var stepEventUploader: StepEventUploader = { .init() }()
     var tt2Tags: [String:String] = [:]
-    private var store: Store?
+    var visitId: Int64? { activeVisitId.invoke() }
+    private var store: Store { activeStore.invoke() }
     private var uploadThreshold = 0
-    var visitId: Int64?
-    var rtlsOptionId: Int64?
+    private var rtlsOptionId: Int64 { activeFloor.invoke().id }
     private var cancellable = Set<AnyCancellable>()
     private var isRecording: Bool = false
     private var latestRecordedPosition = Date()
@@ -88,7 +93,7 @@ private extension TT2AnalyticsManager {
             default: break
             }
         }
-        return  PostTriggerEventRequest(
+        return PostTriggerEventRequest(
             rtlsOptionsId: String(event.rtlsOptionsId),
             name: event.name,
             timeStamp: timestamp,
@@ -109,66 +114,45 @@ private extension TT2AnalyticsManager {
         if let id = visitId {
             positionUploadWorker.insert(id: String(rtlsOptionId), xPosition: Double(position.position.x), yPosition: Double(position.position.y), time: time, uploadStatus: .pending, visitId: id)
         }
-        if self.checkIfPartialUpload() {
+        if checkIfPartialUpload() {
             positionUploadWorker.getPoints().forEach { (key, value) in
-                self.uploadData(visitId: key, recordedPositions: value)
+                uploadData(visitId: key, recordedPositions: value)
             }
-            self.recordedPositionsCount = 0
+            recordedPositionsCount = 0
         }
     }
 
     func checkIfPartialUpload() -> Bool {
-        return recordedPositionsCount > self.uploadThreshold
+        recordedPositionsCount > uploadThreshold
     }
     
     ///Uploading Heatmap data
     func uploadData(visitId: Int64, recordedPositions: [String: [RecordedPosition]]) {
-        let parameters = UploadPositionsParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), positionGrps: recordedPositions)
-        uploadPositionsService
-            .call(with: parameters)
-            .sink(receiveCompletion: { [weak self] (completion) in
-                switch completion {
-                case .finished:
-                    self?.positionUploadWorker.removePoints()
-                case .failure(let error):
-                    self?.positionUploadWorker.updatePointsAfter(uploadingFailed: true)
-                    Logger(verbosity: .debug).log(message: error.localizedDescription)
-                }
-            }, receiveValue: { [weak self] (_) in
-                Logger(verbosity: .debug).log(message: "Recorded Positions Uploaded")
-                self?.positionUploadWorker.updatePointsAfter(uploadingFailed: false)
-            }).store(in: &cancellable)
+      uploadPositions.invoke(visitId: visitId, positions: recordedPositions) { [weak self] (error) in
+        if let error = error {
+          self?.positionUploadWorker.updatePointsAfter(uploadingFailed: true)
+          Logger(verbosity: .debug).log(message: error.localizedDescription)
+        } else {
+          self?.positionUploadWorker.updatePointsAfter(uploadingFailed: false)
+          self?.positionUploadWorker.removePoints()
+          Logger(verbosity: .debug).log(message: "Recorded Positions Uploaded")
+        }
+      }
     }
 
     // MARK: Trigger Events
     func uploadTriggerEvents(request: PostTriggerEventRequest) {
-        guard let visitId = visitId else { return }
-
-        let parameters = UploadTriggersParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), request: request)
-
-        uploadTriggersService
-            .call(with: parameters)
-            .sink(receiveCompletion: { (completion) in
-                switch completion {
-                case .finished: break
-                case .failure(let error):
-                    Logger(verbosity: .debug).log(message: error.localizedDescription)
-                }
-            }, receiveValue: { (_) in
-                Logger(verbosity: .debug).log(message: "\(request.name), uploadTriggerEvents success")
-            }).store(in: &cancellable)
+      uploadTriggerEvent.invoke(request: request) { (error) in
+        if let error = error {
+          Logger(verbosity: .debug).log(message: error.localizedDescription)
+        } else {
+          Logger(verbosity: .debug).log(message: "UploadTriggerEvent Success: \(request.name)")
+        }
+      }
     }
 
     func getVPSParams() -> String {
       var string = "{"
-      navigationManager
-        .positionManager
-        .vpsParticleFilterParams
-        .sorted(by: {
-          guard let key1 = Int($0.key), let key2 = Int($1.key) else { return $0.key < $1.key }
-          return key1 < key2
-        })
-        .forEach { string = string + "\($0.key)=\($0.value), " }
       navigationManager
         .positionManager
         .vpsParticleFilterSettings
@@ -189,7 +173,8 @@ private extension TT2AnalyticsManager {
       "tt2DeviceOs" : UIDevice.current.systemName,
       "tt2DeviceOsVersion" : UIDevice.current.systemVersion,
       "tt2MLActive" : "false",
-      "tt2VelocityModelName": mlModelManager.currentVersion?.name ?? "",
+      "tt2VelocityModelName": getMLVersion.invoke()?.name ?? "",
+      "tt2NLModelName": getNLVersion.invoke()?.name ?? "",
       "tt2SdkVpsSettings": getVPSParams()
     ]
   }
@@ -203,7 +188,7 @@ private extension TT2AnalyticsManager {
   }
 
   var tt2VPSSettingsTags: [String:String]? {
-    guard let settings = store?.positionServiceSettings else { return nil }
+    guard let settings = store.positionServiceSettings else { return nil }
     return [
       "tt2SdkVpsSettingUseML" : settings.useML.description,
       "tt2SdkVpsSettingUseCoefficientOptimizer" : settings.useCoefficientOptimizer.description,
@@ -213,11 +198,8 @@ private extension TT2AnalyticsManager {
 }
 
 extension TT2AnalyticsManager {
-  func setup(with store: Store, rtlsOptionId: Int64?, uploadThreshold: Int = 100) {
-    self.store = store
+  func setup(uploadThreshold: Int = 100) {
     self.uploadThreshold = uploadThreshold
-    self.rtlsOptionId = rtlsOptionId
-    self.stepEventUploader = StepEventUploader()
     bindPublishers()
   }
 
@@ -241,77 +223,57 @@ extension TT2AnalyticsManager {
     defer { recordedMLPositions.removeAll() }
     guard
       recordedMLPositions.count > 0,
-      let id = rtlsOptionId,
       let json = try? JSONEncoder().encode(recordedMLPositions.flatMap({ $0.value })),
       let string = String(data: json, encoding: .utf8)
     else { return nil }
-    return TriggerEvent(id: "", rtlsOptionsId: id, name: "MLPositions", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsTrigger")), tags: ["mlPositions" : string])
+    return TriggerEvent(id: "", rtlsOptionsId: rtlsOptionId, name: "MLPositions", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsTrigger")), tags: ["mlPositions" : string])
   }
 
   func mlPositionsLngLatToTriggerEvent() -> TriggerEvent? {
     defer { recordedMLPositionsLngLat.removeAll() }
     guard
       recordedMLPositionsLngLat.count > 0,
-      let id = rtlsOptionId,
       let json = try? JSONEncoder().encode(recordedMLPositionsLngLat.flatMap({ $0.value })),
       let string = String(data: json, encoding: .utf8)
     else { return nil }
-    return TriggerEvent(id: "", rtlsOptionsId: id, name: "MLPositionsLngLat", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsLatLngTrigger")), tags: ["mlPositionsLatLng" : string])
+    return TriggerEvent(id: "", rtlsOptionsId: rtlsOptionId, name: "MLPositionsLngLat", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsLatLngTrigger")), tags: ["mlPositionsLatLng" : string])
   }
 
   func postGeopositions() {
-    guard let visitId = visitId else { return }
     var positions: [String: [RecordedPositionLngLat]] = [:]
     positions[UploadGeoPositionsParameters.TypeEnum.gps.rawValue] = recordedGPSPositionsLatLng
     positions[UploadGeoPositionsParameters.TypeEnum.vpsMl.rawValue] = recordedMLPositionsLngLat.flatMap({ $0.value })
     positions[UploadGeoPositionsParameters.TypeEnum.vpsMlProcessed.rawValue] = recordedMLPositionsLngLatProcessed.flatMap({ $0.value })
-    uploadGeopositionsService
-      .call(with: UploadGeoPositionsParameters(
-        visitId: visitId,
-        requestId: UUID().uuidString.uppercased(),
-        positions: positions
-      )).sink { (completion) in
-        switch completion {
-        case .finished: break
-        case .failure(let error): Logger(verbosity: .error).log(message: "UploadGeopositionsService \(error)")
-        }
-      } receiveValue: { () in
-        self.recordedGPSPositionsLatLng.removeAll()
-        self.recordedMLPositionsLngLatProcessed.removeAll()
-      }.store(in: &cancellable)
-  }
-
-  func update(rtlsOptionId: Int64) {
-    self.rtlsOptionId = rtlsOptionId
+    uploadGeopositions.invoke(geopositions: positions) { [weak self] (error) in
+      if let error = error {
+        Logger(verbosity: .error).log(message: "UploadGeopositions \(error)")
+      } else {
+        self?.recordedGPSPositionsLatLng.removeAll()
+        self?.recordedMLPositionsLngLatProcessed.removeAll()
+      }
+    }
   }
 
   func onNewPositionBundle(position: VPSOutputSignal.Position) {
     guard Date().timeIntervalSince(latestRecordedPosition) > 0.2 else { return }
     self.latestRecordedPosition = Date()
     currentPosition = position.position
-    if let id = rtlsOptionId, isRecording {
-      recordPosition(rtlsOptionId: id, position: position)
+    if isRecording {
+      recordPosition(rtlsOptionId: rtlsOptionId, position: position)
       zoneManager.onNewPosition(currentPosition: position.position)
       eventManager.onNewPosition(currentPosition: position.position)
     }
   }
 
   func postScanEvents(scanEvent: ScanEvent) {
-    guard let visitId = visitId else { return }
-    uploadScanEventsService
-      .call(with: UploadScanEventsParameters(visitId: visitId, requestId: UUID().uuidString.uppercased(), scanEvent: scanEvent))
-      .sink(receiveCompletion: { (completion) in
-        switch completion {
-        case .finished: break
-        case .failure(let error): Logger(verbosity: .warning).log(message: error.localizedDescription)
-        }
-      }, receiveValue: { (_) in
-        /// No data returned
-      }).store(in: &cancellable)
+    uploadScanEvent.invoke(event: scanEvent) { (error) in
+      if let error = error {
+        Logger(verbosity: .warning).log(message: error.localizedDescription)
+      }
+    }
   }
 
   func updateVisitWithMLTags(mlUser: MlUser) {
-    guard let visitId = visitId else { return }
     let hasML = !mlUser.speedModifier.isEmpty || !mlUser.directionModifier.isEmpty
     let tags = [
       "tt2MLActive": hasML ? "true" : "false",
@@ -319,63 +281,30 @@ extension TT2AnalyticsManager {
       "tt2MLSpeedModifier": mlUser.speedModifier.description,
       "tt2MLDirectionModifier": mlUser.directionModifier.description
     ]
-    let parameters = TagsVisitParameters(requestId: UUID().uuidString.uppercased(), visitId: visitId, tags: tags)
-    tagsVisitService
-      .call(with: parameters)
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): Logger(verbosity: .debug).log(message: "UpdateVisitWithMLTagsError \(error)")
-        }
-      } receiveValue: { (_) in
-
+    updateTags.invoke(tags: tags) { (error) in
+      if let error = error {
+        Logger(verbosity: .debug).log(message: "UpdateVisitWithMLTagsError \(error)")
       }
-      .store(in: &cancellable)
+    }
   }
 
   func rescueMode() {
-    accuracyUploader?.numberOfRescueModes += 1
-    guard let id = rtlsOptionId else { return }
-    uploadTriggerEvents(request: postTriggerEvent(for: TriggerEvent(rtlsOptionsId: id, name: "RescueModeTriggerEvent", description: "", eventType: .appTrigger(.init(event: "RescueModeTriggerEvent")), userPosition: currentPosition)))
+    accuracyUploader.numberOfRescueModes += 1
+    uploadTriggerEvents(request: postTriggerEvent(for: TriggerEvent(rtlsOptionsId: rtlsOptionId, name: "RescueModeTriggerEvent", description: "", eventType: .appTrigger(.init(event: "RescueModeTriggerEvent")), userPosition: currentPosition)))
   }
 }
 
 extension TT2AnalyticsManager: TT2Analytics {
   public func startVisit(deviceInformation: DeviceInformation, tags: [String:String] = [:], metaData: [String:String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
-    guard
-      let storeId = store?.statServerConnection.storeId,
-      mlModelManager.currentVersion != nil
-    else { completion(.failure(VSTT2Error.missingData)); return }
+    guard getMLVersion.invoke() != nil else { completion(.failure(VSTT2Error.missingData)); return }
     guard visitId == nil else { completion(.failure(TT2AnalyticsError.visitAlreadyStarted)); return }
 
     var editedTags = tags
     tt2VisitStartTags.forEach { editedTags[$0.key] = $0.value }
     (tt2VPSSettingsTags ?? tt2VPSSettingsDefaultTags).forEach { editedTags[$0.key] = $0.value }
     tt2Tags = editedTags.filter { $0.key.lowercased().contains("tt2") }
-
-    let date = DateFormatter.standardFormatter.string(from: Date())
-    let parameters = CreateVisitParameters(
-      requestId: UUID().uuidString.uppercased(),
-      storeId: storeId,
-      start: date,
-      stop: date,
-      deviceInformation: deviceInformation,
-      tags: editedTags,
-      metaData: metaData
-    )
-    createVisitService
-      .call(with: parameters)
-      .sink(receiveCompletion: { (subscriberCompletion) in
-        switch subscriberCompletion {
-        case .finished: break
-        case .failure(let error):
-          Logger(verbosity: .debug).log(message: error.localizedDescription)
-          DispatchQueue.main.async { completion(.failure(error)) }
-        }
-      }, receiveValue: { [weak self] (data) in
-        self?.visitId = data.visitId
-        DispatchQueue.main.async { completion(.success(data.visitId)) }
-      }).store(in: &cancellable)
+    
+    createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData, completion: completion)
   }
 
   public func startCollectingHeatMapData() throws {
@@ -388,11 +317,10 @@ extension TT2AnalyticsManager: TT2Analytics {
   }
 
   public func stopVisit() {
-    guard let visitId = visitId else { return }
     positionUploadWorker.getPoints().forEach { (key, value) in
       uploadData(visitId: key, recordedPositions: value)
     }
-    stepEventUploader?.upload()
+    stepEventUploader.upload()
     postGeopositions()
     if let point = currentPosition {
       zoneManager.stopped(currentPosition: point)
@@ -404,17 +332,14 @@ extension TT2AnalyticsManager: TT2Analytics {
     if let event = mlPositionsLngLatToTriggerEvent() {
       addTriggerEvent(for: event)
     }
-    stopVisitService
-      .call(with: StopVisitParameters(requestId: UUID().uuidString.uppercased(), visitId: visitId, stopTimestamp: DateFormatter.standardFormatter.string(from: Date())))
-      .sink { [weak self] (result) in
-        switch result {
-        case .finished: self?.positionUploadWorker.removeAllPoints()
-        case .failure(let error): Logger(verbosity: .debug).log(message: "StopVisitError: \(error.localizedDescription)")
-        }
-      } receiveValue: { (_) in
-        self.recordedPositionsCount = 0
-        self.visitId = nil
-      }.store(in: &cancellable)
+    endVisit.invoke { [weak self] (error) in
+      if let error = error {
+        Logger(verbosity: .debug).log(message: "StopVisitError: \(error.localizedDescription)")
+      } else {
+        self?.positionUploadWorker.removeAllPoints()
+        self?.recordedPositionsCount = 0
+      }
+    }
   }
 
   public func addTriggerEvent(for event: TriggerEvent) {

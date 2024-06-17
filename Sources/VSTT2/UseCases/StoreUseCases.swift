@@ -1,5 +1,5 @@
 //
-//  StoreUseCase.swift
+//  StoreUseCases.swift
 //
 //
 //  Created by Théodore Roos on 2022-12-15.
@@ -12,14 +12,15 @@ class FetchStoreUseCase {
   @Inject var repository: IStoreRepository
 
   func invoke(clientId: Int64, completion: @escaping (Error?) -> Void) {
-    repository.getStores(clientId: clientId) { (result) in
-      switch result {
-      case .success(let stores):
-        self.repository.setCachedStores(stores: stores)
-        completion(nil)
-      case .failure(let error): completion(error)
-      }
-    }
+    repository.fetchStores(clientId: clientId, completion: completion)
+  }
+}
+
+class FetchSwapLocationsUseCase {
+  @Inject var repository: IStoreRepository
+
+  func invoke(completion: @escaping (Error?) -> ()) {
+    repository.fetchSwapLocations(completion: completion)
   }
 }
 
@@ -36,6 +37,14 @@ class GetCachedStoreUseCase {
 
   func invoke(filterOnlyActive: Bool = true) -> [Store] {
     filterOnlyActive ? repository.getCachedStores().filter({ $0.active }) : repository.getCachedStores()
+  }
+}
+
+class GetCachedSwapLocationsUseCase {
+  @Inject var repository: IStoreRepository
+
+  func invoke() -> [SwapLocation] {
+    repository.getCachedSwapLocations()
   }
 }
 
