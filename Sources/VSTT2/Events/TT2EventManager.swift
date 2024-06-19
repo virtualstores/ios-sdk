@@ -61,7 +61,6 @@ private extension TT2EventManager {
     eventDetector.eventPublisher
       .compactMap { $0 }
       .sink { [weak self] (event) in
-        print("EventDetector")
         DispatchQueue.main.async {
           self?.handle(event: event)
         }

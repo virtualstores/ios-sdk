@@ -303,8 +303,11 @@ extension TT2AnalyticsManager: TT2Analytics {
     tt2VisitStartTags.forEach { editedTags[$0.key] = $0.value }
     (tt2VPSSettingsTags ?? tt2VPSSettingsDefaultTags).forEach { editedTags[$0.key] = $0.value }
     tt2Tags = editedTags.filter { $0.key.lowercased().contains("tt2") }
-    
-    createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData, completion: completion)
+
+    createVisit.invoke(deviceInformation: deviceInformation, tags: tags, metaData: metaData) { [weak self] (result) in
+      self?.navigationManager.positionManager.set(sessionId: self?.visitId?.description)
+      completion(result)
+    }
   }
 
   public func startCollectingHeatMapData() throws {
@@ -338,6 +341,7 @@ extension TT2AnalyticsManager: TT2Analytics {
       } else {
         self?.positionUploadWorker.removeAllPoints()
         self?.recordedPositionsCount = 0
+        self?.navigationManager.positionManager.set(sessionId: nil)
       }
     }
   }
