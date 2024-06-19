@@ -13,6 +13,7 @@ protocol IAnalyticsApi {
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String], completion: @escaping (Result<Int64, Error>) -> ())
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
   func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
+  func upload(dpParameters: UploadDevicePostionParameters, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, positions: [String:[RecordedPosition]], completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ())
@@ -23,6 +24,7 @@ class AnalyticsApi {
   private let createVisitService = CreateVisitService(with: NetworkManager())
   private let stopVisitService = StopVisitService(with: NetworkManager())
   private let tagsVisitService = TagsVisitService(with: NetworkManager())
+  private let uploadDevicePositionService = UploadDevicePostionService(with: NetworkManager())
   private let uploadGeopositionsService = UploadGeoPositionsService(with: NetworkManager())
   private let uploadPositionsService = UploadPositionsService(with: NetworkManager())
   private let uploadScanEventsService = UploadScanEventsService(with: NetworkManager())
@@ -75,6 +77,19 @@ extension AnalyticsApi: IAnalyticsApi {
         visitId: visitId,
         tags: tags
       )).sink { (result) in
+        switch result {
+        case .finished: break
+        case .failure(let error): completion(error)
+        }
+      } receiveValue: { (_) in
+        completion(nil)
+      }.store(in: &cancellable)
+  }
+  
+  func upload(dpParameters: UploadDevicePostionParameters, completion: @escaping (Error?) -> ()) {
+    uploadDevicePositionService
+      .call(with: dpParameters)
+      .sink { (result) in
         switch result {
         case .finished: break
         case .failure(let error): completion(error)

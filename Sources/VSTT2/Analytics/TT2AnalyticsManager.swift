@@ -26,6 +26,7 @@ final public class TT2AnalyticsManager {
     @Inject var getMLVersion: GetMLVersionUseCase
     @Inject var getNLVersion: GetNLVersionUseCase
     @Inject var updateTags: UpdateTagsForActiveVisitUseCase
+    @Inject var uploadDevicePosition: UploadDevicePositionUseCase
     @Inject var uploadGeopositions: UploadGeopositionsForActiveVisitUseCase
     @Inject var uploadPositions: UploadPositionsForVisitUseCase
     @Inject var uploadScanEvent: UploadScanEventForActiveVisitUseCase
@@ -48,6 +49,7 @@ final public class TT2AnalyticsManager {
     var recordedMLPositionsLngLatProcessed: [Int64: [RecordedPositionLngLat]] = [:]
     var recordedGPSPositionsLatLng: [RecordedPositionLngLat] = []
     private var currentPosition: CGPoint?
+    private var latestUploadOfDevicePosition: Date = .init()
 
     deinit {
         cancellable.removeAll()
@@ -125,7 +127,20 @@ private extension TT2AnalyticsManager {
     func checkIfPartialUpload() -> Bool {
         recordedPositionsCount > uploadThreshold
     }
-    
+
+    func uploadDevicePosition(signal: VPSOutputSignal.Position) {
+      // TODO: Time should be longer than 5 seconds
+      guard Date().timeIntervalSince(latestUploadOfDevicePosition) > 5 else { return }
+      latestUploadOfDevicePosition = .init()
+      uploadDevicePosition.invoke(signal: signal) { (error) in
+        if let error = error {
+          Logger(verbosity: .debug).log(message: "UploadDevicePosition Error: \(error)")
+        } else {
+          Logger(verbosity: .debug).log(message: "UploadDevicePosition Success")
+        }
+      }
+    }
+
     ///Uploading Heatmap data
     func uploadData(visitId: Int64, recordedPositions: [String: [RecordedPosition]]) {
       uploadPositions.invoke(visitId: visitId, positions: recordedPositions) { [weak self] (error) in
@@ -258,6 +273,7 @@ extension TT2AnalyticsManager {
     guard Date().timeIntervalSince(latestRecordedPosition) > 0.2 else { return }
     self.latestRecordedPosition = Date()
     currentPosition = position.position
+    uploadDevicePosition(signal: position)
     if isRecording {
       recordPosition(rtlsOptionId: rtlsOptionId, position: position)
       zoneManager.onNewPosition(currentPosition: position.position)

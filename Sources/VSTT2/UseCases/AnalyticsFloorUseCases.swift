@@ -50,6 +50,22 @@ class UpdateTagsForActiveVisitUseCase {
   }
 }
 
+class UploadDevicePositionUseCase {
+  @Inject var analyticsRepository: IAnalyticsRepository
+  @Inject var floorRepository: IFloorRepository
+  @Inject var storeRepository: IStoreRepository
+  @Inject var userRepository: IUserRepository
+
+  func invoke(signal: VPSOutputSignal.Position, completion: @escaping (Error?) -> ()) {
+    analyticsRepository.upload(dpParameters: UploadDevicePostionParameters(
+      userId: userRepository.getUserProfile()?.userId ?? "",
+      storeId: storeRepository.activeStore.id,
+      rtlsOptionsId: floorRepository.activeFloor.id,
+      signal: signal
+    ), completion: completion)
+  }
+}
+
 class UploadGeopositionsForActiveVisitUseCase {
   @Inject var repository: IAnalyticsRepository
   func invoke(geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ()) {

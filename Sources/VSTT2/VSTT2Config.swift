@@ -55,6 +55,7 @@ struct VSTT2Config: Config {
     injector.map(GetActiveVisitIDUseCase.self) { GetActiveVisitIDUseCase() }
     injector.map(StopVisitUseCase.self) { StopVisitUseCase() }
     injector.map(UpdateTagsForActiveVisitUseCase.self) { UpdateTagsForActiveVisitUseCase() }
+    injector.map(UploadDevicePositionUseCase.self) { UploadDevicePositionUseCase() }
     injector.map(UploadGeopositionsForActiveVisitUseCase.self) { UploadGeopositionsForActiveVisitUseCase() }
     injector.map(UploadPositionsForVisitUseCase.self) { UploadPositionsForVisitUseCase() }
     injector.map(UploadScanEventForActiveVisitUseCase.self) { UploadScanEventForActiveVisitUseCase() }
