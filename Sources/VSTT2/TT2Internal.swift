@@ -103,7 +103,8 @@ internal class TT2Internal {
         navigation.positionManager.recordingPublisher
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data, sessionId, lastFile) in
-                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderName: self?.generateAWSFolderPath(visitId: self?.analytics.visitId, additionalData: lastFile), date: Date())
+                let sessionId = self?.analytics.visitId?.description ?? sessionId
+                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderName: self?.generateAWSFolderPath(sessionId: sessionId, additionalData: lastFile), date: Date())
                 self?.awsS3UploadManager.sendCollectedDataToS3()
             }).store(in: &cancellable)
 
@@ -169,20 +170,19 @@ internal class TT2Internal {
             }.store(in: &cancellable)
     }
 
-    func generateAWSFolderPath(visitId: Int64?, additionalData: Bool = false) -> String? {
+    func generateAWSFolderPath(sessionId: String, additionalData: Bool = false) -> String? {
         guard
             let serverAddress = config.centralServerConnection.serverAddress?.trimServerAddress,
-            let dataServerAddress = config.analyticsServerConnection.serverAddress?.trimServerAddress,
-            let id = visitId
+            let dataServerAddress = config.analyticsServerConnection.serverAddress?.trimServerAddress
         else { return nil }
-        let folderName: String = "\(serverAddress)/\(dataServerAddress)/\(id)/"
-        if additionalData, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, visitId: id) {
+        let folderName: String = "\(serverAddress)/\(dataServerAddress)/\(sessionId)/"
+        if additionalData, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, sessionId: sessionId) {
             awsS3UploadManager.prepareDataToSend(identifier: "tags.json", data: tags, folderName: folderName, date: Date())
         }
         return folderName
     }
 
-    func createTT2Tags(serverAddress: String, dataServerAddress: String, visitId: Int64) -> String? {
+    func createTT2Tags(serverAddress: String, dataServerAddress: String, sessionId: String) -> String? {
         struct TT2Tags: Codable {
           let tags: [String:String]
         }
@@ -190,7 +190,7 @@ internal class TT2Internal {
         analytics.tt2Tags["tt2DataServerURL"] = dataServerAddress
         analytics.tt2Tags["tt2RtlsOptionsId"] = floorManager.activeFloor.id.description
         analytics.tt2Tags["tt2StoreId"] = activeStore.id.description
-        analytics.tt2Tags["tt2VisitId"] = visitId.description
+        analytics.tt2Tags["tt2VisitId"] = sessionId
         analytics.tt2Tags["tt2ClientId"] = activeClient.clientId.description
         let tags = TT2Tags(tags: analytics.tt2Tags)
         guard let data = try? JSONEncoder().encode(tags) else { return nil }
