@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2024-06-18.
 //
 
+import CoreLocation
 import Foundation
 import VSFoundation
 
@@ -14,6 +15,7 @@ struct UploadDevicePostionParameters {
   let storeId: Int64
   let rtlsOptionsId: Int64
   let signal: VPSOutputSignal.Position
+  let coordinate: CLLocationCoordinate2D?
 }
 
 extension UploadDevicePostionParameters: Routing {
@@ -30,13 +32,13 @@ extension UploadDevicePostionParameters: Routing {
       "y": signal.position.y,
       "radiusInMeters": signal.std,
       //"description": "Test",
-      //"timestamp": "2024-06-18T10:12:41.159Z",
-      //"state": "IDLE",
+      "timestamp": DateFormatter.standardFormatter.string(from: signal.timestamp),
+      "state": "ACTIVE",
       //"tags": [:],
-      //"lngLat": [
-      //  40,
-      //  4
-      //]
+      "lngLat": coordinate != nil ? [
+        coordinate!.longitude,
+        coordinate!.latitude
+      ] : nil
     ]
   }
 }

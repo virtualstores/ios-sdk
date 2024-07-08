@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2024-06-04.
 //
 
+import CoreLocation
 import Foundation
 import VSFoundation
 
@@ -55,13 +56,19 @@ class UploadDevicePositionUseCase {
   @Inject var floorRepository: IFloorRepository
   @Inject var storeRepository: IStoreRepository
   @Inject var userRepository: IUserRepository
+  let manager = CLLocationManager()
+
+  init() {
+    manager.startUpdatingLocation()
+  }
 
   func invoke(signal: VPSOutputSignal.Position, completion: @escaping (Error?) -> ()) {
     analyticsRepository.upload(dpParameters: UploadDevicePostionParameters(
       userId: userRepository.getUserProfile()?.userId ?? "",
       storeId: storeRepository.activeStore.id,
       rtlsOptionsId: floorRepository.activeFloor.id,
-      signal: signal
+      signal: signal, 
+      coordinate: manager.location?.coordinate
     ), completion: completion)
   }
 }
