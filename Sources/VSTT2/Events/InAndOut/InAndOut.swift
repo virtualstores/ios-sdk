@@ -7,13 +7,24 @@
 
 import Foundation
 
+protocol IInAndOutTrigger {
+  var id: String { get }
+}
+
+protocol IInAndOutDelegate: AnyObject {
+  func onEnter(trigger: IInAndOutTrigger, position: CGPoint)
+  func onExit(trigger: IInAndOutTrigger, position: CGPoint)
+  func onEnter(triggers: [IInAndOutTrigger], position: CGPoint)
+  func onExit(triggers: [IInAndOutTrigger], position: CGPoint)
+}
+
 class InAndOut {
-  let triggers: [ITrigger]
-  weak var delegate: IDelegate?
+  let triggers: [IInAndOutTrigger]
+  weak var delegate: IInAndOutDelegate?
 
-  private var activeInside: [ITrigger] = []
+  private var activeInside: [IInAndOutTrigger] = []
 
-  init(triggers: [ITrigger]) {
+  init(triggers: [IInAndOutTrigger]) {
     self.triggers = triggers
   }
 
@@ -21,7 +32,7 @@ class InAndOut {
     delegate = nil
   }
 
-  func add(delegate: IDelegate) {
+  func add(delegate: IInAndOutDelegate) {
     self.delegate = delegate
   }
 
@@ -30,8 +41,8 @@ class InAndOut {
   }
 
   func onNewPosition(currentPosition: CGPoint) {
-    var enterEvents = [ITrigger]()
-    var exitEvents = [ITrigger]()
+    var enterEvents = [IInAndOutTrigger]()
+    var exitEvents = [IInAndOutTrigger]()
     triggers.forEach { (trigger) in
       switch trigger {
       case let type as Radius:
@@ -58,14 +69,14 @@ class InAndOut {
     delegate?.onExit(triggers: exitEvents, position: currentPosition)
   }
 
-  private func isNotActive(trigger: ITrigger, position: CGPoint) -> Bool {
+  private func isNotActive(trigger: IInAndOutTrigger, position: CGPoint) -> Bool {
     guard !activeInside.contains(where: { $0.id == trigger.id }) else { return false }
     activeInside.append(trigger)
     delegate?.onEnter(trigger: trigger, position: position)
     return true
   }
 
-  private func isActive(trigger: ITrigger, position: CGPoint) -> Bool {
+  private func isActive(trigger: IInAndOutTrigger, position: CGPoint) -> Bool {
     guard activeInside.contains(where: { $0.id == trigger.id }) else { return false }
     activeInside.removeAll(where: { $0.id == trigger.id })
     delegate?.onExit(trigger: trigger, position: position)
@@ -126,26 +137,15 @@ class InAndOut {
   }
   // Endregion isPointInside
 
-  protocol ITrigger {
-    var id: String { get }
-  }
-
-  struct Radius: ITrigger {
+  struct Radius: IInAndOutTrigger {
     let id: String
     let centerPoint: CGPoint
     let radius: Double
   }
 
-  struct Zone: ITrigger {
+  struct Zone: IInAndOutTrigger {
     let id: String
     let zoneId: String
     let polygon: [CGPoint]
-  }
-
-  protocol IDelegate: AnyObject {
-    func onEnter(trigger: ITrigger, position: CGPoint)
-    func onExit(trigger: ITrigger, position: CGPoint)
-    func onEnter(triggers: [ITrigger], position: CGPoint)
-    func onExit(triggers: [ITrigger], position: CGPoint)
   }
 }

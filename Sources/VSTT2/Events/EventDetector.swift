@@ -23,7 +23,7 @@ class EventDetector {
 
 private extension EventDetector {
   func updateInAndOut() {
-    var triggers = [InAndOut.ITrigger]()
+    var triggers = [IInAndOutTrigger]()
     events.forEach { (event) in
       switch event.eventType {
       case .appTrigger(_): break
@@ -75,24 +75,24 @@ extension EventDetector: IEventDetector {
   }
 }
 
-extension EventDetector: InAndOut.IDelegate {
-  func onEnter(trigger: InAndOut.ITrigger, position: CGPoint) {
+extension EventDetector: IInAndOutDelegate {
+  func onEnter(trigger: IInAndOutTrigger, position: CGPoint) {
     //handle(triggers: [trigger], position: position, type: .enter)
   }
 
-  func onExit(trigger: InAndOut.ITrigger, position: CGPoint) {
+  func onExit(trigger: IInAndOutTrigger, position: CGPoint) {
     //handle(triggers: [trigger], position: position, type: .exit)
   }
 
-  func onEnter(triggers: [InAndOut.ITrigger], position: CGPoint) {
+  func onEnter(triggers: [IInAndOutTrigger], position: CGPoint) {
     handle(triggers: triggers, position: position, type: .enter)
   }
 
-  func onExit(triggers: [InAndOut.ITrigger], position: CGPoint) {
+  func onExit(triggers: [IInAndOutTrigger], position: CGPoint) {
     handle(triggers: triggers, position: position, type: .exit)
   }
 
-  func handle(triggers: [InAndOut.ITrigger], position: CGPoint, type: TriggerEvent.TriggerType) {
+  func handle(triggers: [IInAndOutTrigger], position: CGPoint, type: TriggerEvent.TriggerType) {
     let events = triggersAndEvents
       .filter({ $0.value.triggerType == type })
       .filter({ (triggerAndEvent) in triggers.contains(where: { $0.id == triggerAndEvent.key }) })
