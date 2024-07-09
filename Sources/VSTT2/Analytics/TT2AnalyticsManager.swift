@@ -304,7 +304,7 @@ extension TT2AnalyticsManager: TT2Analytics {
     (tt2VPSSettingsTags ?? tt2VPSSettingsDefaultTags).forEach { editedTags[$0.key] = $0.value }
     tt2Tags = editedTags.filter { $0.key.lowercased().contains("tt2") }
 
-    createVisit.invoke(deviceInformation: deviceInformation, tags: tags, metaData: metaData) { [weak self] (result) in
+    createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData) { [weak self] (result) in
       self?.navigationManager.positionManager.set(sessionId: self?.visitId?.description)
       completion(result)
     }
