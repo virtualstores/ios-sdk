@@ -49,7 +49,7 @@ public protocol ITT2 {
     /// List of available stores
     var stores: [TT2Store] { get }
 
-    var zonesTree: TT2ZonesTree? { get }
+    var zonesTree: TT2ZonesTree { get }
 
     /// Method for initialize TT2 for specific client
     func initialize(clientId: Int64, positionKitParams: ParameterPackage, completion: @escaping (Error?) -> ())

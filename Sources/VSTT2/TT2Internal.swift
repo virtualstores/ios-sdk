@@ -13,15 +13,15 @@ import CoreLocation
 
 internal class TT2Internal {
     /// Managers for helping VSTT2 to work with separate small modules
-    @Inject var config: EnvironmentConfig
-    @Inject var navigation: Navigation
     @Inject var analytics: TT2AnalyticsManager
-    @Inject var floorManager: VSTT2FloorManager
-    @Inject var position: Position
-    @Inject var user: IUserManager
-    @Inject var recording: RecordingManager
     @Inject var awsS3UploadManager: AWSS3UploadManager
+    @Inject var config: EnvironmentConfig
+    @Inject var floorManager: VSTT2FloorManager
     @Inject var mlModelManager: VSMLModelManager
+    @Inject var navigation: Navigation
+    @Inject var position: Position
+    @Inject var recording: RecordingManager
+    @Inject var user: IUserManager
 
     /// Usecases - Client
     @Inject var fetchClient: FetchClientsUseCase
@@ -34,6 +34,7 @@ internal class TT2Internal {
     @Inject var getActiveStore: GetActiveStoreUseCase
     @Inject var getCachedStore: GetCachedStoreUseCase
     @Inject var getCachedSwapLocations: GetCachedSwapLocationsUseCase
+    @Inject var getZonesTree: GetZonesTreeUseCase
     @Inject var setActiveStore: SetActiveStoreUseCase
     
     let deviceOrientationUploader: DeviceOrientationUploader = .init()
@@ -100,7 +101,7 @@ internal class TT2Internal {
               }
           }.store(in: &cancellable)
 
-        navigation.positionManager.recordingPublisher
+        navigation.vpsPosition.recordingPublisher
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data, sessionId, lastFile) in
                 let sessionId = self?.analytics.visitId?.description ?? sessionId
@@ -108,7 +109,7 @@ internal class TT2Internal {
                 self?.awsS3UploadManager.sendCollectedDataToS3()
             }).store(in: &cancellable)
 
-        navigation.positionManager.outputSignalPublisher
+        navigation.vpsPosition.outputSignalPublisher
             .compactMap { $0 }
             .sink { [weak self] (signal) in
               guard let self = self else { return }
@@ -128,7 +129,7 @@ internal class TT2Internal {
                 } else {
                   mapController?.updateMLPosition(point: position.position)
                 }
-                if navigation.positionManager.isRecording {
+                if navigation.vpsPosition.isRecording {
                   analytics.addMLPositions(id: floorManager.activeFloor.id, position: position)
                 }
               case .particles(positions: let positions):
@@ -137,6 +138,8 @@ internal class TT2Internal {
                 let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
                 mapController?.updateUserDirection(newDirection: heading)
               case .rescueMode: analytics.rescueMode()
+              case .floorChange(difference: let difference, timestamp: let timestamp):
+                floorManager.onNewFloor(floor: difference)
               }
             }.store(in: &cancellable)
         
@@ -233,7 +236,7 @@ internal class TT2Internal {
       if clearAnalytics {
         analytics.recordedMLPositionsLngLat[floorManager.activeFloor.id]?.removeAll()
       }
-      return navigation.positionManager.processMLPath(
+      return navigation.vpsPosition.processMLPath(
         path: mlPositions.map({ CLLocationCoordinate2D(latitude: $0.lngLat[1], longitude: $0.lngLat[0]).fromLatLngToMeter(converter: converter) }),
         pathEndPoint: coordinate.fromLatLngToMeter(converter: converter)
       )

@@ -10,24 +10,48 @@ import VSFoundation
 import CoreGraphics
 
 public class TT2ZonesTree {
-    public let root: Zone
-    public private(set) var activeZones: [Zone] = []
-    public internal(set) var currentFloorLevelId: Int64
+    @Inject var activeCoordinateConverter: GetActiveCoordinateConverterUseCase
+    @Inject var activeFloor: GetActiveFloorUseCase
+    @Inject var activeStore: GetActiveStoreUseCase
 
-    private let converter: BaseCoordinateConverter
-    
-    init(root: Zone, converter: BaseCoordinateConverter, currentFloorLevelId: Int64 = 0) {
-        self.root = root
-        self.converter = converter
-        self.currentFloorLevelId = currentFloorLevelId
+    private lazy var _root: Zone? = {
+      guard let converter = converter else { return nil }
+      let name = activeStore.invoke().name
+      return Zone(
+        id: UUID().uuidString,
+        floorLevelId: activeFloor.invoke().id,
+        properties: ZoneProperties(id: name, name: name, names: [name]),
+        converter: converter
+      )
+    }()
+    public var root: Zone {
+        guard let root = _root else { fatalError("No root created") }
+        return root
     }
-    
+    public private(set) var activeZones: [Zone] = []
+    private var currentFloorLevelId: Int64 { activeFloor.invoke().id }
+    private var converter: ICoordinateConverter? { activeCoordinateConverter.invoke() }
+
+    deinit {
+        _root = nil
+    }
+
     public func print() {
         root.recursivePrint("")
     }
 
     var zonesToAdd: [Zone] = []
     public func add(_ rtls: RtlsOptions, _ mapZone: MapZone, _ mapZonePoints: [MapZoneCoordinate] = []) {
+        guard let converter = converter else { return }
+        //if _root == nil {
+        //    let name = activeStore.invoke().name
+        //    _root = Zone(
+        //        id: UUID().uuidString,
+        //        floorLevelId: activeFloor.invoke().id,
+        //        properties: ZoneProperties(id: name, name: name, names: [name]),
+        //        converter: converter
+        //    )
+        //}
         let floorLevelId = rtls.id
         let floorLevelName = rtls.name ?? "Floor level name missing"
         if getZoneWith(id: floorLevelName) == nil {

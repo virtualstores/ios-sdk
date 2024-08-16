@@ -154,7 +154,7 @@ private extension TT2AnalyticsManager {
     func getVPSParams() -> String {
       var string = "{"
       navigationManager
-        .positionManager
+        .vpsPosition
         .vpsParticleFilterSettings
         .forEach { string = string + "\($0.key)=\($0.value), " }
       if string.hasSuffix(", ") { string.removeLast(2) }
@@ -211,7 +211,7 @@ extension TT2AnalyticsManager {
 
   func addMLPositions(id: Int64, coordinate: CLLocationCoordinate2D) {
     let position = RecordedPositionLngLat(
-      airPressure: navigationManager.positionManager.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
+      airPressure: navigationManager.vpsPosition.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
       timestamp: DateFormatter.standardFormatter.string(from: Date()),
       lngLat: [coordinate.longitude, coordinate.latitude]
     )
@@ -305,7 +305,7 @@ extension TT2AnalyticsManager: TT2Analytics {
     tt2Tags = editedTags.filter { $0.key.lowercased().contains("tt2") }
 
     createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData) { [weak self] (result) in
-      self?.navigationManager.positionManager.set(sessionId: self?.visitId?.description)
+      self?.navigationManager.vpsPosition.set(sessionId: self?.visitId?.description)
       completion(result)
     }
   }
@@ -341,7 +341,7 @@ extension TT2AnalyticsManager: TT2Analytics {
       } else {
         self?.positionUploadWorker.removeAllPoints()
         self?.recordedPositionsCount = 0
-        self?.navigationManager.positionManager.set(sessionId: nil)
+        self?.navigationManager.vpsPosition.set(sessionId: nil)
       }
     }
   }
@@ -353,7 +353,7 @@ extension TT2AnalyticsManager: TT2Analytics {
 
   public func addGPSPositions(id: Int64, coordinate: CLLocationCoordinate2D) {
     let position = RecordedPositionLngLat(
-      airPressure: navigationManager.positionManager.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
+      airPressure: navigationManager.vpsPosition.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
       timestamp: DateFormatter.standardFormatter.string(from: Date()),
       lngLat: [coordinate.longitude, coordinate.latitude]
     )

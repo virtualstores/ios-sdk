@@ -13,10 +13,20 @@ import CoreGraphics
 import UIKit
 
 final public class Navigation {
-    @Inject var positionManager: PositionManager
-    @Inject var floor: VSTT2FloorManager
-    @Inject var position: Position
+    @Inject var vpsPosition: VPSPositionManager
+    @Inject var floorManager: VSTT2FloorManager
+    @Inject var positionManager: Position
     @Inject var modelManager: VSMLModelManager
+
+    var activeFloor: RtlsOptions {
+        @Inject var activeFloor: GetActiveFloorUseCase
+        return activeFloor.invoke()
+    }
+
+    var floors: [RtlsOptions] {
+        @Inject var getFloors: GetCachedFloorsUseCase
+        return getFloors.invoke()
+    }
 
     public internal(set) var currentPosition: CGPoint? {
         didSet {
@@ -33,14 +43,14 @@ final public class Navigation {
     var currentAccessPointPosition: CGPoint = .zero
     var inAndOutZone: InAndOutZone?
 
-    private var startCodes: [PositionedCode] = []
+    private var startCodes: [PositionedCode] { activeFloor.scanLocations?.filter({ $0.type == .start }) ?? [] }
     private var hasStartLocationAngle: Bool = false
     private var certainAngle: Bool = false
 
     private var heading: TT2Course? {
         guard
-          let north = positionManager.rtlsOption?.north,
-          let heading = positionManager.locationHeadingPublisher.value?.headingDirection
+          let north = vpsPosition.rtlsOption?.north,
+          let heading = vpsPosition.locationHeadingPublisher.value?.headingDirection
         else { return nil }
         //let heading = VPSCompassHeadingController.trueHeading.value
         return TT2Course(fromDegrees: -heading + 90 - north)
@@ -51,12 +61,12 @@ final public class Navigation {
     var onValidateFloorCompletion: (() throws -> ())?
     func validateFloorLevel(floorId: Int64?, completion: @escaping (Bool) throws -> Void) throws {
       guard let floorId = floorId else { try completion(true); return }
-      if floor.activeFloor.id == floorId {
+      if activeFloor.id == floorId {
         try completion(true)
       } else {
-        guard let rtls = floor.floors.first(where: { $0.id == floorId }) else { return }
+        guard let rtls = floors.first(where: { $0.id == floorId }) else { return }
         onValidateFloorCompletion = { try completion(false); self.onValidateFloorCompletion = nil }
-        floor.switchFloorPublisher.send((rtlsOptions: rtls, point: nil))
+        floorManager.switchFloorPublisher.send((rtlsOptions: rtls, point: nil))
       }
     }
 }
@@ -82,15 +92,15 @@ extension Navigation: INavigation {
             return
         }
 
-        try positionManager.start()
+        try vpsPosition.start()
         certainAngle = true
-        positionManager.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startAngle, uncertainAngle: false)
+        vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startAngle, uncertainAngle: false)
         isActivePublisher.send(true)
         userStartAngle = TT2Course(fromDegrees: startAngle)
     }
 
     public func start(code: PositionedCode) throws {
-        try floor.floors.forEach {
+        try floors.forEach {
             guard $0.scanLocations?.first(where: { $0.code == code.code }) != nil else { return }
             try validateFloorLevel(floorId: $0.id) { [self] (isValid) in
                 try start(startPosition: code.point, startAngle: code.direction)
@@ -108,7 +118,7 @@ extension Navigation: INavigation {
 
         try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
             prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
-            positionManager.syncPosition(positions: [position.pointWithOffset], syncPosition: !position.isDisabled, syncAngle: syncRotation, angle: angle, uncertainAngle: false)
+            vpsPosition.syncPosition(positions: [position.pointWithOffset], syncPosition: !position.isDisabled, syncAngle: syncRotation, angle: angle, uncertainAngle: false)
         }
     }
 
@@ -130,8 +140,8 @@ extension Navigation: INavigation {
 
         let startWithAngle = startWithAngle(startPosition: startPosition)
         try validateFloorLevel(floorId: position?.floorLevelId) { [self] (isValid) in
-            try positionManager.start()
-            positionManager.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startWithAngle ?? heading.degrees, uncertainAngle: startWithAngle == nil)
+            try vpsPosition.start()
+            vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startWithAngle ?? heading.degrees, uncertainAngle: startWithAngle == nil)
             prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
             isActivePublisher.send(true)
             userStartAngle = heading
@@ -148,12 +158,12 @@ extension Navigation: INavigation {
         try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
             prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
             if let startLocationAngle = startWithAngle(startPosition: position.point) {
-                positionManager.syncPosition(positions: [point], syncPosition: !position.isDisabled, syncAngle: true, angle: startLocationAngle, uncertainAngle: false)
+                vpsPosition.syncPosition(positions: [point], syncPosition: !position.isDisabled, syncAngle: true, angle: startLocationAngle, uncertainAngle: false)
             } else if certainAngle {
                 try syncPosition(position: position, syncRotation: false, forceSync: true)
             } else {
                 let syncingWithCompass = forceSync ? forceSync : doCompassStart(point: position.point) && !hasStartLocationAngle
-                positionManager.syncPosition(positions: [point], syncPosition: !position.isDisabled, syncAngle: syncingWithCompass, angle: heading.degrees, uncertainAngle: syncingWithCompass)
+                vpsPosition.syncPosition(positions: [point], syncPosition: !position.isDisabled, syncAngle: syncingWithCompass, angle: heading.degrees, uncertainAngle: syncingWithCompass)
             }
         }
     }
@@ -162,7 +172,7 @@ extension Navigation: INavigation {
         if let code = checkForScanLocation(identifier: identifier) {
             do {
                 try start(code: code)
-                let item = Item(name: code.code, externalId: "", itemPositions: [ItemPosition(point: code.point, offset: .zero, floorLevelId: floor.activeFloor.id)])
+                let item = Item(name: code.code, externalId: "", itemPositions: [ItemPosition(point: code.point, offset: .zero, floorLevelId: activeFloor.id)])
                 completion(.success(item))
             } catch {
                 completion(.failure(error))
@@ -183,7 +193,7 @@ extension Navigation: INavigation {
               try syncPosition(position: position, syncRotation: syncRotation, forceSync: true)
             }
         }
-        position.getBy(shelfName: identifier) { (position) in
+        positionManager.getBy(shelfName: identifier) { (position) in
           if let position = position {
             do {
               try doSync(position: position)
@@ -193,7 +203,7 @@ extension Navigation: INavigation {
               completion(.failure(error))
             }
           } else {
-            self.position.getBy(barcode: identifier) { (result) in
+            self.positionManager.getBy(barcode: identifier) { (result) in
               switch result {
               case .success(let item):
                 do {
@@ -220,24 +230,22 @@ extension Navigation: INavigation {
     }
 
     public func stop() {
-        positionManager.stop()
+        vpsPosition.stop()
         hasStartLocationAngle = false
         isActivePublisher.send(false)
     }
 
-    public func prepareAngle() { positionManager.prepareAngle() }
+    public func prepareAngle() { vpsPosition.prepareAngle() }
 }
 
 // MARK: Internal
 extension Navigation {
-    func setup(startCodes: [PositionedCode], inAndOutZone: InAndOutZone) {
-        self.startCodes = startCodes
+    func setup(inAndOutZone: InAndOutZone) {
         self.inAndOutZone = inAndOutZone
     }
 
     func checkForScanLocation(identifier: String) -> PositionedCode? {
-      floor
-        .floors
+      floors
         .map({ $0.scanLocations?.filter({ $0.type == .start }) })
         .compactMap({ $0 })
         .flatMap({ $0 })
@@ -246,7 +254,7 @@ extension Navigation {
 
     func syncAngleCorrection(angle: Double, position: CGPoint) {
       guard isActive else { return }
-      positionManager.syncAngleCorrection(angle: angle, positions: [position])
+      vpsPosition.syncAngleCorrection(angle: angle, positions: [position])
     }
 
     func syncPositionToNearestAccessPoint() throws {
@@ -256,22 +264,22 @@ extension Navigation {
     func changeFloorStart(startPosition: CGPoint?) throws {
         guard let point = startPosition, isActive else { try onValidateFloorCompletion?(); return }
 
-        try positionManager.start()
+        try vpsPosition.start()
 
-        positionManager.startNavigation(positions: [point], syncPosition: true, syncAngle: true, angle: userStartAngle.degrees, uncertainAngle: false)
+        vpsPosition.startNavigation(positions: [point], syncPosition: true, syncAngle: true, angle: userStartAngle.degrees, uncertainAngle: false)
     }
 
     func changeFloorStop() {
         guard isActive else { return }
-        positionManager.stop(stopSensors: false)
+        vpsPosition.stop(stopSensors: false)
     }
 
     func startRecording() {
-        positionManager.startRecording()
+        vpsPosition.startRecording()
     }
 
     func stopRecording() {
-        positionManager.stopRecording()
+        vpsPosition.stopRecording()
     }
 }
 
@@ -299,29 +307,28 @@ private extension Navigation {
 
     func createAnalyticsScanEventForIdentifier(identfier: String) {
       var events = [ScanEvent]()
-      let currentFloorLevelId = floor.activeFloor.id
       if let zoneIds = inAndOutZone?.activeInside.map({ $0.id }), !zoneIds.isEmpty {
-        events.append(.createZoneScanEvent(identifier: identfier, floorLevelId: currentFloorLevelId, userPosition: currentPosition, zones: zoneIds))
+        events.append(.createZoneScanEvent(identifier: identfier, floorLevelId: activeFloor.id, userPosition: currentPosition, zones: zoneIds))
       }
       
       func addShelScanEvent(position: ItemPosition) {
-        if position.floorLevelId == currentFloorLevelId {
+        if position.floorLevelId == activeFloor.id {
           events.append(.createShelfScanEvent(itemPosition: position, userPosition: currentPosition))
         }
       }
 
       func addUnknownScanEvent() {
-        events.append(.createUnknownScanEvent(identfier: identfier, floorLevelId: currentFloorLevelId, userPosition: currentPosition))
+        events.append(.createUnknownScanEvent(identfier: identfier, floorLevelId: activeFloor.id, userPosition: currentPosition))
       }
 
       let group = DispatchGroup()
       group.enter()
-      position.getBy(shelfName: identfier) { (position) in
+      positionManager.getBy(shelfName: identfier) { (position) in
         if let position = position {
           addShelScanEvent(position: position)
           group.leave()
         } else {
-          self.position.getBy(barcode: identfier) { (result) in
+          self.positionManager.getBy(barcode: identfier) { (result) in
             switch result {
             case .success(let item):
               if let position = item.itemPosition {
