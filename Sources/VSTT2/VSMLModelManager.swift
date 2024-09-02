@@ -25,7 +25,7 @@ class VSMLModelManager {
   @Inject var setMLVersion: SetMLVersionUseCase
   @Inject var setNLVersion: SetNLVersionUseCase
 
-  func setup(params: TT2ModelParams?) {
+  func setup(params: TT2Settings.TT2ModelParams?) {
     fetchMLInterfaceVersions.invoke { [weak self] (error) in
       if let error = error {
         print("File", "Error getting Version", error)
@@ -35,7 +35,7 @@ class VSMLModelManager {
     }
   }
 
-  func handle(mlCatalog: MLInterfaceVersions.MLCatalog, params: TT2ModelParams) {
+  func handle(mlCatalog: MLInterfaceVersions.MLCatalog, params: TT2Settings.TT2ModelParams) {
     if let version = mlCatalog.getLatestSupportedVelocityModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
       //print("MLVersion", mlVersion)
       loadMLVersion.invoke(version: version) { [weak self] (error) in
@@ -79,17 +79,5 @@ extension Array {
   func split(into size: Int) -> [[Element]] {
     stride(from: 0, to: count, by: size)
       .map { Array(self[$0..<Swift.min($0 + size, count)]) }
-  }
-}
-
-public struct TT2ModelParams {
-  let target: Int
-  let targetMLModelVersion: Int?
-  let targetNLModelVersion: Int?
-
-  public init(target: Int = 1, targetMLModelVersion: Int? = nil, targetNLModelVersion: Int? = nil) {
-    self.target = target
-    self.targetMLModelVersion = targetMLModelVersion
-    self.targetNLModelVersion = targetNLModelVersion
   }
 }

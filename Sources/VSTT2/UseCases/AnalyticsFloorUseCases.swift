@@ -52,9 +52,18 @@ class UpdateTagsForActiveVisitUseCase {
 
 class UploadGeopositionsForActiveVisitUseCase {
   @Inject var repository: IAnalyticsRepository
+
   func invoke(geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ()) {
     guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
     repository.upload(visitId: id, geopositions: geopositions, completion: completion)
+  }
+}
+
+class UploadGeopositionsForVisitUseCase {
+  @Inject var repository: IAnalyticsRepository
+
+  func invoke(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ()) {
+    repository.upload(visitId: visitId, geopositions: geopositions, completion: completion)
   }
 }
 

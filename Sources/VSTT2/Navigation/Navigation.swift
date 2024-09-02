@@ -5,11 +5,11 @@
 // Created by Hripsime on 2022-01-11.
 // Copyright Virtual Stores - 2021
 
+import CoreLocation
 import Foundation
 import Combine
 import VSFoundation
 import VSPositionKit
-import CoreGraphics
 import UIKit
 
 final public class Navigation {
@@ -227,6 +227,14 @@ extension Navigation: INavigation {
             }
           }
         }
+    }
+
+    public func syncPosition(location: CLLocation) throws {
+      guard isActive else {
+        try start(startPosition: location.coordinate.asPoint, startAngle: location.course)
+        return
+      }
+      vpsPosition.syncPosition(location: location)
     }
 
     public func stop() {

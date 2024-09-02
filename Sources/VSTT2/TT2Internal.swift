@@ -119,13 +119,18 @@ internal class TT2Internal {
                 floorManager.onNewPostion(location: position.position)
                 mapController?.updateUserLocation(newLocation: position.position, std: position.std)
                 analytics.onNewPositionBundle(position: position)
+              case .latLng(let latLng):
+                mapController?.updateLatLngPosition(latLng: latLng)
+                analytics.geopositionsManager.update(location: latLng)
+              case .gps(let location):
+                mapController?.update(location: location)
               case .ux(position: let position): break
                 //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
               case .ml(position: let position):
                 if let converter = realConverter {
                   let coordinate = position.position.convertFromMeterToLatLng(converter: converter)
                   mapController?.updateMLPosition(coordinate: coordinate)
-                  analytics.addMLPositions(id: floorManager.activeFloor.id, coordinate: coordinate)
+                  analytics.addMLPositions(id: floorManager.activeFloor.id, coordinate: coordinate, date: position.timestamp)
                 } else {
                   mapController?.updateMLPosition(point: position.position)
                 }
@@ -225,42 +230,6 @@ internal class TT2Internal {
         earthRadiusInMeters: 6378137.0,
         pixelsPerMeter: 50
       )
-    }
-
-  func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool = false) -> MLProcessedPath? {
-      guard
-        let mlPositions = analytics.recordedMLPositionsLngLat[floorManager.activeFloor.id],
-        mlPositions.count > 0,
-        let converter = realConverter
-      else { return nil }
-      if clearAnalytics {
-        analytics.recordedMLPositionsLngLat[floorManager.activeFloor.id]?.removeAll()
-      }
-      return navigation.vpsPosition.processMLPath(
-        path: mlPositions.map({ CLLocationCoordinate2D(latitude: $0.lngLat[1], longitude: $0.lngLat[0]).fromLatLngToMeter(converter: converter) }),
-        pathEndPoint: coordinate.fromLatLngToMeter(converter: converter)
-      )
-    }
-
-    func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D) {
-      guard
-        let mlPositions = analytics.recordedMLPositionsLngLat[floorManager.activeFloor.id],
-        let converter = realConverter,
-        let path = processMLPath(coordinate: coordinate)?.path
-          .map({ $0.convertFromMeterToLatLng(converter: converter) })
-          .map({ [$0.longitude, $0.latitude] })
-      else { return }
-
-      analytics.recordedMLPositionsLngLatProcessed[floorManager.activeFloor.id] = mlPositions.enumerated().map({ RecordedPositionLngLat(
-        airPressure: $0.element.airPressure,
-        timestamp: $0.element.timestamp,
-        lngLat: path[$0.offset]
-      )})
-    }
-
-    func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D) {
-      guard let converter = realConverter else { return }
-      navigation.syncAngleCorrection(angle: angle, position: coordinate.fromLatLngToMeter(converter: converter))
     }
 }
 

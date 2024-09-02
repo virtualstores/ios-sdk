@@ -52,8 +52,9 @@ final public class TT2: ITT2 {
     private var cancellable = Set<AnyCancellable>()
     private var wifiCancellable = Set<AnyCancellable>()
     private var positionKitParams: ParameterPackage = .retail
-    
-    public init(with apiUrl: String, apiKey: String, params: TT2ModelParams? = nil) {
+    private var vpsEngine: TT2Settings.TT2Engine = .indoor
+
+    public init(with apiUrl: String, apiKey: String, params: TT2Settings.TT2ModelParams? = nil) {
         context = Context(VSTT2Config(environment: EnvironmentConfig()))
         _tt2Internal = TT2Internal()
         tt2Internal.config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
@@ -151,7 +152,11 @@ final public class TT2: ITT2 {
     public func set(automaticActivationOfUserMark: Bool) {
         tt2Internal.automaticActivationOfUserMark = automaticActivationOfUserMark
     }
-    
+
+    public func set(vpsEngine: TT2Settings.TT2Engine) {
+        self.vpsEngine = vpsEngine
+    }
+
     public func getMapData() -> MapData? {
         mapData
     }
@@ -174,18 +179,6 @@ final public class TT2: ITT2 {
 
     public func initRealWorldConverter(point: CGPoint) {
       tt2Internal.initRealWorldConverter(point: point)
-    }
-
-    public func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool) -> MLProcessedPath? {
-      tt2Internal.processMLPath(coordinate: coordinate, clearAnalytics: clearAnalytics)
-    }
-
-    public func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D) {
-      tt2Internal.addProcessedMLPathToAnalytics(coordinate: coordinate)
-    }
-
-    public func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D) {
-      tt2Internal.syncAngleCorrection(angle: angle, coordinate: coordinate)
     }
 }
 
@@ -287,7 +280,8 @@ private extension TT2 {
             automaticSensorRecording: tt2Internal.automaticSensorRecording,
             positionServiceSettings: tt2Internal.activeStore.positionServiceSettings,
             converter: converter,
-            modelManger: tt2Internal.mlModelManager
+            modelManger: tt2Internal.mlModelManager,
+            engine: vpsEngine.rawValue
         )
     }
     
@@ -309,4 +303,32 @@ private extension TT2 {
         tt2Internal.analytics.zoneManager.setup(with: mapZones, rtlsOptions: activeFloor)
         tt2Internal.analytics.eventManager.setup(with: activeStore.id, zones: mapZones, rtlsOptionsId: activeFloor.id)
     }
+}
+
+public struct TT2Settings {
+  let engine: TT2Engine
+  let params: TT2ModelParams
+
+  public init(engine: TT2Engine, params: TT2ModelParams) {
+    self.engine = engine
+    self.params = params
+  }
+
+  public enum TT2Engine: String {
+    case gpsFusion = "GPS"
+    case indoor = "INDOOR"
+    case openTerrain = "OPEN_TERRAIN"
+  }
+
+  public struct TT2ModelParams {
+    let target: Int
+    let targetMLModelVersion: Int?
+    let targetNLModelVersion: Int?
+
+    public init(target: Int = 1, targetMLModelVersion: Int? = nil, targetNLModelVersion: Int? = nil) {
+      self.target = target
+      self.targetMLModelVersion = targetMLModelVersion
+      self.targetNLModelVersion = targetNLModelVersion
+    }
+  }
 }

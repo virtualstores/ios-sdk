@@ -140,7 +140,7 @@ struct MLInterfaceVersions: Codable {
 }
 
 extension MLInterfaceVersions.MLCatalog {
-  func getLatestSupportedVelocityModel(params: TT2ModelParams, sdkVersion: String, vpsVersion: String) -> MLInterfaceVersions.MLCatalog.Device.MLVersion? {
+  func getLatestSupportedVelocityModel(params: TT2Settings.TT2ModelParams, sdkVersion: String, vpsVersion: String) -> MLInterfaceVersions.MLCatalog.Device.MLVersion? {
     guard let target = targets[params.target.description]?.ios else { return nil }
     let requestVersion = params.targetMLModelVersion ?? target.latestMLVersion
     let supportedMLVersions = ios.mlModels
@@ -153,7 +153,7 @@ extension MLInterfaceVersions.MLCatalog {
     return !supportedMLVersions.isEmpty ? supportedMLVersions.first(where: { $0.version == requestVersion }) ?? supportedMLVersions.first : nil
   }
 
-  func getLatestSupportedNLModel(params: TT2ModelParams, sdkVersion: String, vpsVersion: String) -> MLInterfaceVersions.MLCatalog.Device.NLVersion? {
+  func getLatestSupportedNLModel(params: TT2Settings.TT2ModelParams, sdkVersion: String, vpsVersion: String) -> MLInterfaceVersions.MLCatalog.Device.NLVersion? {
     guard let target = targets[params.target.description]?.ios else { return nil }
     let requestVersion = params.targetNLModelVersion ?? target.latestNLVersion
     let supportedNLVersions = ios.nlModels

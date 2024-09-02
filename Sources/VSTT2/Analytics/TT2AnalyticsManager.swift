@@ -33,6 +33,7 @@ final public class TT2AnalyticsManager {
 
     lazy var accuracyUploader: AccuracyUploader = { .init() }()
     lazy var stepEventUploader: StepEventUploader = { .init() }()
+    let geopositionsManager: TT2AnalyticsGeopositionManager = .init()
     var tt2Tags: [String:String] = [:]
     var visitId: Int64? { activeVisitId.invoke() }
     private var store: Store { activeStore.invoke() }
@@ -45,8 +46,6 @@ final public class TT2AnalyticsManager {
     private var recordedPositionsCount = 0
     var recordedMLPositions: [Int64: [RecordedPosition]] = [:]
     var recordedMLPositionsLngLat: [Int64: [RecordedPositionLngLat]] = [:]
-    var recordedMLPositionsLngLatProcessed: [Int64: [RecordedPositionLngLat]] = [:]
-    var recordedGPSPositionsLatLng: [RecordedPositionLngLat] = []
     private var currentPosition: CGPoint?
 
     deinit {
@@ -209,7 +208,7 @@ extension TT2AnalyticsManager {
     recordedMLPositions[id]?.append(position)
   }
 
-  func addMLPositions(id: Int64, coordinate: CLLocationCoordinate2D) {
+  func addMLPositions(id: Int64, coordinate: CLLocationCoordinate2D, date: Date = Date()) {
     let position = RecordedPositionLngLat(
       airPressure: navigationManager.vpsPosition.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
       timestamp: DateFormatter.standardFormatter.string(from: Date()),
@@ -237,21 +236,6 @@ extension TT2AnalyticsManager {
       let string = String(data: json, encoding: .utf8)
     else { return nil }
     return TriggerEvent(id: "", rtlsOptionsId: rtlsOptionId, name: "MLPositionsLngLat", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsLatLngTrigger")), tags: ["mlPositionsLatLng" : string])
-  }
-
-  func postGeopositions() {
-    var positions: [String: [RecordedPositionLngLat]] = [:]
-    positions[UploadGeoPositionsParameters.TypeEnum.gps.rawValue] = recordedGPSPositionsLatLng
-    positions[UploadGeoPositionsParameters.TypeEnum.vpsMl.rawValue] = recordedMLPositionsLngLat.flatMap({ $0.value })
-    positions[UploadGeoPositionsParameters.TypeEnum.vpsMlProcessed.rawValue] = recordedMLPositionsLngLatProcessed.flatMap({ $0.value })
-    uploadGeopositions.invoke(geopositions: positions) { [weak self] (error) in
-      if let error = error {
-        Logger(verbosity: .error).log(message: "UploadGeopositions \(error)")
-      } else {
-        self?.recordedGPSPositionsLatLng.removeAll()
-        self?.recordedMLPositionsLngLatProcessed.removeAll()
-      }
-    }
   }
 
   func onNewPositionBundle(position: VPSOutputSignal.Position) {
@@ -306,6 +290,7 @@ extension TT2AnalyticsManager: TT2Analytics {
 
     createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData) { [weak self] (result) in
       self?.navigationManager.vpsPosition.set(sessionId: self?.visitId?.description)
+      self?.navigationManager.vpsPosition.startGPS()
       completion(result)
     }
   }
@@ -324,7 +309,7 @@ extension TT2AnalyticsManager: TT2Analytics {
       uploadData(visitId: key, recordedPositions: value)
     }
     stepEventUploader.upload()
-    postGeopositions()
+    geopositionsManager.stopVisit()
     if let point = currentPosition {
       zoneManager.stopped(currentPosition: point)
       currentPosition = nil
@@ -351,12 +336,14 @@ extension TT2AnalyticsManager: TT2Analytics {
     uploadTriggerEvents(request: event)
   }
 
-  public func addGPSPositions(id: Int64, coordinate: CLLocationCoordinate2D) {
-    let position = RecordedPositionLngLat(
-      airPressure: navigationManager.vpsPosition.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
-      timestamp: DateFormatter.standardFormatter.string(from: Date()),
-      lngLat: [coordinate.longitude, coordinate.latitude]
-    )
-    recordedGPSPositionsLatLng.append(position)
+  public func addGeopositions(coordinate: CLLocationCoordinate2D, for tag: String) {
+    geopositionsManager.record(coordinate: coordinate, for: tag)
+    addTriggerEvent(for: TriggerEvent(
+      id: tag,
+      rtlsOptionsId: rtlsOptionId,
+      name: tag,
+      description: tag,
+      eventType: .coordinateTrigger(.init(point: coordinate.asPoint, radius: 0, type: .enter))
+    ))
   }
 }

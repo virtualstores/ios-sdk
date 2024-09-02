@@ -68,7 +68,9 @@ public protocol ITT2 {
 
     /// Settings for TT2
     func set(automaticActivationOfUserMark: Bool)
-    
+
+    func set(vpsEngine: TT2Settings.TT2Engine)
+
     /// Methode for creating MapData for MapSdk
     func getMapData() -> MapData?
 
@@ -78,9 +80,6 @@ public protocol ITT2 {
 
     func initRealWorldConverter()
     func initRealWorldConverter(point: CGPoint)
-    func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool) -> MLProcessedPath?
-    func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D)
-    func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D)
 }
 
 public enum VSTT2Error: Error {
