@@ -52,14 +52,12 @@ final public class TT2: ITT2 {
     private var cancellable = Set<AnyCancellable>()
     private var wifiCancellable = Set<AnyCancellable>()
     private var positionKitParams: ParameterPackage = .retail
-    private var vpsEngine: TT2Settings.TT2Engine = .indoor
+    private var settings: TT2Settings { tt2Internal.getTT2Settings.invoke() }
 
-    public init(with apiUrl: String, apiKey: String, params: TT2Settings.TT2ModelParams? = nil) {
+    public init(with apiUrl: String, apiKey: String, params: TT2Settings.TT2ModelParams = .init()) {
+        URLCache.shared.removeAllCachedResponses()
         context = Context(VSTT2Config(environment: EnvironmentConfig()))
-        _tt2Internal = TT2Internal()
-        tt2Internal.config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
-        tt2Internal.mlModelManager.setup(params: params)
-        URLCache().removeAllCachedResponses()
+        _tt2Internal = TT2Internal(with: apiUrl, apiKey: apiKey, settings: TT2Settings(params: params))
     }
 
     deinit {
@@ -154,7 +152,7 @@ final public class TT2: ITT2 {
     }
 
     public func set(vpsEngine: TT2Settings.TT2Engine) {
-        self.vpsEngine = vpsEngine
+        tt2Internal.set(tt2Settings: .init(engine: vpsEngine, params: settings.params))
     }
 
     public func getMapData() -> MapData? {
@@ -281,7 +279,7 @@ private extension TT2 {
             positionServiceSettings: tt2Internal.activeStore.positionServiceSettings,
             converter: converter,
             modelManger: tt2Internal.mlModelManager,
-            engine: vpsEngine.rawValue
+            engine: settings.engine.rawValue
         )
     }
     
@@ -309,7 +307,7 @@ public struct TT2Settings {
   let engine: TT2Engine
   let params: TT2ModelParams
 
-  public init(engine: TT2Engine, params: TT2ModelParams) {
+  public init(engine: TT2Engine = .indoor, params: TT2ModelParams = .init()) {
     self.engine = engine
     self.params = params
   }

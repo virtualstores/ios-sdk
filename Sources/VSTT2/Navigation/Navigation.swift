@@ -18,6 +18,9 @@ final public class Navigation {
     @Inject var positionManager: Position
     @Inject var modelManager: VSMLModelManager
 
+    @Inject var vpsUpdates: SubscribeToVPSUpdatesUseCase
+    @Inject var setIsVPSRunning: SetIsVPSRunningUseCase
+
     var activeFloor: RtlsOptions {
         @Inject var activeFloor: GetActiveFloorUseCase
         return activeFloor.invoke()
@@ -28,15 +31,11 @@ final public class Navigation {
         return getFloors.invoke()
     }
 
-    public internal(set) var currentPosition: CGPoint? {
-        didSet {
-            if let position = currentPosition {
-                inAndOutZone?.onNewPosition(currentPosition: position)
-            }
-        }
+    public var currentPosition: CGPoint? {
+        @Inject var getPosition: GetCurrentVPSPositionUseCase
+        return getPosition.invoke()?.point
     }
 
-    var isActivePublisher: CurrentValueSubject<Bool, Never> = .init(false)
     var accuracyPublisher: CurrentValueSubject<(event: AccuracySyncEvent.Event, isFloorSwap: Bool)?,Never> = .init(nil)
     var scanEventsPublisher: CurrentValueSubject<[ScanEvent]?, Never> = .init(nil)
 
@@ -46,6 +45,7 @@ final public class Navigation {
     private var startCodes: [PositionedCode] { activeFloor.scanLocations?.filter({ $0.type == .start }) ?? [] }
     private var hasStartLocationAngle: Bool = false
     private var certainAngle: Bool = false
+    private var cancellable = Set<AnyCancellable>()
 
     private var heading: TT2Course? {
         guard
@@ -73,7 +73,10 @@ final public class Navigation {
 
 // MARK: INavigation
 extension Navigation: INavigation {
-    public var isActive: Bool { isActivePublisher.value }
+    public var isActive: Bool {
+      @Inject var isVPSRunning: GetIsVPSRunningUseCase
+      return isVPSRunning.invoke()
+    }
     public var compassHeading: Double? { heading?.degrees }
 
     public func start(startPosition: CGPoint, startAngle: Double) throws {
@@ -95,7 +98,7 @@ extension Navigation: INavigation {
         try vpsPosition.start()
         certainAngle = true
         vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startAngle, uncertainAngle: false)
-        isActivePublisher.send(true)
+        setIsVPSRunning.invoke(isVPSRunning: true)
         userStartAngle = TT2Course(fromDegrees: startAngle)
     }
 
@@ -143,7 +146,7 @@ extension Navigation: INavigation {
             try vpsPosition.start()
             vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startWithAngle ?? heading.degrees, uncertainAngle: startWithAngle == nil)
             prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
-            isActivePublisher.send(true)
+            setIsVPSRunning.invoke(isVPSRunning: true)
             userStartAngle = heading
         }
     }
@@ -240,7 +243,7 @@ extension Navigation: INavigation {
     public func stop() {
         vpsPosition.stop()
         hasStartLocationAngle = false
-        isActivePublisher.send(false)
+        setIsVPSRunning.invoke(isVPSRunning: false)
     }
 
     public func prepareAngle() { vpsPosition.prepareAngle() }
@@ -250,6 +253,7 @@ extension Navigation: INavigation {
 extension Navigation {
     func setup(inAndOutZone: InAndOutZone) {
         self.inAndOutZone = inAndOutZone
+        bindPublishers()
     }
 
     func checkForScanLocation(identifier: String) -> PositionedCode? {
@@ -293,6 +297,15 @@ extension Navigation {
 
 // MARK: Private
 private extension Navigation {
+    func bindPublishers() {
+      cancellable.removeAll()
+      vpsUpdates.invoke()
+        .sink { [weak self] (position) in
+          guard let position = position else { return }
+          self?.inAndOutZone?.onNewPosition(currentPosition: position.point)
+        }.store(in: &cancellable)
+    }
+
     func prepareAccuracyUpload(position: ItemPosition? = nil, code: PositionedCode? = nil, startDirection: Double? = nil, identifier: String? = nil, item: Item? = nil, isFloorSwap: Bool = false) {
         var event: AccuracySyncEvent.Event?
         if let position = position {

@@ -45,6 +45,7 @@ struct VSTT2Config: Config {
     injector.map(IFloorRepository.self) { FloorRepository() }
     injector.map(IItemsRepository.self) { ItemsRepository() }
     injector.map(IMLRepository.self) { MLRepository() }
+    injector.map(IStatusRepository.self) { StatusRepository() }
     injector.map(IStoreRepository.self) { StoreRepository() }
     injector.map(IUserRepository.self) { UserRepository() }
   }
@@ -103,6 +104,22 @@ struct VSTT2Config: Config {
     injector.map(LoadNLVersionUseCase.self) { LoadNLVersionUseCase() }
     injector.map(SetMLVersionUseCase.self) { SetMLVersionUseCase() }
     injector.map(SetNLVersionUseCase.self) { SetNLVersionUseCase() }
+
+    // Status use cases
+    injector.map(GetCurrentCompassHeadingUseCase.self) { GetCurrentCompassHeadingUseCase() }
+    injector.map(GetCurrentGPSLocationUseCase.self) { GetCurrentGPSLocationUseCase() }
+    injector.map(GetCurrentVPSPositionUseCase.self) { GetCurrentVPSPositionUseCase() }
+    injector.map(GetCurrentTT2SettingsUseCase.self) { GetCurrentTT2SettingsUseCase() }
+    injector.map(GetIsVPSRunningUseCase.self) { GetIsVPSRunningUseCase() }
+    injector.map(SetCompassHeadingUseCase.self) { SetCompassHeadingUseCase() }
+    injector.map(SetGPSPositionUseCase.self) { SetGPSPositionUseCase() }
+    injector.map(SetVPSPositionUseCase.self) { SetVPSPositionUseCase() }
+    injector.map(SetIsVPSRunningUseCase.self) { SetIsVPSRunningUseCase() }
+    injector.map(SetTT2SettingsUseCase.self) { SetTT2SettingsUseCase() }
+    injector.map(SubscribeToCompassHeadingUpdatesUseCase.self) { SubscribeToCompassHeadingUpdatesUseCase() }
+    injector.map(SubscribeToGPSUpdatesUseCase.self) { SubscribeToGPSUpdatesUseCase() }
+    injector.map(SubscribeToVPSUpdatesUseCase.self) { SubscribeToVPSUpdatesUseCase() }
+    injector.map(SubscribeToIsVPSRunningUseCase.self) { SubscribeToIsVPSRunningUseCase() }
 
     // Store use cases
     injector.map(FetchStoreUseCase.self) { FetchStoreUseCase() }

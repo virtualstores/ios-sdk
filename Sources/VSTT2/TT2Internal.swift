@@ -28,6 +28,12 @@ internal class TT2Internal {
     @Inject var getActiveClient: GetActiveClientUseCase
     @Inject var getCachedClients: GetCachedClientsUseCase
     @Inject var setActiveClient: SetActiveClientUseCase
+    /// Usecases - Status
+    @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
+    @Inject var isVPSRunning: SubscribeToIsVPSRunningUseCase
+    @Inject var setGPSPosition: SetGPSPositionUseCase
+    @Inject var setVPSPosition: SetVPSPositionUseCase
+    @Inject var setTT2Settings: SetTT2SettingsUseCase
     /// Usecases - Store
     @Inject var fetchStore: FetchStoreUseCase
     @Inject var fetchSwapLocations: FetchSwapLocationsUseCase
@@ -53,8 +59,10 @@ internal class TT2Internal {
     var automaticActivationOfUserMark: Bool = true
     var automaticSensorRecording: Bool { activeStore.hasSensorRecordingActive }
     
-    init() {
+    init(with apiUrl: String, apiKey: String, settings: TT2Settings) {
         offset = 0.0
+        config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
+        set(tt2Settings: settings)
         bindPublishers()
     }
 
@@ -87,9 +95,13 @@ internal class TT2Internal {
     func setActiveStore(storeId: Int64) {
         setActiveStore.invoke(storeId: storeId)
     }
-    
+
+    func set(tt2Settings: TT2Settings) {
+        setTT2Settings.invoke(settings: tt2Settings)
+    }
+
     private func bindPublishers() {
-        navigation.isActivePublisher
+        isVPSRunning.invoke()
           .sink { [weak self] (isActive) in
               if isActive {
                   self?.mapController?.reset()
@@ -115,27 +127,29 @@ internal class TT2Internal {
               guard let self = self else { return }
               switch signal {
               case .position(position: let position):
-                navigation.currentPosition = position.position
-                floorManager.onNewPostion(location: position.position)
-                mapController?.updateUserLocation(newLocation: position.position, std: position.std)
+                setVPSPosition.invoke(vpsPosition: position)
+                floorManager.onNewPostion(location: position.point)
+                mapController?.updateUserLocation(newLocation: position.point, std: position.std)
                 analytics.onNewPositionBundle(position: position)
               case .latLng(let latLng):
                 mapController?.updateLatLngPosition(latLng: latLng)
                 analytics.geopositionsManager.update(location: latLng)
+                setGPSPosition.invoke(gpsPosition: latLng.gpsLocation)
               case .gps(let location):
                 mapController?.update(location: location)
+                setGPSPosition.invoke(gpsPosition: location)
               case .ux(position: let position): break
                 //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
               case .ml(position: let position):
                 if let converter = realConverter {
-                  let coordinate = position.position.convertFromMeterToLatLng(converter: converter)
+                  let coordinate = position.point.convertFromMeterToLatLng(converter: converter)
                   mapController?.updateMLPosition(coordinate: coordinate)
-                  analytics.addMLPositions(id: floorManager.activeFloor.id, coordinate: coordinate, date: position.timestamp)
+                  analytics.addMLPositions(coordinate: coordinate, date: position.timestamp)
                 } else {
-                  mapController?.updateMLPosition(point: position.position)
+                  mapController?.updateMLPosition(point: position.point)
                 }
                 if navigation.vpsPosition.isRecording {
-                  analytics.addMLPositions(id: floorManager.activeFloor.id, position: position)
+                  analytics.addMLPositions(position: position)
                 }
               case .particles(positions: let positions):
                 mapController?.updateParticlePositions(positions: positions)
@@ -154,11 +168,11 @@ internal class TT2Internal {
                 self?.analytics.accuracyUploader.upload(syncEvent: data.event, isFloorSwap: data.isFloorSwap)
             }.store(in: &cancellable)
 
-      navigation.scanEventsPublisher
-        .compactMap { $0 }
-        .sink { [weak self] (events) in
-          events.forEach { self?.analytics.postScanEvents(scanEvent: $0) }
-        }.store(in: &cancellable)
+        navigation.scanEventsPublisher
+          .compactMap { $0 }
+          .sink { [weak self] (events) in
+            events.forEach { self?.analytics.postScanEvents(scanEvent: $0) }
+          }.store(in: &cancellable)
 
         recording.sendDataPublisher
             .sink { [weak self] (_) in
