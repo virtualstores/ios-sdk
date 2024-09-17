@@ -46,7 +46,7 @@ extension StatusRepository: IStatusRepository {
     currentCompassHeadingPublisher.send(compassHeading)
   }
 
-  func set(gpsPosition: VSFoundation.VPSOutputSignal.LatLngPosition.Location) {
+  func set(gpsPosition: VPSOutputSignal.LatLngPosition.Location) {
     currentGPSLocationPublisher.send(gpsPosition)
   }
 
