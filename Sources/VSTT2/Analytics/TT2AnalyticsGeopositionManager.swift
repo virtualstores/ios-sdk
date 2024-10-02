@@ -14,6 +14,7 @@ class TT2AnalyticsGeopositionManager {
   @Inject var positionManager: VPSPositionManager
   @Inject var activeVisitId: GetActiveVisitIDUseCase
   @Inject var uploadGeopositions: UploadGeopositionsForVisitUseCase
+  @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
   private let processMlManager: TT2AnalyticsProcessMLManager = .init()
 
   private var visitId: Int64? { activeVisitId.invoke() }
@@ -43,26 +44,45 @@ class TT2AnalyticsGeopositionManager {
       lngLat: [mlCoordinate.longitude, mlCoordinate.latitude]
     )
 
-    switch location.reliableSource {
-    case .gps: 
-      if recordedGPSPositionsLngLat[id] == nil { recordedGPSPositionsLngLat[id] = [] }
-      recordedGPSPositionsLngLat[id]?.append(gpsPosition)
-    case .undefined: break
-    case .vpsML: 
-      if recordedMLPositionsLngLat[id] == nil { recordedMLPositionsLngLat[id] = [] }
-      recordedMLPositionsLngLat[id]?.append(mlPosition)
+    switch getTT2Settings.invoke().engine {
+    case .openTerrain:
+      saveGeoposition(type: .gps, id: id, position: gpsPosition)
+      saveGeoposition(type: .vpsMl, id: id, position: mlPosition)
+    default:
+      switch location.reliableSource {
+      case .gps:
+        saveGeoposition(type: .gps, id: id, position: gpsPosition)
+      case .undefined: break
+      case .vpsML:
+        saveGeoposition(type: .vpsMl, id: id, position: mlPosition)
+      }
     }
 
-    if recordedFullGPSPositionsLngLat[id] == nil { recordedFullGPSPositionsLngLat[id] = [] }
-    recordedFullGPSPositionsLngLat[id]?.append(gpsPosition)
-
-    if recordedFullMLPositionsLngLat[id] == nil { recordedFullMLPositionsLngLat[id] = [] }
-    recordedFullMLPositionsLngLat[id]?.append(mlPosition)
+    saveGeoposition(type: .fullGPS, id: id, position: gpsPosition)
+    saveGeoposition(type: .fullVPSMl, id: id, position: mlPosition)
 
     counter += 1
     if counter >= 100 {
       counter = 0
       postGeopositions()
+    }
+  }
+
+  func saveGeoposition(type: UploadGeoPositionsParameters.TypeEnum, id: Int64, position: RecordedPositionLngLat) {
+    switch type {
+    case .gps:
+      if recordedGPSPositionsLngLat[id] == nil { recordedGPSPositionsLngLat[id] = [] }
+      recordedGPSPositionsLngLat[id]?.append(position)
+    case .fullGPS:
+      if recordedFullGPSPositionsLngLat[id] == nil { recordedFullGPSPositionsLngLat[id] = [] }
+      recordedFullGPSPositionsLngLat[id]?.append(position)
+    case .vpsMl:
+      if recordedMLPositionsLngLat[id] == nil { recordedMLPositionsLngLat[id] = [] }
+      recordedMLPositionsLngLat[id]?.append(position)
+    case .fullVPSMl:
+      if recordedFullMLPositionsLngLat[id] == nil { recordedFullMLPositionsLngLat[id] = [] }
+      recordedFullMLPositionsLngLat[id]?.append(position)
+    case .vpsMlProcessed: break
     }
   }
 
@@ -131,7 +151,7 @@ private extension TT2AnalyticsGeopositionManager {
     }
 
     fullGPSPositions.forEach { (key, value) in
-      uploadGeopositions.invoke(visitId: key, geopositions: [UploadGeoPositionsParameters.TypeEnum.fullGps.rawValue : value]) { (error) in
+      uploadGeopositions.invoke(visitId: key, geopositions: [UploadGeoPositionsParameters.TypeEnum.fullGPS.rawValue : value]) { (error) in
         if let error = error {
           Logger(verbosity: .error).log(message: "UploadGeopositions - Full GPS: \(error)")
         }

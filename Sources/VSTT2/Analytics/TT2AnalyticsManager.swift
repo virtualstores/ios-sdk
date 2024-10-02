@@ -67,7 +67,8 @@ private extension TT2AnalyticsManager {
         "tt2MLActive" : "false",
         "tt2VelocityModelName": getMLVersion.invoke()?.name ?? "",
         "tt2NLModelName": getNLVersion.invoke()?.name ?? "",
-        "tt2SdkVpsSettings": getVPSParams()
+        "tt2SdkVpsSettings": getVPSParams(),
+        "tt2VpsEngine": getTT2Settings.invoke().engine.rawValue
       ]
     }
 

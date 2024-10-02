@@ -313,7 +313,7 @@ public struct TT2Settings {
   }
 
   public enum TT2Engine: String {
-    case gpsFusion = "GPS"
+    case gpsFusion = "GPS_FUSION"
     case indoor = "INDOOR"
     case openTerrain = "OPEN_TERRAIN"
   }
