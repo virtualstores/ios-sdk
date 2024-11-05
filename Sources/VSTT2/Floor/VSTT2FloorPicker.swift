@@ -12,9 +12,11 @@ import Combine
 import VSFoundation
 
 class FloorPicker {
-    var rtlsOptionId: Int64
-    let swapLocations: [SwapLocation]
-    var filteredSwapLocations: [SwapLocation] { swapLocations.filter({ $0.rtlsOptionsId == rtlsOptionId })}
+    @Inject var cachedSwapLocations: GetCachedSwapLocationsUseCase
+    @Inject var activeFloor: GetActiveFloorUseCase
+
+    var swapLocations: [SwapLocation] { cachedSwapLocations.invoke() }
+    var filteredSwapLocations: [SwapLocation] { swapLocations.filter({ $0.rtlsOptionsId == activeFloor.invoke().id })}
 
     var switchFloorPublisher: CurrentValueSubject<(rtlsOptionsId: Int64, point: CGPoint)?, Never> = .init(nil)
 
@@ -24,18 +26,10 @@ class FloorPicker {
     var hasBeenInTeleport = false
     var changeingFloor: Bool = false
     var timeSinceInTeleport: Date?
-    var maxTimeOutSideTeleport: Double = 15.0 // 15sec
-    var changeFloorTo = 0
+    var maxTimeOutsideTeleport: Double = 15.0 // 15sec
     var currentPortal: SwapLocation?
 
-    var currentlyChangeingFloor: Bool {
-        self.hasBeenInTeleport && self.changeingFloor
-    }
-
-    init(rtlsOptionId: Int64, swapLocations: [SwapLocation]) {
-        self.rtlsOptionId = rtlsOptionId
-        self.swapLocations = swapLocations
-    }
+    var currentlyChangeingFloor: Bool { hasBeenInTeleport && changeingFloor }
 
     func onNewPosition(location: CGPoint) {
         currentPosition = location
@@ -43,38 +37,24 @@ class FloorPicker {
     }
 
     private func findPortalCorrectDir(dir: Int) -> SwapLocation.Path? {
-        var path: SwapLocation.Path?
         let tempDir = dir == -1 ? 2 : 1
-        filteredSwapLocations.forEach { swapLocation in
-            swapLocation.paths.forEach { p in
-                if p.direction.rawValue == tempDir {
-                    if isPointInside(point: currentPosition, coordinates: swapLocation.coordinates)/*, swapLocation.rtlsOptionsId == TT2.shared.navigationSpace?.id ?? -1*/ {
-                        path = p
-                    }
-                }
-            }
+        for swapLocation in filteredSwapLocations {
+            return swapLocation.paths.first(where: {
+              $0.direction.rawValue == tempDir &&
+              isPointInside(point: currentPosition, coordinates: swapLocation.coordinates)
+            })
         }
-        return path
+        return nil
     }
 
     private func findNextPortal(dir: Int) -> SwapLocation.Path? {
-        guard let paths = currentPortal?.paths else { return nil }
-
         let tempDir = dir <= -1 ? 2 : 1
-        var path: SwapLocation.Path?
-        paths.forEach { (item) in
-            path = item.direction.rawValue == tempDir ? item : nil
-        }
-        return path
+        return currentPortal?.paths.first(where: { $0.direction.rawValue == tempDir })
     }
 
     private func findNextPortalName(nextPortalId: Int64) -> (rtlsOptionsId: Int64, portalPoint: CGPoint)? {
-        for portal in swapLocations {
-            if portal.id == nextPortalId {
-                return (rtlsOptionsId: portal.rtlsOptionsId, portalPoint: portal.point.coordinate)
-            }
-        }
-        return nil
+        guard let portal = swapLocations.first(where: { $0.id == nextPortalId }) else { return nil }
+        return (portal.rtlsOptionsId, portal.point.coordinate)
     }
 
     func onNewDirection(direction: Double) {
@@ -85,7 +65,7 @@ class FloorPicker {
         if insideTeleporter() {
             hasBeenInTeleport = true
             timeSinceInTeleport = Date()
-        } else if let date = timeSinceInTeleport, (hasBeenInTeleport && (Date().timeIntervalSince(date) > maxTimeOutSideTeleport)) {
+        } else if let date = timeSinceInTeleport, (hasBeenInTeleport && (Date().timeIntervalSince(date) > maxTimeOutsideTeleport)) {
             hasBeenInTeleport = false
             currentPortal = nil
         }
@@ -93,20 +73,24 @@ class FloorPicker {
 
     func insideTeleporter() -> Bool { // put most of this shit in to init so we dont have to run it every frame.
         for swapLocation in filteredSwapLocations {
-            if isPointInside(point: currentPosition, coordinates: swapLocation.coordinates)/*, swapLocation.rtlsOptionsId == TT2.shared.navigationSpace?.id ?? -1*/ {
-                currentPortal = swapLocation
-                return true
-            }
+            guard isPointInside(point: currentPosition, coordinates: swapLocation.coordinates) else { continue }
+            currentPortal = swapLocation
+            return true
         }
         return false
     }
 
     func isPointInside(point: CGPoint, coordinates: [CGPoint]) -> Bool {
         var intersectCount = 0
-        for coordinate in 0...coordinates.count - 2 {
-            if intersectsLine(linePoint1: coordinates[coordinate], linePoint2: coordinates[coordinate+1], pee: point) { intersectCount += 1 }
+        for coordinate in 0..<coordinates.count - 1 {
+            guard
+              intersectsLine(linePoint1: coordinates[coordinate], linePoint2: coordinates[coordinate+1], pee: point)
+            else { continue }
+            intersectCount += 1
         }
-        if intersectsLine(linePoint1: coordinates[0], linePoint2: coordinates.last ?? CGPoint(), pee: point) { intersectCount += 1 } // checks line from last point to first point
+        if intersectsLine(linePoint1: coordinates[0], linePoint2: coordinates.last ?? CGPoint(), pee: point) {
+          intersectCount += 1 // checks line from last point to first point
+        }
         return intersectCount % 2 == 1
     }
 
@@ -127,29 +111,41 @@ class FloorPicker {
 
     func orientation(p1: CGPoint, p2: CGPoint, p3: CGPoint) -> Int {
         let result = ((p2.y - p1.y) * (p3.x - p2.x)) - ((p2.x - p1.x) * (p3.y - p2.y))
-        if result == 0.0 {
-            return 0
+        //if result == 0.0 {
+        //    return 0
+        //}
+        //if result > 0 {
+        //    return 1
+        //}
+        //return 2
+
+        switch result {
+        case 0.0: return 0
+        case 0...: return 1
+        default: return 2
         }
-        if result > 0 {
-            return 1
-        }
-        return 2
     }
 
     func changeOfFloor(floor: Int) {
         //print("Change floor to: \(floor)")
-        self.changeFloorTo = floor
-
-        if changeFloorTo != 0 {
-            let portalCheck = findPortalCorrectDir(dir: changeFloorTo)
-            if let portal = portalCheck != nil ? portalCheck : findNextPortal(dir: changeFloorTo) {
-                if let tupple = findNextPortalName(nextPortalId: portal.swapLocationToId) {
-                    switchFloorPublisher.send((rtlsOptionsId: tupple.rtlsOptionsId, point: tupple.portalPoint))
-                    self.rtlsOptionId = tupple.rtlsOptionsId
-                    self.changeFloorTo = 0
-                }
-            }
-        }
+        //self.changeFloorTo = floor
+        //
+        //if changeFloorTo != 0 {
+        //    let portalCheck = findPortalCorrectDir(dir: changeFloorTo)
+        //    if let portal = portalCheck != nil ? portalCheck : findNextPortal(dir: changeFloorTo) {
+        //        if let tupple = findNextPortalName(nextPortalId: portal.swapLocationToId) {
+        //            switchFloorPublisher.send((rtlsOptionsId: tupple.rtlsOptionsId, point: tupple.portalPoint))
+        //            self.rtlsOptionId = tupple.rtlsOptionsId
+        //            self.changeFloorTo = 0
+        //        }
+        //    }
+        //}
+        guard
+            floor != 0,
+            let portal = findPortalCorrectDir(dir: floor) ?? findNextPortal(dir: floor),
+            let tupple = findNextPortalName(nextPortalId: portal.swapLocationToId)
+        else { return }
+        switchFloorPublisher.send((rtlsOptionsId: tupple.rtlsOptionsId, point: tupple.portalPoint))
     }
 
     func changeOfFloorIndicator(floor: Int) {

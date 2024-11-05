@@ -16,7 +16,6 @@ protocol IFloorRepository {
   var activeNavGraph: Data? { get }
   var activeShelfGroups: [ShelfGroup]? { get }
 
-  func createConverters()
   func fetchMapFence(completion: @escaping (Error?) -> ())
   func fetchMapZones(completion: @escaping (Error?) -> ())
   func fetchNavGraph(completion: @escaping (Error?) -> ())
@@ -36,6 +35,17 @@ class FloorRepository {
   private var mapZonesData: [Int64: ZoneData] = [:]
   private var navgraphs: [Int64: Data] = [:]
   private var shelfGroups: [Int64: [ShelfGroup]] = [:]
+
+  private func createConverters() {
+    mapFences.forEach { (key, value) in
+      converters[key] = BaseCoordinateConverter(
+        heightInPixels: value.properties.height,
+        widthInPixels: value.properties.width,
+        pixelPerMeter: activeFloor.pixelsPerMeter,
+        pixelPerLatitude: 1000.0
+      )
+    }
+  }
 }
 
 extension FloorRepository: IFloorRepository {
@@ -48,17 +58,6 @@ extension FloorRepository: IFloorRepository {
   var activeMapZones: ZoneData? { mapZonesData[activeFloor.id] }
   var activeNavGraph: Data? { navgraphs[activeFloor.id] }
   var activeShelfGroups: [ShelfGroup]? { shelfGroups[activeFloor.id] }
-
-  func createConverters() {
-    mapFences.forEach { (key, value) in
-      converters[key] = BaseCoordinateConverter(
-        heightInPixels: value.properties.height,
-        widthInPixels: value.properties.width,
-        pixelPerMeter: activeFloor.pixelsPerMeter,
-        pixelPerLatitude: 1000.0
-      )
-    }
-  }
 
   func fetchMapFence(completion: @escaping (Error?) -> ()) {
     guard !floors.isEmpty else { completion(VSTT2Error.missingData); return }
@@ -77,6 +76,7 @@ extension FloorRepository: IFloorRepository {
     }
 
     group.notify(queue: .main) {
+      self.createConverters()
       completion(error)
     }
   }

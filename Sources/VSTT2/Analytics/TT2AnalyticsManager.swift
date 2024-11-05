@@ -23,8 +23,10 @@ final public class TT2AnalyticsManager {
     @Inject var activeVisitId: GetActiveVisitIDUseCase
     @Inject var createVisit: CreateVisitUseCase
     @Inject var endVisit: StopVisitUseCase
+    @Inject var getCurrentPosition: GetCurrentVPSPositionUseCase
     @Inject var getMLVersion: GetMLVersionUseCase
     @Inject var getNLVersion: GetNLVersionUseCase
+    @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
     @Inject var updateTags: UpdateTagsForActiveVisitUseCase
     @Inject var uploadGeopositions: UploadGeopositionsForActiveVisitUseCase
     @Inject var uploadPositions: UploadPositionsForVisitUseCase
@@ -33,7 +35,9 @@ final public class TT2AnalyticsManager {
 
     lazy var accuracyUploader: AccuracyUploader = { .init() }()
     lazy var stepEventUploader: StepEventUploader = { .init() }()
+    let geopositionsManager: TT2AnalyticsGeopositionManager = .init()
     var tt2Tags: [String:String] = [:]
+    var leaseExpired = false
     var visitId: Int64? { activeVisitId.invoke() }
     private var store: Store { activeStore.invoke() }
     private var uploadThreshold = 0
@@ -45,9 +49,7 @@ final public class TT2AnalyticsManager {
     private var recordedPositionsCount = 0
     var recordedMLPositions: [Int64: [RecordedPosition]] = [:]
     var recordedMLPositionsLngLat: [Int64: [RecordedPositionLngLat]] = [:]
-    var recordedMLPositionsLngLatProcessed: [Int64: [RecordedPositionLngLat]] = [:]
-    var recordedGPSPositionsLatLng: [RecordedPositionLngLat] = []
-    private var currentPosition: CGPoint?
+    private var currentPosition: CGPoint? { getCurrentPosition.invoke()?.point }
 
     deinit {
         cancellable.removeAll()
@@ -55,6 +57,40 @@ final public class TT2AnalyticsManager {
 }
 
 private extension TT2AnalyticsManager {
+    var tt2VisitStartTags: [String:String] {
+      [
+        "tt2SdkVersion" : TT2.version,
+        "tt2VpsVersion" : vpsVersion,
+        "tt2DeviceManufacturer" : "Apple",
+        "tt2DeviceModel" : UIDevice.current.modelName,
+        "tt2DeviceOs" : UIDevice.current.systemName,
+        "tt2DeviceOsVersion" : UIDevice.current.systemVersion,
+        "tt2MLActive" : "false",
+        "tt2VelocityModelName": getMLVersion.invoke()?.name ?? "",
+        "tt2NLModelName": getNLVersion.invoke()?.name ?? "",
+        "tt2SdkVpsSettings": getVPSParams(),
+        "tt2VpsEngine": getTT2Settings.invoke().engine.rawValue,
+        "tt2BatteryLevelAtStart": (UIDevice.current.batteryLevel * 100).description
+      ]
+    }
+
+    var tt2VPSSettingsDefaultTags: [String:String] {
+      [
+        "tt2SdkVpsSettingUseML" : "true",
+        "tt2SdkVpsSettingUseCoefficientOptimizer" : "true",
+        "tt2SdkVpsSettingUseDriftCompensator" : "false"
+      ]
+    }
+
+    var tt2VPSSettingsTags: [String:String]? {
+      guard let settings = store.positionServiceSettings else { return nil }
+      return [
+        "tt2SdkVpsSettingUseML" : settings.useML.description,
+        "tt2SdkVpsSettingUseCoefficientOptimizer" : settings.useCoefficientOptimizer.description,
+        "tt2SdkVpsSettingUseDriftCompensator" : settings.useDriftCompensator.description
+      ]
+    }
+
     func bindPublishers() {
       zoneManager.zoneEnteredPublisher
         .compactMap { $0 }
@@ -110,15 +146,21 @@ private extension TT2AnalyticsManager {
     // MARK: Heatmap data
     func recordPosition(rtlsOptionId: Int64, position: VPSOutputSignal.Position) {
         recordedPositionsCount += 1
-        let time = DateFormatter.standardFormatter.string(from: position.timestamp)
         if let id = visitId {
-            positionUploadWorker.insert(id: String(rtlsOptionId), xPosition: Double(position.position.x), yPosition: Double(position.position.y), time: time, uploadStatus: .pending, visitId: id)
+          positionUploadWorker.insert(
+            floorId: rtlsOptionId,
+            position: RecordedPosition(
+              xPosition: position.point.x,
+              yPosition: position.point.y,
+              timestamp: DateFormatter.standardFormatter.string(from: position.timestamp)
+            ),
+            visitId: id
+          )
         }
         if checkIfPartialUpload() {
-            positionUploadWorker.getPoints().forEach { (key, value) in
-                uploadData(visitId: key, recordedPositions: value)
-            }
             recordedPositionsCount = 0
+            uploadPositionData()
+            postMLPositionsAsTriggerEvent()
         }
     }
 
@@ -127,15 +169,18 @@ private extension TT2AnalyticsManager {
     }
     
     ///Uploading Heatmap data
-    func uploadData(visitId: Int64, recordedPositions: [String: [RecordedPosition]]) {
-      uploadPositions.invoke(visitId: visitId, positions: recordedPositions) { [weak self] (error) in
-        if let error = error {
-          self?.positionUploadWorker.updatePointsAfter(uploadingFailed: true)
-          Logger(verbosity: .debug).log(message: error.localizedDescription)
-        } else {
-          self?.positionUploadWorker.updatePointsAfter(uploadingFailed: false)
-          self?.positionUploadWorker.removePoints()
-          Logger(verbosity: .debug).log(message: "Recorded Positions Uploaded")
+    func uploadPositionData() {
+      positionUploadWorker.getParameters().forEach { (parameters) in
+        uploadPositions.invoke(parameters: parameters) { [weak self] (error) in
+          if let error = error {
+            self?.positionUploadWorker.updateObjectsAfterUpload(didFail: true)
+            Logger(verbosity: .debug).log(message: error.localizedDescription)
+          } else {
+            self?.positionUploadWorker.updateObjectsAfterUpload(didFail: false)
+            self?.positionUploadWorker.removeAllPoints()
+            self?.positionUploadWorker.removeCompletedObjects()
+            Logger(verbosity: .debug).log(message: "Recorded Positions Uploaded")
+          }
         }
       }
     }
@@ -154,7 +199,7 @@ private extension TT2AnalyticsManager {
     func getVPSParams() -> String {
       var string = "{"
       navigationManager
-        .positionManager
+        .vpsPosition
         .vpsParticleFilterSettings
         .forEach { string = string + "\($0.key)=\($0.value), " }
       if string.hasSuffix(", ") { string.removeLast(2) }
@@ -163,60 +208,39 @@ private extension TT2AnalyticsManager {
     }
 }
 
-private extension TT2AnalyticsManager {
-  var tt2VisitStartTags: [String:String] {
-    [
-      "tt2SdkVersion" : TT2.version,
-      "tt2VpsVersion" : vpsVersion,
-      "tt2DeviceManufacturer" : "Apple",
-      "tt2DeviceModel" : UIDevice.current.modelName,
-      "tt2DeviceOs" : UIDevice.current.systemName,
-      "tt2DeviceOsVersion" : UIDevice.current.systemVersion,
-      "tt2MLActive" : "false",
-      "tt2VelocityModelName": getMLVersion.invoke()?.name ?? "",
-      "tt2NLModelName": getNLVersion.invoke()?.name ?? "",
-      "tt2SdkVpsSettings": getVPSParams()
-    ]
-  }
-
-  var tt2VPSSettingsDefaultTags: [String:String] {
-    [
-      "tt2SdkVpsSettingUseML" : "true",
-      "tt2SdkVpsSettingUseCoefficientOptimizer" : "true",
-      "tt2SdkVpsSettingUseDriftCompensator" : "false"
-    ]
-  }
-
-  var tt2VPSSettingsTags: [String:String]? {
-    guard let settings = store.positionServiceSettings else { return nil }
-    return [
-      "tt2SdkVpsSettingUseML" : settings.useML.description,
-      "tt2SdkVpsSettingUseCoefficientOptimizer" : settings.useCoefficientOptimizer.description,
-      "tt2SdkVpsSettingUseDriftCompensator" : settings.useDriftCompensator.description
-    ]
-  }
-}
-
 extension TT2AnalyticsManager {
   func setup(uploadThreshold: Int = 100) {
     self.uploadThreshold = uploadThreshold
     bindPublishers()
   }
 
-  func addMLPositions(id: Int64, position: VPSOutputSignal.Position) {
-    let position = RecordedPosition(xPosition: position.position.x, yPosition: position.position.y, timestamp: DateFormatter.standardFormatter.string(from: position.timestamp))
+  func addMLPositions(position: VPSOutputSignal.Position) {
+    guard let id = visitId else { return }
     if recordedMLPositions[id] == nil { recordedMLPositions[id] = [] }
-    recordedMLPositions[id]?.append(position)
+    recordedMLPositions[id]?.append(RecordedPosition(
+      xPosition: position.point.x,
+      yPosition: position.point.y,
+      timestamp: DateFormatter.standardFormatter.string(from: position.timestamp)
+    ))
   }
 
-  func addMLPositions(id: Int64, coordinate: CLLocationCoordinate2D) {
-    let position = RecordedPositionLngLat(
-      airPressure: navigationManager.positionManager.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
-      timestamp: DateFormatter.standardFormatter.string(from: Date()),
-      lngLat: [coordinate.longitude, coordinate.latitude]
-    )
+  func addMLPositions(coordinate: CLLocationCoordinate2D, date: Date = Date()) {
+    guard let id = visitId else { return }
     if recordedMLPositionsLngLat[id] == nil { recordedMLPositionsLngLat[id] = [] }
-    recordedMLPositionsLngLat[id]?.append(position)
+    recordedMLPositionsLngLat[id]?.append(RecordedPositionLngLat(
+      airPressure: navigationManager.vpsPosition.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
+      timestamp: DateFormatter.standardFormatter.string(from: date),
+      lngLat: [coordinate.longitude, coordinate.latitude]
+    ))
+  }
+
+  func postMLPositionsAsTriggerEvent() {
+    if let event = mlPositionsToTriggerEvent() {
+      addTriggerEvent(for: event)
+    }
+    if let event = mlPositionsLngLatToTriggerEvent() {
+      addTriggerEvent(for: event)
+    }
   }
 
   func mlPositionsToTriggerEvent() -> TriggerEvent? {
@@ -239,29 +263,13 @@ extension TT2AnalyticsManager {
     return TriggerEvent(id: "", rtlsOptionsId: rtlsOptionId, name: "MLPositionsLngLat", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsLatLngTrigger")), tags: ["mlPositionsLatLng" : string])
   }
 
-  func postGeopositions() {
-    var positions: [String: [RecordedPositionLngLat]] = [:]
-    positions[UploadGeoPositionsParameters.TypeEnum.gps.rawValue] = recordedGPSPositionsLatLng
-    positions[UploadGeoPositionsParameters.TypeEnum.vpsMl.rawValue] = recordedMLPositionsLngLat.flatMap({ $0.value })
-    positions[UploadGeoPositionsParameters.TypeEnum.vpsMlProcessed.rawValue] = recordedMLPositionsLngLatProcessed.flatMap({ $0.value })
-    uploadGeopositions.invoke(geopositions: positions) { [weak self] (error) in
-      if let error = error {
-        Logger(verbosity: .error).log(message: "UploadGeopositions \(error)")
-      } else {
-        self?.recordedGPSPositionsLatLng.removeAll()
-        self?.recordedMLPositionsLngLatProcessed.removeAll()
-      }
-    }
-  }
-
   func onNewPositionBundle(position: VPSOutputSignal.Position) {
     guard Date().timeIntervalSince(latestRecordedPosition) > 0.2 else { return }
     self.latestRecordedPosition = Date()
-    currentPosition = position.position
     if isRecording {
       recordPosition(rtlsOptionId: rtlsOptionId, position: position)
-      zoneManager.onNewPosition(currentPosition: position.position)
-      eventManager.onNewPosition(currentPosition: position.position)
+      zoneManager.onNewPosition(currentPosition: position.point)
+      eventManager.onNewPosition(currentPosition: position.point)
     }
   }
 
@@ -288,6 +296,18 @@ extension TT2AnalyticsManager {
     }
   }
 
+  func updateVisitWithStopTags() {
+    let tags = [
+      "tt2BatteryLevelAtEnd": (UIDevice.current.batteryLevel * 100).description,
+      "tt2LeaseExpired": leaseExpired.description
+    ]
+    updateTags.invoke(tags: tags) { (error) in
+      if let error = error {
+        Logger(verbosity: .debug).log(message: "UpdateVisitWithStopTagsError \(error)")
+      }
+    }
+  }
+
   func rescueMode() {
     accuracyUploader.numberOfRescueModes += 1
     uploadTriggerEvents(request: postTriggerEvent(for: TriggerEvent(rtlsOptionsId: rtlsOptionId, name: "RescueModeTriggerEvent", description: "", eventType: .appTrigger(.init(event: "RescueModeTriggerEvent")), userPosition: currentPosition)))
@@ -305,7 +325,7 @@ extension TT2AnalyticsManager: TT2Analytics {
     tt2Tags = editedTags.filter { $0.key.lowercased().contains("tt2") }
 
     createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData) { [weak self] (result) in
-      self?.navigationManager.positionManager.set(sessionId: self?.visitId?.description)
+      self?.navigationManager.vpsPosition.set(sessionId: self?.visitId?.description)
       completion(result)
     }
   }
@@ -320,28 +340,22 @@ extension TT2AnalyticsManager: TT2Analytics {
   }
 
   public func stopVisit() {
-    positionUploadWorker.getPoints().forEach { (key, value) in
-      uploadData(visitId: key, recordedPositions: value)
-    }
+    positionUploadWorker.saveObjects()
+    uploadPositionData()
     stepEventUploader.upload()
-    postGeopositions()
+    geopositionsManager.stopVisit()
     if let point = currentPosition {
       zoneManager.stopped(currentPosition: point)
-      currentPosition = nil
     }
-    if let event = mlPositionsToTriggerEvent() {
-      addTriggerEvent(for: event)
-    }
-    if let event = mlPositionsLngLatToTriggerEvent() {
-      addTriggerEvent(for: event)
-    }
+    postMLPositionsAsTriggerEvent()
+    updateVisitWithStopTags()
     endVisit.invoke { [weak self] (error) in
       if let error = error {
         Logger(verbosity: .debug).log(message: "StopVisitError: \(error.localizedDescription)")
       } else {
         self?.positionUploadWorker.removeAllPoints()
         self?.recordedPositionsCount = 0
-        self?.navigationManager.positionManager.set(sessionId: nil)
+        self?.navigationManager.vpsPosition.set(sessionId: nil)
       }
     }
   }
@@ -351,12 +365,14 @@ extension TT2AnalyticsManager: TT2Analytics {
     uploadTriggerEvents(request: event)
   }
 
-  public func addGPSPositions(id: Int64, coordinate: CLLocationCoordinate2D) {
-    let position = RecordedPositionLngLat(
-      airPressure: navigationManager.positionManager.altimeterPublisher.value?.cmAltitude.pressure.doubleValue,
-      timestamp: DateFormatter.standardFormatter.string(from: Date()),
-      lngLat: [coordinate.longitude, coordinate.latitude]
-    )
-    recordedGPSPositionsLatLng.append(position)
+  public func addGeopositions(coordinate: CLLocationCoordinate2D, for tag: String) {
+    geopositionsManager.record(coordinate: coordinate, for: tag)
+    addTriggerEvent(for: TriggerEvent(
+      id: tag,
+      rtlsOptionsId: rtlsOptionId,
+      name: tag,
+      description: tag,
+      eventType: .coordinateTrigger(.init(point: coordinate.asPoint, radius: 0, type: .enter))
+    ))
   }
 }

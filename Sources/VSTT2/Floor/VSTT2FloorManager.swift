@@ -11,7 +11,6 @@ import Combine
 import CoreGraphics
 
 class VSTT2FloorManager {
-  @Inject var createConverters: CreateCoordinateConvertersUseCase
   @Inject var fetchMapFence: FetchMapFenceUseCase
   @Inject var fetchMapZones: FetchMapZonesUseCase
   @Inject var fetchNavGraph: FetchNavGraphUseCase
@@ -25,17 +24,16 @@ class VSTT2FloorManager {
   @Inject var getFloors: GetCachedFloorsUseCase
   @Inject var getMapZones: GetMapZonesUseCase
   @Inject var setActiveFloor: SetActiveFloorUseCase
-  @Inject var setFloors: SetFloorsUseCase
 
   var switchFloorPublisher: CurrentValueSubject<(rtlsOptions: RtlsOptions, point: CGPoint?)?, Never> = .init(nil)
 
   private var cancellable = Set<AnyCancellable>()
   private let dispatchGroup = DispatchGroup()
+  private let floorPicker = FloorPicker()
 
-  private(set) var swapLocations: [SwapLocation] = []
-  private lazy var floorPicker: FloorPicker = {
-    FloorPicker(rtlsOptionId: activeFloor.id, swapLocations: swapLocations)
-  }()
+  init() {
+    bindPublishers()
+  }
 
   deinit {
     cancellable.removeAll()
@@ -43,18 +41,24 @@ class VSTT2FloorManager {
 }
 
 private extension VSTT2FloorManager {
-  func getFloorData(completion: @escaping ((mapFence: MapFence?, zoneData: [Int64: ZoneData]?)) -> ()) {
+  func bindPublishers() {
+    floorPicker.switchFloorPublisher
+      .compactMap { $0 }
+      .sink(receiveValue: { [weak self] (data) in
+        guard let rtlsOptions = self?.floors.first(where: { $0.id == data.rtlsOptionsId }) else { return }
+        self?.switchFloorPublisher.send((rtlsOptions: rtlsOptions, point: data.point))
+      }).store(in: &cancellable)
+  }
+
+  func getFloorData(completion: @escaping ((mapFence: MapFence, zoneData: [Int64: ZoneData])) -> ()) {
     getMapFenceData()
     getMapZonesData()
     getNavGraph()
     getShelfGroups()
 
     dispatchGroup.notify(queue: .main) {
-      DispatchQueue.main.async {
-        self.createConverters.invoke()
-        if let mapFence = self.getActiveMapFence.invoke() {
-          completion((mapFence: mapFence, zoneData: self.zoneData))
-        }
+      if let mapFence = self.getActiveMapFence.invoke() {
+        completion((mapFence: mapFence, zoneData: self.zoneData))
       }
     }
   }
@@ -109,28 +113,10 @@ extension VSTT2FloorManager {
   var startCode: PositionedCode? { activeFloor.scanLocations?.first(where: { $0.type == .start }) }
   var stopCode: PositionedCode? { activeFloor.scanLocations?.first(where: { $0.type == .stop }) ?? startCode }
 
-  func setup(swapLocations: [SwapLocation]) {
-    self.swapLocations = swapLocations
-    floorPicker.switchFloorPublisher
-      .compactMap { $0 }
-      .sink(receiveValue: { [weak self] (data) in
-        guard let rtlsOptions = self?.floors.first(where: { $0.id == data.rtlsOptionsId }) else { return }
-        self?.switchFloorPublisher.send((rtlsOptions: rtlsOptions, point: data.point))
-      }).store(in: &cancellable)
-  }
-
-  func setupFloors(with rtlsOptions: [RtlsOptions]) {
-    setFloors.invoke(cachedFloors: rtlsOptions)
-  }
-
-  func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence?, zoneData: [Int64: ZoneData]?)) -> ()) {
+  func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence, zoneData: [Int64: ZoneData])) -> ()) {
     guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
-
     setActiveFloor.invoke(rtlsOptionsId: rtlsOptions.id)
-
-    getFloorData { (mapFence, zoneData) in
-      completion((mapFence: mapFence, zoneData: zoneData))
-    }
+    getFloorData(completion: completion)
   }
 
   func onNewPostion(location: CGPoint) {

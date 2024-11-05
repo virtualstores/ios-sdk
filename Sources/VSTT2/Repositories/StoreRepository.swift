@@ -10,13 +10,14 @@ import VSFoundation
 
 protocol IStoreRepository {
   var activeStore: Store { get }
-  
+  var zonesTree: TT2ZonesTree { get }
+
   func fetchStores(clientId: Int64, completion: @escaping (Error?) -> ())
   func fetchSwapLocations(completion: @escaping (Error?) -> ())
   func getCachedStores() -> [Store]
   func getCachedSwapLocations() -> [SwapLocation]
-  func setCachedStores(stores: [Store])
-  func setActiveStore(store: Store)
+  func set(activeStore store: Store)
+  func set(cachedStores stores: [Store])
 }
 
 class StoreRepository {
@@ -25,12 +26,18 @@ class StoreRepository {
   private var _activeStore: Store?
   private var cachedStores: [Store] = []
   private var cachedSwapLocations: [SwapLocation] = []
+  private var _zonesTree: TT2ZonesTree?
 }
 
 extension StoreRepository: IStoreRepository {
   var activeStore: Store {
     guard let store = _activeStore else { fatalError("Store not initialized") }
     return store
+  }
+
+  var zonesTree: TT2ZonesTree {
+    guard let tree = _zonesTree else { fatalError("Tree not initialized") }
+    return tree
   }
 
   func fetchStores(clientId: Int64, completion: @escaping (Error?) -> ()) {
@@ -64,11 +71,12 @@ extension StoreRepository: IStoreRepository {
     cachedSwapLocations
   }
 
-  func setCachedStores(stores: [Store]) {
-    cachedStores = stores
+  func set(activeStore store: Store) {
+    _activeStore = store
+    _zonesTree = .init()
   }
 
-  func setActiveStore(store: Store) {
-    _activeStore = store
+  func set(cachedStores stores: [Store]) {
+    cachedStores = stores
   }
 }

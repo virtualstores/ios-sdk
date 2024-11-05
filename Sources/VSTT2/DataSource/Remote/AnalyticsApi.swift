@@ -14,7 +14,7 @@ protocol IAnalyticsApi {
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
   func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, positions: [String:[RecordedPosition]], completion: @escaping (Error?) -> ())
+  func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ())
 }
@@ -100,13 +100,10 @@ extension AnalyticsApi: IAnalyticsApi {
       }.store(in: &cancellable)
   }
 
-  func upload(visitId: Int64, positions: [String:[RecordedPosition]], completion: @escaping (Error?) -> ()) {
+  func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ()) {
     uploadPositionsService
-      .call(with: UploadPositionsParameters(
-        visitId: visitId,
-        requestId: UUID().uuidString.uppercased(),
-        positionGrps: positions
-      )).sink { (result) in
+      .call(with: parameters)
+      .sink { (result) in
         switch result {
         case .finished: break
         case .failure(let error): completion(error)

@@ -22,8 +22,10 @@ struct UploadGeoPositionsParameters {
 
   enum TypeEnum: String {
     case gps = "gps"
-    case vpsMl = "vps-ml"
-    case vpsMlProcessed = "vps-ml-processed"
+    case fullGPS = "full-gps"
+    case vpsMl = "tt2"
+    case fullVPSMl = "full-tt2"
+    case vpsMlProcessed = "tt2-processed"
   }
 }
 

@@ -6,12 +6,12 @@
 // Copyright Virtual Stores - 2021
 
 import Foundation
-import SQLite
 import UIKit
 import VSFoundation
 
 final class PositionUploadWorker {
     @Inject var persistence: Persistence
+    @Inject var activeStore: GetActiveStoreUseCase
     var positionObjects: [PositionObject] { persistence.get(arrayOf: PositionObject.self) }
 
     func insert(id: String, xPosition: Double, yPosition: Double, time: String, uploadStatus: PointStatus, visitId: Int64) {
@@ -29,6 +29,80 @@ final class PositionUploadWorker {
             Logger.init(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
                                                 message: "Save Point Object SQLite error")
         }
+    }
+
+    var positionObjects2: [Int64: [String: [RecordedPosition]]] = [:]
+    func insert(floorId: Int64, position: RecordedPosition, visitId: Int64) {
+      positionObjects2[visitId, default: [:]][floorId.description, default: []].append(position)
+      if positionObjects2[visitId]?[floorId.description]?.count ?? 0 > 100 {
+        saveObjects()
+      }
+    }
+
+    func saveObjects() {
+      positionObjects2.forEach { (key, value) in
+        var object = UploadPositionsPersistence()
+        object.serverConnection = activeStore.invoke().statServerConnection
+        object.visitId = key
+        object.requestId = UUID().uuidString.uppercased()
+        object.positionGrps = value
+        object.status = PointStatus.pending.rawValue
+        do {
+          try persistence.save(&object)
+          positionObjects2.removeValue(forKey: key)
+        } catch {
+          Logger(verbosity: .silent).log(
+            tag: Logger.createTag(fileName: #file, functionName: #function),
+            message: "Save Point Object SQLite error")
+        }
+      }
+    }
+
+    func getParameters() -> [UploadPositionsParameters] {
+      let objects = persistence
+        .get(arrayOf: UploadPositionsPersistence.self)
+        .filter { $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
+
+      updateStatus(for: objects, status: .inProgress)
+      return objects
+        .map { $0.asParameters }
+        .compactMap { $0 }
+    }
+
+    func updateObjectsAfterUpload(didFail: Bool) {
+      let objects = persistence
+        .get(arrayOf: UploadPositionsPersistence.self)
+        .filter { $0.status == PointStatus.inProgress.rawValue }
+      updateStatus(for: objects, status: didFail ? .fail : .complete)
+    }
+
+    func removeCompletedObjects() {
+      let objects = persistence
+        .get(arrayOf: UploadPositionsPersistence.self)
+        .filter { $0.status == PointStatus.complete.rawValue }
+      objects.forEach { (object) in
+        do {
+          try persistence.delete(object)
+        } catch {
+          Logger(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+                                         message: "Remove Points After Uploading SQLite error")
+        }
+      }
+    }
+
+    private func updateStatus(for objects: [UploadPositionsPersistence], status: PointStatus) {
+      objects.forEach { (object) in
+        var editableObject: UploadPositionsPersistence
+        editableObject = object
+        editableObject.status = status.rawValue
+
+        do {
+          try persistence.save(&editableObject)
+        } catch {
+          Logger(verbosity: .silent).log(tag: Logger.createTag(fileName: #file, functionName: #function),
+                                         message: "Update Points SQLite error")
+        }
+      }
     }
 
     /// Will return filtered points
