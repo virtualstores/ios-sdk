@@ -48,11 +48,21 @@ class GetCachedSwapLocationsUseCase {
   }
 }
 
-class SetActiveStoreUseCase {
+class GetZonesTreeUseCase {
   @Inject var repository: IStoreRepository
 
+  func invoke() -> TT2ZonesTree {
+    repository.zonesTree
+  }
+}
+
+class SetActiveStoreUseCase {
+  @Inject var floorRepository: IFloorRepository
+  @Inject var storeRepository: IStoreRepository
+
   func invoke(storeId: Int64) {
-    guard let store = repository.getCachedStores().first(where: { $0.id == storeId }) else { fatalError("Could not find store") }
-    repository.setActiveStore(store: store)
+    guard let store = storeRepository.getCachedStores().first(where: { $0.id == storeId }) else { fatalError("Could not find store") }
+    storeRepository.set(activeStore: store)
+    floorRepository.set(cachedFloors: store.rtlsOptions)
   }
 }

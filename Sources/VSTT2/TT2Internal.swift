@@ -13,29 +13,39 @@ import CoreLocation
 
 internal class TT2Internal {
     /// Managers for helping VSTT2 to work with separate small modules
-    @Inject var config: EnvironmentConfig
-    @Inject var navigation: Navigation
     @Inject var analytics: TT2AnalyticsManager
-    @Inject var floorManager: VSTT2FloorManager
-    @Inject var position: Position
-    @Inject var user: IUserManager
-    @Inject var recording: RecordingManager
     @Inject var awsS3UploadManager: AWSS3UploadManager
+    @Inject var config: EnvironmentConfig
+    @Inject var floorManager: VSTT2FloorManager
+    @Inject var leaseManager: ILeaseManager
     @Inject var mlModelManager: VSMLModelManager
+    @Inject var navigation: Navigation
+    @Inject var position: Position
+    @Inject var recording: RecordingManager
+    @Inject var user: IUserManager
 
     /// Usecases - Client
     @Inject var fetchClient: FetchClientsUseCase
     @Inject var getActiveClient: GetActiveClientUseCase
     @Inject var getCachedClients: GetCachedClientsUseCase
     @Inject var setActiveClient: SetActiveClientUseCase
+    /// Usecases - Status
+    @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
+    @Inject var isVPSRunning: SubscribeToIsVPSRunningUseCase
+    @Inject var setGPSPosition: SetGPSPositionUseCase
+    @Inject var setVPSPosition: SetVPSPositionUseCase
+    @Inject var setTT2Settings: SetTT2SettingsUseCase
     /// Usecases - Store
     @Inject var fetchStore: FetchStoreUseCase
     @Inject var fetchSwapLocations: FetchSwapLocationsUseCase
     @Inject var getActiveStore: GetActiveStoreUseCase
     @Inject var getCachedStore: GetCachedStoreUseCase
     @Inject var getCachedSwapLocations: GetCachedSwapLocationsUseCase
+    @Inject var getZonesTree: GetZonesTreeUseCase
     @Inject var setActiveStore: SetActiveStoreUseCase
-    
+    /// Usecases - Generic
+    @Inject var stopTT2: StopTT2UseCase
+
     let deviceOrientationUploader: DeviceOrientationUploader = .init()
     var mapController: IMapController?
     var wifiController: IWiFiController?
@@ -52,8 +62,10 @@ internal class TT2Internal {
     var automaticActivationOfUserMark: Bool = true
     var automaticSensorRecording: Bool { activeStore.hasSensorRecordingActive }
     
-    init() {
+    init(with apiUrl: String, apiKey: String, settings: TT2Settings) {
         offset = 0.0
+        config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
+        set(tt2Settings: settings)
         bindPublishers()
     }
 
@@ -86,9 +98,13 @@ internal class TT2Internal {
     func setActiveStore(storeId: Int64) {
         setActiveStore.invoke(storeId: storeId)
     }
-    
+
+    func set(tt2Settings: TT2Settings) {
+        setTT2Settings.invoke(settings: tt2Settings)
+    }
+
     private func bindPublishers() {
-        navigation.isActivePublisher
+        isVPSRunning.invoke()
           .sink { [weak self] (isActive) in
               if isActive {
                   self?.mapController?.reset()
@@ -100,7 +116,7 @@ internal class TT2Internal {
               }
           }.store(in: &cancellable)
 
-        navigation.positionManager.recordingPublisher
+        navigation.vpsPosition.recordingPublisher
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data, sessionId, lastFile) in
                 let sessionId = self?.analytics.visitId?.description ?? sessionId
@@ -108,35 +124,42 @@ internal class TT2Internal {
                 self?.awsS3UploadManager.sendCollectedDataToS3()
             }).store(in: &cancellable)
 
-        navigation.positionManager.outputSignalPublisher
+        navigation.vpsPosition.outputSignalPublisher
             .compactMap { $0 }
             .sink { [weak self] (signal) in
               guard let self = self else { return }
               switch signal {
               case .position(position: let position):
-                navigation.currentPosition = position.position
-                floorManager.onNewPostion(location: position.position)
-                mapController?.updateUserLocation(newLocation: position.position, std: position.std)
+                setVPSPosition.invoke(vpsPosition: position)
+                floorManager.onNewPostion(location: position.point)
+                mapController?.updateUserLocation(newLocation: position.point, std: position.std)
                 analytics.onNewPositionBundle(position: position)
+              case .latLng(let latLng):
+                mapController?.updateLatLngPosition(latLng: latLng)
+                analytics.geopositionsManager.update(location: latLng)
+                setGPSPosition.invoke(gpsPosition: latLng.gpsLocation)
+              case .gps(let location):
+                mapController?.update(location: location)
+                setGPSPosition.invoke(gpsPosition: location)
               case .ux(position: let position): break
                 //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
               case .ml(position: let position):
                 if let converter = realConverter {
-                  let coordinate = position.position.convertFromMeterToLatLng(converter: converter)
+                  let coordinate = position.point.convertFromMeterToLatLng(converter: converter)
                   mapController?.updateMLPosition(coordinate: coordinate)
-                  analytics.addMLPositions(id: floorManager.activeFloor.id, coordinate: coordinate)
+                  analytics.addMLPositions(coordinate: coordinate, date: position.timestamp)
                 } else {
-                  mapController?.updateMLPosition(point: position.position)
+                  mapController?.updateMLPosition(point: position.point)
                 }
-                if navigation.positionManager.isRecording {
-                  analytics.addMLPositions(id: floorManager.activeFloor.id, position: position)
-                }
+                analytics.addMLPositions(position: position)
               case .particles(positions: let positions):
                 mapController?.updateParticlePositions(positions: positions)
               case .rotation(heading: let heading):
                 let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
                 mapController?.updateUserDirection(newDirection: heading)
               case .rescueMode: analytics.rescueMode()
+              case .floorChange(difference: let difference, timestamp: let timestamp):
+                floorManager.onNewFloor(floor: difference)
               }
             }.store(in: &cancellable)
         
@@ -146,11 +169,11 @@ internal class TT2Internal {
                 self?.analytics.accuracyUploader.upload(syncEvent: data.event, isFloorSwap: data.isFloorSwap)
             }.store(in: &cancellable)
 
-      navigation.scanEventsPublisher
-        .compactMap { $0 }
-        .sink { [weak self] (events) in
-          events.forEach { self?.analytics.postScanEvents(scanEvent: $0) }
-        }.store(in: &cancellable)
+        navigation.scanEventsPublisher
+          .compactMap { $0 }
+          .sink { [weak self] (events) in
+            events.forEach { self?.analytics.postScanEvents(scanEvent: $0) }
+          }.store(in: &cancellable)
 
         recording.sendDataPublisher
             .sink { [weak self] (_) in
@@ -222,42 +245,6 @@ internal class TT2Internal {
         earthRadiusInMeters: 6378137.0,
         pixelsPerMeter: 50
       )
-    }
-
-  func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool = false) -> MLProcessedPath? {
-      guard
-        let mlPositions = analytics.recordedMLPositionsLngLat[floorManager.activeFloor.id],
-        mlPositions.count > 0,
-        let converter = realConverter
-      else { return nil }
-      if clearAnalytics {
-        analytics.recordedMLPositionsLngLat[floorManager.activeFloor.id]?.removeAll()
-      }
-      return navigation.positionManager.processMLPath(
-        path: mlPositions.map({ CLLocationCoordinate2D(latitude: $0.lngLat[1], longitude: $0.lngLat[0]).fromLatLngToMeter(converter: converter) }),
-        pathEndPoint: coordinate.fromLatLngToMeter(converter: converter)
-      )
-    }
-
-    func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D) {
-      guard
-        let mlPositions = analytics.recordedMLPositionsLngLat[floorManager.activeFloor.id],
-        let converter = realConverter,
-        let path = processMLPath(coordinate: coordinate)?.path
-          .map({ $0.convertFromMeterToLatLng(converter: converter) })
-          .map({ [$0.longitude, $0.latitude] })
-      else { return }
-
-      analytics.recordedMLPositionsLngLatProcessed[floorManager.activeFloor.id] = mlPositions.enumerated().map({ RecordedPositionLngLat(
-        airPressure: $0.element.airPressure,
-        timestamp: $0.element.timestamp,
-        lngLat: path[$0.offset]
-      )})
-    }
-
-    func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D) {
-      guard let converter = realConverter else { return }
-      navigation.syncAngleCorrection(angle: angle, position: coordinate.fromLatLngToMeter(converter: converter))
     }
 }
 

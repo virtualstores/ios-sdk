@@ -8,14 +8,6 @@
 import Foundation
 import VSFoundation
 
-class CreateCoordinateConvertersUseCase {
-  @Inject var repository: IFloorRepository
-
-  func invoke() {
-    repository.createConverters()
-  }
-}
-
 // MARK: - Fetchers
 
 class FetchMapFenceUseCase {

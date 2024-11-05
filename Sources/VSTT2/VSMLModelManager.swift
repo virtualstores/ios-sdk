@@ -18,6 +18,7 @@ class VSMLModelManager {
   @Inject var getMLVersion: GetMLVersionUseCase
   @Inject var getNLModel: GetNLModelUseCase
   @Inject var getNLVersion: GetNLVersionUseCase
+  @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
   @Inject var getVPSMLModelParams: GetVPSMLModelParamsUseCase
   @Inject var getVPSNLModelParams: GetVPSNLModelParamsUseCase
   @Inject var loadMLVersion: LoadMLVersionUseCase
@@ -25,17 +26,18 @@ class VSMLModelManager {
   @Inject var setMLVersion: SetMLVersionUseCase
   @Inject var setNLVersion: SetNLVersionUseCase
 
-  func setup(params: TT2ModelParams?) {
+  func fetchInterface(completion: @escaping (Error?) -> Void) {
     fetchMLInterfaceVersions.invoke { [weak self] (error) in
       if let error = error {
         print("File", "Error getting Version", error)
-      } else if let catalog = self?.getMLCatalog.invoke() {
-        self?.handle(mlCatalog: catalog, params: params ?? .init())
+        completion(error)
+      } else if let catalog = self?.getMLCatalog.invoke(), let settings = self?.getTT2Settings.invoke() {
+        self?.handle(mlCatalog: catalog, params: settings.params, completion: completion)
       }
     }
   }
 
-  func handle(mlCatalog: MLInterfaceVersions.MLCatalog, params: TT2ModelParams) {
+  func handle(mlCatalog: MLInterfaceVersions.MLCatalog, params: TT2Settings.TT2ModelParams, completion: @escaping (Error?) -> ()) {
     if let version = mlCatalog.getLatestSupportedVelocityModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
       //print("MLVersion", mlVersion)
       loadMLVersion.invoke(version: version) { [weak self] (error) in
@@ -48,6 +50,7 @@ class VSMLModelManager {
           if let error = error {
             print("Error compiling MLVersion", error)
           }
+          completion(error)
         }
       }
     }
@@ -79,17 +82,5 @@ extension Array {
   func split(into size: Int) -> [[Element]] {
     stride(from: 0, to: count, by: size)
       .map { Array(self[$0..<Swift.min($0 + size, count)]) }
-  }
-}
-
-public struct TT2ModelParams {
-  let target: Int
-  let targetMLModelVersion: Int?
-  let targetNLModelVersion: Int?
-
-  public init(target: Int = 1, targetMLModelVersion: Int? = nil, targetNLModelVersion: Int? = nil) {
-    self.target = target
-    self.targetMLModelVersion = targetMLModelVersion
-    self.targetNLModelVersion = targetNLModelVersion
   }
 }

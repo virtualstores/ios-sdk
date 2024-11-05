@@ -45,6 +45,7 @@ struct VSTT2Config: Config {
     injector.map(IFloorRepository.self) { FloorRepository() }
     injector.map(IItemsRepository.self) { ItemsRepository() }
     injector.map(IMLRepository.self) { MLRepository() }
+    injector.map(IStatusRepository.self) { StatusRepository() }
     injector.map(IStoreRepository.self) { StoreRepository() }
     injector.map(IUserRepository.self) { UserRepository() }
   }
@@ -56,6 +57,7 @@ struct VSTT2Config: Config {
     injector.map(StopVisitUseCase.self) { StopVisitUseCase() }
     injector.map(UpdateTagsForActiveVisitUseCase.self) { UpdateTagsForActiveVisitUseCase() }
     injector.map(UploadGeopositionsForActiveVisitUseCase.self) { UploadGeopositionsForActiveVisitUseCase() }
+    injector.map(UploadGeopositionsForVisitUseCase.self) { UploadGeopositionsForVisitUseCase() }
     injector.map(UploadPositionsForVisitUseCase.self) { UploadPositionsForVisitUseCase() }
     injector.map(UploadScanEventForActiveVisitUseCase.self) { UploadScanEventForActiveVisitUseCase() }
     injector.map(UploadTriggerEventForActiveVisitUseCase.self) { UploadTriggerEventForActiveVisitUseCase() }
@@ -73,7 +75,6 @@ struct VSTT2Config: Config {
     injector.map(DecideWhichTriggerEventToDisplayUseCase.self) { DecideWhichTriggerEventToDisplayUseCase() }
 
     // Floor use cases
-    injector.map(CreateCoordinateConvertersUseCase.self) { CreateCoordinateConvertersUseCase() }
     injector.map(FetchMapFenceUseCase.self) { FetchMapFenceUseCase() }
     injector.map(FetchMapZonesUseCase.self) { FetchMapZonesUseCase() }
     injector.map(FetchNavGraphUseCase.self) { FetchNavGraphUseCase() }
@@ -88,6 +89,9 @@ struct VSTT2Config: Config {
     injector.map(GetMapZonesUseCase.self) { GetMapZonesUseCase() }
     injector.map(SetActiveFloorUseCase.self) { SetActiveFloorUseCase() }
     injector.map(SetFloorsUseCase.self) { SetFloorsUseCase() }
+
+    // Generic use cases
+    injector.map(StopTT2UseCase.self) { StopTT2UseCase() }
 
     // ML use cases
     injector.map(CompileModelUseCase.self) { CompileModelUseCase() }
@@ -104,12 +108,29 @@ struct VSTT2Config: Config {
     injector.map(SetMLVersionUseCase.self) { SetMLVersionUseCase() }
     injector.map(SetNLVersionUseCase.self) { SetNLVersionUseCase() }
 
+    // Status use cases
+    injector.map(GetCurrentCompassHeadingUseCase.self) { GetCurrentCompassHeadingUseCase() }
+    injector.map(GetCurrentGPSLocationUseCase.self) { GetCurrentGPSLocationUseCase() }
+    injector.map(GetCurrentVPSPositionUseCase.self) { GetCurrentVPSPositionUseCase() }
+    injector.map(GetCurrentTT2SettingsUseCase.self) { GetCurrentTT2SettingsUseCase() }
+    injector.map(GetIsVPSRunningUseCase.self) { GetIsVPSRunningUseCase() }
+    injector.map(SetCompassHeadingUseCase.self) { SetCompassHeadingUseCase() }
+    injector.map(SetGPSPositionUseCase.self) { SetGPSPositionUseCase() }
+    injector.map(SetVPSPositionUseCase.self) { SetVPSPositionUseCase() }
+    injector.map(SetIsVPSRunningUseCase.self) { SetIsVPSRunningUseCase() }
+    injector.map(SetTT2SettingsUseCase.self) { SetTT2SettingsUseCase() }
+    injector.map(SubscribeToCompassHeadingUpdatesUseCase.self) { SubscribeToCompassHeadingUpdatesUseCase() }
+    injector.map(SubscribeToGPSUpdatesUseCase.self) { SubscribeToGPSUpdatesUseCase() }
+    injector.map(SubscribeToVPSUpdatesUseCase.self) { SubscribeToVPSUpdatesUseCase() }
+    injector.map(SubscribeToIsVPSRunningUseCase.self) { SubscribeToIsVPSRunningUseCase() }
+
     // Store use cases
     injector.map(FetchStoreUseCase.self) { FetchStoreUseCase() }
     injector.map(FetchSwapLocationsUseCase.self) { FetchSwapLocationsUseCase() }
     injector.map(GetActiveStoreUseCase.self) { GetActiveStoreUseCase() }
     injector.map(GetCachedStoreUseCase.self) { GetCachedStoreUseCase() }
     injector.map(GetCachedSwapLocationsUseCase.self) { GetCachedSwapLocationsUseCase() }
+    injector.map(GetZonesTreeUseCase.self) { GetZonesTreeUseCase() }
     injector.map(SetActiveStoreUseCase.self) { SetActiveStoreUseCase() }
 
     // User use cases
@@ -126,7 +147,7 @@ struct VSTT2Config: Config {
     injector.map(Navigation.self) { Navigation() }
     injector.map(Persistence.self) { Persistence() }
     injector.map(Position.self) { Position() }
-    injector.map(PositionManager.self) { PositionManager() }
+    injector.map(VPSPositionManager.self) { VPSPositionManager() }
     injector.map(PositionUploadWorker.self) { PositionUploadWorker() }
     injector.map(RecordingManager.self) { RecordingManager() }
     injector.map(TT2AnalyticsManager.self) { TT2AnalyticsManager() }
@@ -136,6 +157,7 @@ struct VSTT2Config: Config {
     injector.map(VSMLModelManager.self) { VSMLModelManager() }
     injector.map(VSTT2FloorManager.self) { VSTT2FloorManager() }
     injector.map(ZoneEventDetector.self) { ZoneEventDetector() }
+    injector.map(ILeaseManager.self) { LeaseManager() }
   }
 
   private func configureHelpers(_ injector: Injector) {

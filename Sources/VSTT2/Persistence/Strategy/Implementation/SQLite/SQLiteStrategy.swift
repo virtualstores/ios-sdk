@@ -2,7 +2,7 @@ import Foundation
 import SQLite
 
 final class SQLiteStrategy: ILocalStrategy {
-
+    typealias Expression = SQLite.Expression
     let genericSQLiteObject = Table(Constant.tableName)
     let index = Expression<String>(Constant.indexKey)
     let className = Expression<String>(Constant.classNameKey)

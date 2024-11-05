@@ -23,11 +23,12 @@ final public class TT2: ITT2 {
     public var events: TT2EventManager { tt2Internal.analytics.eventManager }
     public var user: IUserManager { tt2Internal.user }
     public var recording: IRecordingManager { tt2Internal.recording }
+    public var lease: ILeaseManager { tt2Internal.leaseManager }
 
     public var activeStore: TT2Store { tt2Internal.activeStore.toTT2Store() }
     public var activeFloor: RtlsOptions { floor.activeFloor }
     
-    public private(set) var zonesTree: TT2ZonesTree?
+    public var zonesTree: TT2ZonesTree { tt2Internal.getZonesTree.invoke() }
 
     var coordinateConverter: ICoordinateConverter? { tt2Internal.floorManager.getActiveConverter.invoke() }
     var mapData: MapData?
@@ -36,7 +37,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.4.2"
+    static let version = "2.5.0"
 
     // MARK: Private members
     private let context: Context
@@ -52,13 +53,12 @@ final public class TT2: ITT2 {
     private var cancellable = Set<AnyCancellable>()
     private var wifiCancellable = Set<AnyCancellable>()
     private var positionKitParams: ParameterPackage = .retail
-    
-    public init(with apiUrl: String, apiKey: String, params: TT2ModelParams? = nil) {
+    private var settings: TT2Settings { tt2Internal.getTT2Settings.invoke() }
+
+    public init(with apiUrl: String, apiKey: String, params: TT2Settings.TT2ModelParams = .init()) {
+        URLCache.shared.removeAllCachedResponses()
         context = Context(VSTT2Config(environment: EnvironmentConfig()))
-        _tt2Internal = TT2Internal()
-        tt2Internal.config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
-        tt2Internal.mlModelManager.setup(params: params)
-        URLCache().removeAllCachedResponses()
+        _tt2Internal = TT2Internal(with: apiUrl, apiKey: apiKey, settings: TT2Settings(params: params))
     }
 
     deinit {
@@ -69,7 +69,9 @@ final public class TT2: ITT2 {
 
     // MARK: Initialize
     public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, completion: @escaping (Error?) -> ()) {
-        tt2Internal.getClients(completion: { [self] (result) in
+        let group = DispatchGroup()
+        group.enter()
+        tt2Internal.getClients() { [self] (result) in
             switch result {
             case .success(let clients):
                 guard
@@ -81,19 +83,39 @@ final public class TT2: ITT2 {
                 tt2Internal.setActiveClient.invoke(clientId: clientId)
                 tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
                 self.positionKitParams = positionKitParams
-                tt2Internal.getStores(with: clientId, completion: completion)
+                tt2Internal.getStores(with: clientId) { (error) in
+                  if let error = error {
+                    completion(error)
+                  } else {
+                    group.leave()
+                  }
+                }
             case .failure(let error):
                 completion(error)
             }
-        })
+        }
+
+        group.enter()
+        tt2Internal.mlModelManager.fetchInterface { (error) in
+          if let error = error {
+            completion(error)
+          } else {
+            group.leave()
+          }
+        }
+
+        switch group.wait(timeout: .now() + 10) {
+        case .success:
+          completion(nil)
+        case .timedOut:
+          completion(VSTT2Error.timeout)
+        }
     }
     
     public func initiate(store: TT2Store, completion: @escaping (Error?) -> ()) {
-        ///check
         guard let currentStore = tt2Internal.internalStores.first(where: { $0.id == store.id }) else { return }
 
         tt2Internal.setActiveStore(storeId: currentStore.id)
-        tt2Internal.floorManager.setupFloors(with: currentStore.rtlsOptions)
 
         tt2Internal.getSwapLocations() { [weak self] (result) in
             guard let self = self else { return }
@@ -116,22 +138,18 @@ final public class TT2: ITT2 {
                   }
               }
 
-              tt2Internal.floorManager.setup(swapLocations: swapLocations)
               bindPublishers()
 
               group.notify(queue: .main) {
-                  if let shelfGroups = self.tt2Internal.floorManager.getActiveShelfGroups.invoke() {
-                      self.tt2Internal.position.setup(with: shelfGroups, store: currentStore)
-                  }
-                  if let startPositions = self.activeFloor.scanLocations?.filter({ $0.type == .start }), let zones = self.zonesTree?.getZonesForCurrentFloorLevel() {
+                  self.tt2Internal.position.setup()
+                  if let zones = self.zonesTree.getZonesForCurrentFloorLevel() {
                       self.tt2Internal.navigation.setup(
-                        startCodes: startPositions,
                         inAndOutZone: InAndOutZone(triggers: zones.map({ InAndOutZone.Trigger(id: $0.name, polygon: $0.points) }))
                       )
                   }
                   self.setupMap()
-                  completion(nil)
                   self.setupAnalytics(for: currentStore)
+                  completion(nil)
               }
             case .failure(let error): completion(error)
             }
@@ -157,15 +175,17 @@ final public class TT2: ITT2 {
     public func set(automaticActivationOfUserMark: Bool) {
         tt2Internal.automaticActivationOfUserMark = automaticActivationOfUserMark
     }
-    
+
+    public func set(vpsEngine: TT2Settings.TT2Engine) {
+        tt2Internal.set(tt2Settings: .init(engine: vpsEngine, params: settings.params))
+    }
+
     public func getMapData() -> MapData? {
         mapData
     }
 
     public func stop() {
-        navigation.stop()
-        analytics.stopCollectingHeatMapData()
-        analytics.stopVisit()
+        tt2Internal.stopTT2.invoke()
     }
 
     public func setActiveFloor(rtls: RtlsOptions) {
@@ -180,18 +200,6 @@ final public class TT2: ITT2 {
 
     public func initRealWorldConverter(point: CGPoint) {
       tt2Internal.initRealWorldConverter(point: point)
-    }
-
-    public func processMLPath(coordinate: CLLocationCoordinate2D, clearAnalytics: Bool) -> MLProcessedPath? {
-      tt2Internal.processMLPath(coordinate: coordinate, clearAnalytics: clearAnalytics)
-    }
-
-    public func addProcessedMLPathToAnalytics(coordinate: CLLocationCoordinate2D) {
-      tt2Internal.addProcessedMLPathToAnalytics(coordinate: coordinate)
-    }
-
-    public func syncAngleCorrection(angle: Double, coordinate: CLLocationCoordinate2D) {
-      tt2Internal.syncAngleCorrection(angle: angle, coordinate: coordinate)
     }
 }
 
@@ -225,7 +233,7 @@ private extension TT2 {
           }
         }, receiveValue: { [weak self] (info) in
           guard
-            let zones = self?.zonesTree?.getZonesForCurrentFloorLevel(),
+            let zones = self?.zonesTree.getZonesForCurrentFloorLevel(),
             let zone = zones.first(where: { $0.navigationPoints[info.bssid] != nil }),
             let point = zone.navigationPoints.first(where: { $0.key == info.bssid })?.value.point
           else { return }
@@ -241,7 +249,7 @@ private extension TT2 {
         let navData = tt2Internal.floorManager.getActiveNavGraph.invoke(),
         let start = tt2Internal.floorManager.startCode,
         let stop = tt2Internal.floorManager.stopCode,
-        let zones = zonesTree?.getZonesFor(floorLevelId: activeFloor.id)
+        let zones = zonesTree.getZonesFor(floorLevelId: activeFloor.id)
       else { return }
 
       let height = converter.convertFromMetersToPixels(input: activeFloor.heightInMeters)
@@ -275,22 +283,17 @@ private extension TT2 {
     func setActiveFloor(rtls: RtlsOptions, completion: @escaping () -> ()) {
         guard let floorHeightDiff = floorHeightDiff else { return }
         tt2Internal.floorManager.setActiveFloor(with: rtls) { [weak self] (mapFence, zoneData) in
-            if let mapFence = mapFence {
-                self?.setupMapfence(with: mapFence, floorHeightDiff: floorHeightDiff)
-                self?.mapData = self?.tt2Internal.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: self?.coordinateConverter)
-            }
-
-            self?.setupAnalytics(with: zoneData)
+            guard let self = self else { return }
+            setupMapfence(with: mapFence, floorHeightDiff: floorHeightDiff)
+            mapData = tt2Internal.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: coordinateConverter)
+            setupAnalytics(with: zoneData)
             completion()
         }
     }
 
     func setupMapfence(with data: MapFence, floorHeightDiff: Double) {
-        guard let converter = coordinateConverter as? BaseCoordinateConverter else { return }
-        let name = activeStore.name
-        let properties = ZoneProperties(id: name, name: name, names: [name])
-        zonesTree = TT2ZonesTree(root: Zone(id: UUID().uuidString, floorLevelId: activeFloor.id, properties: properties, converter: converter), converter: converter, currentFloorLevelId: activeFloor.id)
-        tt2Internal.navigation.positionManager.setupMapFence(
+        guard let converter = coordinateConverter else { return }
+        tt2Internal.navigation.vpsPosition.setupMapFence(
             with: data,
             rtlsOption: activeFloor,
             floorheight: floorHeightDiff,
@@ -313,12 +316,39 @@ private extension TT2 {
 
         zoneData.forEach { (key, value) in
             guard let rtls = floor.floors.first(where: { $0.id == key }) else { return }
-            zonesTree?.add(rtls, value.mapZones, value.mapZonesPoints)
+            zonesTree.add(rtls, value.mapZones, value.mapZonesPoints)
         }
 
-        guard let mapZones = zonesTree?.getZonesFor(floorLevelId: activeFloor.id) else { return }
-
+        guard let mapZones = zonesTree.getZonesFor(floorLevelId: activeFloor.id) else { return }
         tt2Internal.analytics.zoneManager.setup(with: mapZones, rtlsOptions: activeFloor)
         tt2Internal.analytics.eventManager.setup(with: activeStore.id, zones: mapZones, rtlsOptionsId: activeFloor.id)
     }
+}
+
+public struct TT2Settings {
+  let engine: TT2Engine
+  let params: TT2ModelParams
+
+  public init(engine: TT2Engine = .indoor, params: TT2ModelParams = .init()) {
+    self.engine = engine
+    self.params = params
+  }
+
+  public enum TT2Engine: String {
+    case gpsFusion = "GPS_FUSION"
+    case indoor = "INDOOR"
+    case openTerrain = "OPEN_TERRAIN"
+  }
+
+  public struct TT2ModelParams {
+    let target: Int
+    let targetMLModelVersion: Int?
+    let targetNLModelVersion: Int?
+
+    public init(target: Int = 1, targetMLModelVersion: Int? = nil, targetNLModelVersion: Int? = nil) {
+      self.target = target
+      self.targetMLModelVersion = targetMLModelVersion
+      self.targetNLModelVersion = targetNLModelVersion
+    }
+  }
 }

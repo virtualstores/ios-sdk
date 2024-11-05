@@ -7,10 +7,9 @@
 
 import Foundation
 import Combine
-import SQLite
 
 final class UploadTriggersService: DataFetchingManager {
     func call(with parameters: UploadTriggersParameters) -> AnyPublisher<Void, Error> {
-        return self.executeEmptyBody(parameters, errorType: Error.self)
+        executeEmptyBody(parameters, errorType: Error.self)
     }
 }

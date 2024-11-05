@@ -24,6 +24,8 @@ class AccuracyUploader {
 
   @Inject var converter: GetActiveCoordinateConverterUseCase
 
+  @Inject var getVPSPosition: GetCurrentVPSPositionUseCase
+
   var client: Client { getActiveClient.invoke() }
   var store: Store { getActiveStore.invoke() }
   var stepEventUploader: StepEventUploader { analytics.stepEventUploader }
@@ -120,7 +122,7 @@ class AccuracyUploader {
     var didSync: Bool = true
     var point: CGPoint = .zero
     var pointWithOffset: CGPoint = .zero
-    var preScanLocation: CGPoint?
+    var preScanLocation: CGPoint? = getVPSPosition.invoke()?.point
     var offset: CGVector?
 
     var tags:[String:String]
