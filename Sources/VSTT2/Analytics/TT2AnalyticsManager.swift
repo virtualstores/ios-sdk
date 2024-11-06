@@ -24,6 +24,7 @@ final public class TT2AnalyticsManager {
     @Inject var createVisit: CreateVisitUseCase
     @Inject var endVisit: StopVisitUseCase
     @Inject var getCurrentPosition: GetCurrentVPSPositionUseCase
+    @Inject var getCurrentLeasePolicy: GetCurrentLeasePolicyUseCase
     @Inject var getMLVersion: GetMLVersionUseCase
     @Inject var getNLVersion: GetNLVersionUseCase
     @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
@@ -299,7 +300,8 @@ extension TT2AnalyticsManager {
   func updateVisitWithStopTags() {
     let tags = [
       "tt2BatteryLevelAtEnd": (UIDevice.current.batteryLevel * 100).description,
-      "tt2LeaseExpired": leaseExpired.description
+      "tt2LeaseExpired": leaseExpired.description,
+      "tt2LeasePolicy": getCurrentLeasePolicy.invoke()?.rawValue ?? "None"
     ]
     updateTags.invoke(tags: tags) { (error) in
       if let error = error {

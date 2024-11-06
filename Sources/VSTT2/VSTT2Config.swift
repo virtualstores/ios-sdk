@@ -111,11 +111,13 @@ struct VSTT2Config: Config {
     // Status use cases
     injector.map(GetCurrentCompassHeadingUseCase.self) { GetCurrentCompassHeadingUseCase() }
     injector.map(GetCurrentGPSLocationUseCase.self) { GetCurrentGPSLocationUseCase() }
+    injector.map(GetCurrentLeasePolicyUseCase.self) { GetCurrentLeasePolicyUseCase() }
     injector.map(GetCurrentVPSPositionUseCase.self) { GetCurrentVPSPositionUseCase() }
     injector.map(GetCurrentTT2SettingsUseCase.self) { GetCurrentTT2SettingsUseCase() }
     injector.map(GetIsVPSRunningUseCase.self) { GetIsVPSRunningUseCase() }
     injector.map(SetCompassHeadingUseCase.self) { SetCompassHeadingUseCase() }
     injector.map(SetGPSPositionUseCase.self) { SetGPSPositionUseCase() }
+    injector.map(SetLeasePolicyUseCase.self) { SetLeasePolicyUseCase() }
     injector.map(SetVPSPositionUseCase.self) { SetVPSPositionUseCase() }
     injector.map(SetIsVPSRunningUseCase.self) { SetIsVPSRunningUseCase() }
     injector.map(SetTT2SettingsUseCase.self) { SetTT2SettingsUseCase() }

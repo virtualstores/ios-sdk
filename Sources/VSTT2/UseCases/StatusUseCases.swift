@@ -25,6 +25,14 @@ class GetCurrentGPSLocationUseCase {
   }
 }
 
+class GetCurrentLeasePolicyUseCase {
+  @Inject var repository: IStatusRepository
+
+  func invoke() -> LeasePolicyEnum? {
+    repository.currentLeasePolicy
+  }
+}
+
 class GetCurrentVPSPositionUseCase {
   @Inject var repository: IStatusRepository
 
@@ -62,6 +70,14 @@ class SetGPSPositionUseCase {
 
   func invoke(gpsPosition: VPSOutputSignal.LatLngPosition.Location) {
     repository.set(gpsPosition: gpsPosition)
+  }
+}
+
+class SetLeasePolicyUseCase {
+  @Inject var repository: IStatusRepository
+
+  func invoke(policy: LeasePolicyEnum) {
+    repository.set(policy: policy)
   }
 }
 

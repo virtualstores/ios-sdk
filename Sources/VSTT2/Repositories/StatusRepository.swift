@@ -13,11 +13,13 @@ import VSFoundation
 protocol IStatusRepository {
   var currentCompassHeading: Double? { get }
   var currentGPSLocation: VPSOutputSignal.LatLngPosition.Location? { get }
+  var currentLeasePolicy: LeasePolicyEnum? { get }
   var currentPosition: VPSOutputSignal.Position? { get }
   var currentSettings: TT2Settings { get }
   var isVPSRunning: Bool { get }
   func set(compassHeading: Double)
   func set(gpsPosition: VPSOutputSignal.LatLngPosition.Location)
+  func set(policy: LeasePolicyEnum)
   func set(vpsPosition: VPSOutputSignal.Position)
   func set(isVPSRunning: Bool)
   func set(settings: TT2Settings)
@@ -30,6 +32,7 @@ protocol IStatusRepository {
 class StatusRepository {
   private var currentCompassHeadingPublisher: CurrentValueSubject<Double?, Never> = .init(nil)
   private var currentGPSLocationPublisher: CurrentValueSubject<VPSOutputSignal.LatLngPosition.Location?, Never> = .init(nil)
+  private var _currentLeasePolicy: LeasePolicyEnum?
   private var currentPositionPublisher: CurrentValueSubject<VPSOutputSignal.Position?, Never> = .init(nil)
   private var _currentSettings: TT2Settings = .init()
   private var isVPSRunningSubscriber: CurrentValueSubject<Bool, Never> = .init(false)
@@ -38,6 +41,7 @@ class StatusRepository {
 extension StatusRepository: IStatusRepository {
   var currentCompassHeading: Double? { currentCompassHeadingPublisher.value }
   var currentGPSLocation: VPSOutputSignal.LatLngPosition.Location? { currentGPSLocationPublisher.value }
+  var currentLeasePolicy: LeasePolicyEnum? { _currentLeasePolicy }
   var currentPosition: VPSOutputSignal.Position? { currentPositionPublisher.value }
   var currentSettings: TT2Settings { _currentSettings }
   var isVPSRunning: Bool { isVPSRunningSubscriber.value }
@@ -48,6 +52,10 @@ extension StatusRepository: IStatusRepository {
 
   func set(gpsPosition: VPSOutputSignal.LatLngPosition.Location) {
     currentGPSLocationPublisher.send(gpsPosition)
+  }
+
+  func set(policy: LeasePolicyEnum) {
+    _currentLeasePolicy = policy
   }
 
   func set(vpsPosition: VPSOutputSignal.Position) {
