@@ -317,6 +317,8 @@ extension TT2AnalyticsManager {
 }
 
 extension TT2AnalyticsManager: TT2Analytics {
+  public var hasVisit: Bool { visitId != nil }
+
   public func startVisit(deviceInformation: DeviceInformation, tags: [String:String] = [:], metaData: [String:String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
     guard getMLVersion.invoke() != nil else { completion(.failure(VSTT2Error.missingData)); return }
     guard visitId == nil else { completion(.failure(TT2AnalyticsError.visitAlreadyStarted)); return }

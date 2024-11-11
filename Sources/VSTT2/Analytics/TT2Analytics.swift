@@ -11,6 +11,7 @@ import CoreLocation
 import Combine
 
 public protocol TT2Analytics {
+    var hasVisit: Bool { get }
     /// Start  Analytics with device data
     func startVisit(deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String], completion: @escaping (Result<Int64, Error>) -> Void)
 
