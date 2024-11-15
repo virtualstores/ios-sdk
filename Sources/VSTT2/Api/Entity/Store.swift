@@ -24,7 +24,7 @@ public struct Store: Codable {
     public let stopCodes: [PositionedCode]
     public let rtlsOptions: [RtlsOptions]
     public let minVersion: String?
-    public let serverConnection: ServerConnection
+    public let serverConnection: ServerConnection?
     public let statServerConnection: ServerConnection
     public let positionServiceSettings: PositionServiceSettings?
     public let syncPositionFilter: SyncFilter?
@@ -65,11 +65,11 @@ public struct Store: Codable {
         active = try container.decode(Bool.self, forKey: .active)
         hasSensorRecordingActive = try container.decodeIfPresent(Bool.self, forKey: .hasSensorRecordingActive) ?? false
         hasWiFiRecordingActive = try container.decodeIfPresent(Bool.self, forKey: .hasWiFiRecordingActive) ?? false
-        startCodes = try container.decode([PositionedCode].self, forKey: .startCodes)
-        stopCodes = try container.decode([PositionedCode].self, forKey: .stopCodes)
+        startCodes = try container.decodeIfPresent([PositionedCode].self, forKey: .startCodes) ?? []
+        stopCodes = try container.decodeIfPresent([PositionedCode].self, forKey: .stopCodes) ?? []
         rtlsOptions = try container.decode([RtlsOptions].self, forKey: .rtlsOptions)
         minVersion = try container.decodeIfPresent(String.self, forKey: .minVersion)
-        serverConnection = try container.decode(ServerConnection.self, forKey: .serverConnection)
+        serverConnection = try container.decodeIfPresent(ServerConnection.self, forKey: .serverConnection)
         statServerConnection = try container.decode(ServerConnection.self, forKey: .statServerConnection)
         positionServiceSettings = try container.decodeIfPresent(PositionServiceSettings.self, forKey: .positionServiceSettings)
         syncPositionFilter = try container.decodeIfPresent(SyncFilter.self, forKey: .syncPositionFilter)
