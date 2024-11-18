@@ -1,6 +1,6 @@
 //
 //  TT2AnalyticsGeopositionManager.swift
-//  
+//
 //
 //  Created by Théodore Roos on 2024-08-23.
 //
@@ -181,6 +181,64 @@ private extension TT2AnalyticsGeopositionManager {
         if let error = error {
           Logger(verbosity: .error).log(message: "UploadGeopositions - VPS ML Processed: \(error)")
         }
+      }
+    }
+  }
+}
+
+final class TT2GeopositionUploadWorker {
+  @Inject var persistence: Persistence
+  var positionObjects: [RecordedPositionLngLatDTO] { persistence.get(arrayOf: RecordedPositionLngLatDTO.self) }
+
+  func insert(visitId: Int64, position: RecordedPositionLngLat) {
+    var object = RecordedPositionLngLatDTO()
+    object.airPressure = position.airPressure
+    object.timestamp = position.timestamp
+    object.lngLat = position.lngLat
+    object.visitId = visitId
+    object.status = PointStatus.inProgress.rawValue
+
+    do {
+      try persistence.save(&object)
+    } catch {
+      Logger(verbosity: .error).log(message: "Failed to save geoposition: \(error)")
+    }
+  }
+
+  func get() -> [RecordedPositionLngLatDTO] {
+    var positions = positionObjects
+      .filter { $0.status == PointStatus.pending.rawValue || $0.status == PointStatus.fail.rawValue }
+    updateObjectStatus(positions, status: .inProgress)
+    return positions
+  }
+
+  func removeCompleted() {
+    var positions = positionObjects
+      .filter { $0.status == PointStatus.complete.rawValue }
+    positions.forEach { (object) in
+      do {
+        try persistence.delete(object)
+      } catch {
+        Logger(verbosity: .error).log(message: "Failed to delete geoposition: \(error)")
+      }
+    }
+  }
+
+  func update(uploadSucceded: Bool) {
+    var positions = positionObjects
+      .filter { $0.status == PointStatus.inProgress.rawValue }
+    updateObjectStatus(positions, status: uploadSucceded ? .complete : .fail)
+  }
+
+  private func updateObjectStatus(_ objects: [RecordedPositionLngLatDTO], status: PointStatus) {
+    objects.forEach { (object) in
+      var editedObject = object
+      editedObject.status = status.rawValue
+
+      do {
+        try persistence.save(&editedObject)
+      } catch {
+        Logger(verbosity: .error).log(message: "Failed to update geoposition status: \(error)")
       }
     }
   }

@@ -24,3 +24,19 @@ struct RecordedPositionLngLat: Codable {
   let timestamp: String
   let lngLat: [Double]
 }
+
+final class RecordedPositionLngLatDTO: IPersistenceModel {
+  var retainOriginalIndex: Bool = false
+  var index: String?
+
+  convenience init(index: String) {
+    self.init()
+    self.index = index
+  }
+
+  var airPressure: Double?
+  var timestamp: String?
+  var lngLat: [Double]?
+  var visitId: Int64?
+  var status: String?
+}
