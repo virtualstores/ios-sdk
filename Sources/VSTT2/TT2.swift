@@ -37,7 +37,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.5.1"
+    static let version = "2.6.0"
 
     // MARK: Private members
     private let context: Context
@@ -55,10 +55,10 @@ final public class TT2: ITT2 {
     private var positionKitParams: ParameterPackage = .retail
     private var settings: TT2Settings { tt2Internal.getTT2Settings.invoke() }
 
-    public init(with apiUrl: String, apiKey: String, params: TT2Settings.TT2ModelParams = .init()) {
+    public init(with apiUrl: String, apiKey: String, settings: TT2Settings = .init()) {
         URLCache.shared.removeAllCachedResponses()
         context = Context(VSTT2Config(environment: EnvironmentConfig()))
-        _tt2Internal = TT2Internal(with: apiUrl, apiKey: apiKey, settings: TT2Settings(params: params))
+        _tt2Internal = TT2Internal(with: apiUrl, apiKey: apiKey, settings: settings)
     }
 
     deinit {
@@ -328,10 +328,12 @@ private extension TT2 {
 public struct TT2Settings {
   let engine: TT2Engine
   let params: TT2ModelParams
+  let isAutomaticFloorChangeEanbled: Bool
 
-  public init(engine: TT2Engine = .indoor, params: TT2ModelParams = .init()) {
+  public init(engine: TT2Engine = .indoor, params: TT2ModelParams = .init(), isAutomaticFloorChangeEanbled: Bool = true) {
     self.engine = engine
     self.params = params
+    self.isAutomaticFloorChangeEanbled = isAutomaticFloorChangeEanbled
   }
 
   public enum TT2Engine: String {

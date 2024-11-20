@@ -19,6 +19,7 @@ final public class Navigation {
     @Inject var modelManager: VSMLModelManager
 
     @Inject var vpsUpdates: SubscribeToVPSUpdatesUseCase
+    @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
     @Inject var setIsVPSRunning: SetIsVPSRunningUseCase
 
     var activeFloor: RtlsOptions {
@@ -29,6 +30,10 @@ final public class Navigation {
     var floors: [RtlsOptions] {
         @Inject var getFloors: GetCachedFloorsUseCase
         return getFloors.invoke()
+    }
+
+    var isAutoFloorChangeEanbled: Bool {
+      getTT2Settings.invoke().isAutomaticFloorChangeEanbled
     }
 
     public var currentPosition: CGPoint? {
@@ -95,7 +100,7 @@ extension Navigation: INavigation {
             return
         }
 
-        try vpsPosition.start()
+        try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
         certainAngle = true
         vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startAngle, uncertainAngle: false)
         setIsVPSRunning.invoke(isVPSRunning: true)
@@ -144,7 +149,7 @@ extension Navigation: INavigation {
 
         let startWithAngle = startWithAngle(startPosition: startPosition)
         try validateFloorLevel(floorId: position?.floorLevelId) { [self] (isValid) in
-            try vpsPosition.start()
+            try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
             vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startWithAngle ?? heading.degrees, uncertainAngle: startWithAngle == nil)
             prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
             setIsVPSRunning.invoke(isVPSRunning: true)
@@ -277,7 +282,7 @@ extension Navigation {
     func changeFloorStart(startPosition: CGPoint?) throws {
         guard let point = startPosition, isActive else { try onValidateFloorCompletion?(); return }
 
-        try vpsPosition.start()
+        try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
 
         vpsPosition.startNavigation(positions: [point], syncPosition: true, syncAngle: true, angle: userStartAngle.degrees, uncertainAngle: false)
     }
