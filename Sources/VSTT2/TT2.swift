@@ -37,7 +37,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.6.0"
+    static let version = "2.7.0"
 
     // MARK: Private members
     private let context: Context
@@ -71,10 +71,11 @@ final public class TT2: ITT2 {
     public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, completion: @escaping (Error?) -> ()) {
         let group = DispatchGroup()
         group.enter()
-        tt2Internal.getClients() { [self] (result) in
+        tt2Internal.getClients() { [weak self] (result) in
             switch result {
             case .success(let clients):
                 guard
+                  let self = self,
                   let client = clients.first(where: { $0.clientId == clientId }),
                   let serverAddress = client.dataServerUrl,
                   let apiKey = client.dataServerApiKey

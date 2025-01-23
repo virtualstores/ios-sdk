@@ -38,6 +38,10 @@ extension UploadScanEventsParameters: Routing {
 
 private extension ScanEvent {
   var asParameters: [String:Any] {
+    let userPosition = userPosition == nil ? nil : [
+      "type": "METER",
+      "coordinate": userPosition?.asArray as Any
+    ]
     switch type {
     case .shelf:
       return [
@@ -49,10 +53,7 @@ private extension ScanEvent {
         "y": point?.y as Any,
         "timestamp": timestamp,
         "type": "SHELF",
-        "userPosition": [
-          "type": "METER",
-          "coordinate": userPosition?.asArray as Any
-        ]
+        "userPosition": userPosition as Any
       ]
     case .shelfSection:
       return [
@@ -65,10 +66,7 @@ private extension ScanEvent {
         "y": point?.y as Any,
         "timestamp": timestamp,
         "type": "SHELF_SECTION",
-        "userPosition": [
-          "type": "METER",
-          "coordinate": userPosition?.asArray as Any
-        ]
+        "userPosition": userPosition as Any
       ]
     case .zone:
       return [
@@ -76,10 +74,7 @@ private extension ScanEvent {
         "rtlsOptionsId": floorLevelId as Any,
         "timestamp": timestamp,
         "type": "ZONE",
-        "userPosition": [
-          "type": "METER",
-          "coordinate": userPosition?.asArray as Any
-        ],
+        "userPosition": userPosition as Any,
         "zoneIds": zoneIds as Any
       ]
     case .unknown:
@@ -90,10 +85,7 @@ private extension ScanEvent {
         "y": point?.y as Any,
         "timestamp": timestamp,
         "type": "UNKNOWN",
-        "userPosition": [
-          "type": "METER",
-          "coordinate": userPosition?.asArray as Any
-        ]
+        "userPosition": userPosition as Any
       ]
     }
   }

@@ -41,7 +41,7 @@ final public class TT2AnalyticsManager {
     var leaseExpired = false
     var visitId: Int64? { activeVisitId.invoke() }
     private var store: Store { activeStore.invoke() }
-    private var uploadThreshold = 0
+    private var uploadThreshold = 100
     private var rtlsOptionId: Int64 { activeFloor.invoke().id }
     private var cancellable = Set<AnyCancellable>()
     private var isRecording: Bool = false

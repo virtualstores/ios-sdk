@@ -338,7 +338,7 @@ private extension Navigation {
         events.append(.createZoneScanEvent(identifier: identfier, floorLevelId: activeFloor.id, userPosition: currentPosition, zones: zoneIds))
       }
       
-      func addShelScanEvent(position: ItemPosition) {
+      func addShelfScanEvent(position: ItemPosition) {
         if position.floorLevelId == activeFloor.id {
           events.append(.createShelfScanEvent(itemPosition: position, userPosition: currentPosition))
         }
@@ -352,14 +352,14 @@ private extension Navigation {
       group.enter()
       positionManager.getBy(shelfName: identfier) { (position) in
         if let position = position {
-          addShelScanEvent(position: position)
+          addShelfScanEvent(position: position)
           group.leave()
         } else {
           self.positionManager.getBy(barcode: identfier) { (result) in
             switch result {
             case .success(let item):
               if let position = item.itemPosition {
-                addShelScanEvent(position: position)
+                addShelfScanEvent(position: position)
               }
             case .failure(_): 
               addUnknownScanEvent()
