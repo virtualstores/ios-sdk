@@ -9,7 +9,7 @@ import Foundation
 import VSFoundation
 
 struct UploadPositionsParameters {
-  let config: EnvironmentConfig
+  @Inject var config: EnvironmentConfig
   let visitId: Int64
   let requestId: String
   let positionGrps: [String: [RecordedPosition]]
@@ -38,7 +38,6 @@ final class UploadPositionsPersistence: IPersistenceModel {
     self.index = index
   }
 
-  var serverConnection: ServerConnection?
   var visitId: Int64?
   var requestId: String?
   var positionGrps: [String: [RecordedPosition]]?
@@ -48,20 +47,11 @@ final class UploadPositionsPersistence: IPersistenceModel {
 extension UploadPositionsPersistence {
   var asParameters: UploadPositionsParameters? {
     guard
-      let serverAddress = serverConnection?.serverAddress,
-      let apiKey = serverConnection?.apiKey,
       let visitId = visitId,
       let requestId = requestId,
       let positionGrps = positionGrps
     else { return nil }
-    let config = EnvironmentConfig()
-    config.initAnalyticsServerConnection(
-      with: serverAddress,
-      endPoint: .v2,
-      apiKey: apiKey
-    )
     return .init(
-      config: config,
       visitId: visitId,
       requestId: requestId,
       positionGrps: positionGrps

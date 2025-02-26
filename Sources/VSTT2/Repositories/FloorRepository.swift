@@ -27,6 +27,7 @@ protocol IFloorRepository {
 }
 
 class FloorRepository {
+  @Inject var config: EnvironmentConfig
   private let api: IFloorApi = FloorApi()
   private var _activeFloor: RtlsOptions?
   private var converters: [Int64: ICoordinateConverter] = [:]
@@ -64,7 +65,7 @@ extension FloorRepository: IFloorRepository {
     let group = DispatchGroup()
     var error: Error?
     floors.forEach { (rtls) in
-      guard let url = rtls.mapFenceUrl else { return }
+      guard let url = rtls.mapFenceUrl?.checkUrl(config: config) else { return }
       group.enter()
       api.getMapFence(url: url) { [weak self] (result) in
         switch result {
@@ -87,7 +88,7 @@ extension FloorRepository: IFloorRepository {
     var error: Error?
     floors.forEach { (floor) in
       guard
-        let mapZonesUrl = floor.mapZonesUrl?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+        let mapZonesUrl = floor.mapZonesUrl?.checkUrl(config: config).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
         let url = URL(string: mapZonesUrl)
       else { return }
       group.enter()
@@ -111,7 +112,7 @@ extension FloorRepository: IFloorRepository {
     var error: Error?
     floors.forEach { (floor) in
       guard 
-        let navGraphUrl = floor.navGraphUrl?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+        let navGraphUrl = floor.navGraphUrl?.checkUrl(config: config).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
         let url = URL(string: navGraphUrl)
       else { return }
       group.enter()
@@ -163,5 +164,22 @@ extension FloorRepository: IFloorRepository {
 
   func set(cachedFloors: [RtlsOptions]) {
     floors = cachedFloors
+  }
+}
+
+extension String {
+  func checkUrl(config: EnvironmentConfig) -> String {
+    if config.connection is EnvironmentConfig.Gateway, let baseURL = config.connection.tt2ResourceUrl {
+      return replaceBaseurl(with: baseURL)
+    }
+    return self
+  }
+
+  func replaceBaseurl(with baseurl: String) -> String {
+    guard
+      range(of: "\\b.s3\\b.*\\bamazonaws.com\\b", options: .regularExpression) != nil,
+      let path = components(separatedBy: ".amazonaws.com").last
+    else { return self }
+    return baseurl + path
   }
 }

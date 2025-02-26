@@ -30,8 +30,8 @@ public protocol INavigation {
     /// Synchronize the position with compass
     func syncPosition(position: ItemPosition, forceSync: Bool) throws
 
-    func syncPosition(identifier: String, type: SyncTypeEnum, reportScanEvent: Bool, completion: @escaping (Result<Item,Error>) -> ())
-    
+    func syncPosition(identifier: String, type: SyncTypeEnum, reportScanEvent: Bool, returnOn queue: DispatchQueue, completion: @escaping (Result<Item,Error>) -> ())
+
     /// This will stop notifying the location publishers.
     func stop()
     

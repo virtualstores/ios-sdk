@@ -177,7 +177,7 @@ extension Navigation: INavigation {
         }
     }
 
-    public func syncPosition(identifier: String, type: SyncTypeEnum, reportScanEvent: Bool = true, completion: @escaping (Result<Item,Error>) -> ()) {
+    public func syncPosition(identifier: String, type: SyncTypeEnum, reportScanEvent: Bool = true, returnOn queue: DispatchQueue = .main, completion: @escaping (Result<Item,Error>) -> ()) {
         if let code = checkForScanLocation(identifier: identifier) {
             do {
                 try start(code: code)
@@ -207,9 +207,9 @@ extension Navigation: INavigation {
             do {
               try doSync(position: position)
               let item = Item(name: "", externalId: position.identifier, itemPositions: [position])
-              completion(.success(item))
+              queue.async { completion(.success(item)) }
             } catch {
-              completion(.failure(error))
+              queue.async { completion(.failure(error)) }
             }
           } else {
             self.positionManager.getBy(barcode: identifier) { (result) in
@@ -224,12 +224,12 @@ extension Navigation: INavigation {
                     throw NSError(domain: "Unique positions more than 1", code: 400)
                   } else if let position = item.itemPosition {
                     try doSync(position: position)
-                    completion(.success(item))
+                    queue.async { completion(.success(item)) }
                   } else {
                     throw NSError(domain: "Case not handled", code: 400)
                   }
                 } catch {
-                  completion(.failure(error))
+                  queue.async { completion(.failure(error)) }
                 }
               case .failure(let error): completion(.failure(error))
               }

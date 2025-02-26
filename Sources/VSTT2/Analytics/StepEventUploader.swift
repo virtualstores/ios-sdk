@@ -32,7 +32,6 @@ class StepEventUploader {
     else { return }
     let events: [StepEvent] = events.map { $0.asStepEvent(rtlsOptionsId: activeFloor.invoke().id) }
     let parameters = UploadStepEventsParameters(
-      config: config,
       visitId: visitId,
       requestId: UUID().uuidString.uppercased(),
       events: events
@@ -92,10 +91,6 @@ extension StepEventData {
 extension UploadStepEventsParameters {
   var asPersistence: UploadStepEventsPersistence {
     let persistence = UploadStepEventsPersistence()
-    persistence.apiKey = config.analyticsServerConnection.apiKey
-    persistence.serverAddress = config.analyticsServerConnection.serverAddress
-    persistence.mqttAddress = config.analyticsServerConnection.mqttAddress
-    persistence.storeId = config.analyticsServerConnection.storeId
     persistence.visitId = visitId
     persistence.requestId = requestId
     persistence.events = events
@@ -109,8 +104,6 @@ extension UploadStepEventsPersistence {
       let requestId = requestId,
       let events = events
     else { return nil }
-    let config = EnvironmentConfig()
-    config.analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: serverAddress, mqttAddress: mqttAddress, storeId: storeId)
-    return UploadStepEventsParameters(config: config, visitId: visitId, requestId: requestId, events: events)
+    return UploadStepEventsParameters(visitId: visitId, requestId: requestId, events: events)
   }
 }

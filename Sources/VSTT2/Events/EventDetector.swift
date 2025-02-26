@@ -31,7 +31,7 @@ private extension EventDetector {
         triggers.append(InAndOut.Radius(id: event.id, centerPoint: trigger.point, radius: trigger.radius))
       case .shelfTrigger(_): break
       case .zoneTrigger(let trigger):
-        guard let zone = zones?.first(where: { $0.name == trigger.zoneId }) else { return }
+        guard let zone = zones?.first(where: { $0.id == trigger.zoneId }) else { return }
         triggers.append(InAndOut.Zone(id: event.id, zoneId: zone.id, polygon: zone.points))
         triggersAndEvents[event.id] = (trigger.type, event)
       }

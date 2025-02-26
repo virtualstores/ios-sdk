@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import VSFoundation
 
 protocol IClientsApi {
   func get(completion: @escaping (Result<[Client], Error>) -> Void)
@@ -24,7 +25,22 @@ extension ClientsApi: IClientsApi {
       .sink { (result) in
         switch result {
         case .finished: break
-        case .failure(let error): completion(.failure(error))
+        case .failure(let error):
+          if let error = error as? URLError {
+            print("ErrorCode", error.errorCode)
+            print("Code", error.code)
+            print("UserInfo", error.userInfo)
+            print("ErrorUserInfo", error.errorUserInfo)
+            if error.errorCode == 401 {
+              @Inject var refresh: RefreshUseCase
+              refresh.invoke { (error) in
+                self.get(completion: completion)
+              }
+            } else {
+              completion(.failure(error))
+            }
+          }
+          completion(.failure(error))
         }
       } receiveValue: { (data) in
         completion(.success(data.clients))

@@ -10,7 +10,7 @@ import CoreGraphics
 import VSFoundation
 
 struct UploadSyncEventsParameters {
-  var config: EnvironmentConfig
+  @Inject var config: EnvironmentConfig
   let visitId: Int64
   let requestId: String
   let event: SyncEvent
@@ -81,12 +81,6 @@ final class UploadSyncEventsPersistence: IPersistenceModel {
     self.init()
     self.index = index
   }
-
-  // config
-  var apiKey: String?
-  var serverAddress: String?
-  var mqttAddress: String?
-  var storeId: Int64?
 
   var visitId: Int64?
   var requestId: String?

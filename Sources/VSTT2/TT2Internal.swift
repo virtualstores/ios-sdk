@@ -24,6 +24,11 @@ internal class TT2Internal {
     @Inject var recording: RecordingManager
     @Inject var user: IUserManager
 
+    /// Usecases - Auth
+    @Inject var login: LoginUseCase
+    @Inject var setAuthSettings: SetAuthSettingsUseCase
+    @Inject var setApiKey: SetApiKeyUseCase
+
     /// Usecases - Client
     @Inject var fetchClient: FetchClientsUseCase
     @Inject var getActiveClient: GetActiveClientUseCase
@@ -61,12 +66,13 @@ internal class TT2Internal {
     var activeStore: Store { getActiveStore.invoke() }
     var automaticActivationOfUserMark: Bool = true
     var automaticSensorRecording: Bool { activeStore.hasSensorRecordingActive }
-    
-    init(with apiUrl: String, apiKey: String, settings: TT2Settings) {
-        offset = 0.0
-        config.initCentralServerConnection(with: apiUrl, endPoint: .v1, apiKey: apiKey)
-        set(tt2Settings: settings)
-        bindPublishers()
+
+    init(connectionSettings: EnvironmentConfig.Settings, authSettings: AuthSettings, settings: TT2Settings) {
+      offset = 0.0
+      config.set(connection: connectionSettings)
+      setAuthSettings.invoke(settings: authSettings)
+      set(tt2Settings: settings)
+      bindPublishers()
     }
 
     deinit {
@@ -193,11 +199,9 @@ internal class TT2Internal {
             }.store(in: &cancellable)
     }
 
-    func generateAWSFolderPath(sessionId: String, additionalData: Bool = false) -> String? {
-        guard
-            let serverAddress = config.centralServerConnection.serverAddress?.trimServerAddress,
-            let dataServerAddress = config.analyticsServerConnection.serverAddress?.trimServerAddress
-        else { return nil }
+    func generateAWSFolderPath(sessionId: String, additionalData: Bool = false) -> String {
+        let serverAddress = config.connection.tt2CentralServer.baseUrl.trimServerAddress
+        let dataServerAddress = (activeStore.statServerConnection.serverAddress ?? config.connection.tt2DataServer?.baseUrl ?? "undefined").trimServerAddress
         let folderName: String = "\(serverAddress)/\(dataServerAddress)/\(sessionId)/"
         if additionalData, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, sessionId: sessionId) {
             awsS3UploadManager.prepareDataToSend(identifier: "tags.json", data: tags, folderName: folderName, date: Date())
@@ -254,6 +258,6 @@ private extension String {
     if hasPrefix("http://") { modified.removeFirst(7) }
     if hasPrefix("https://") { modified.removeFirst(8) }
     if hasSuffix("/api/v1") || hasSuffix("/api/v2") { modified.removeLast(7) }
-    return modified
+    return modified.components(separatedBy: "/").first ?? modified
   }
 }
