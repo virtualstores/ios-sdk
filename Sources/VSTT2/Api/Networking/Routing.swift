@@ -12,6 +12,7 @@ protocol Routing {
     /// Environment config data
     var environmentConfig: EnvironmentConfig? { get }
     var type: RoutingType { get }
+    var authType: AuthTypeEnum { get }
     /// Request type
     var method: RequestType { get }
     /// Base url
@@ -33,21 +34,29 @@ protocol Routing {
     var urlRequest: URLRequest? { get }
 }
 
+public enum AuthTypeEnum: String {
+  case apiKey = "API_KEY"
+  case tokenBased = "TOKEN_BASED"
+}
+
 enum RoutingType {
-  case central, analytics, unknown
+  case central, analytics, ml, unknown
 }
 
 extension Routing {
-    func getServerConnection() -> ServerConnection? {
-        switch type {
-        case .central: return environmentConfig?.centralServerConnection
-        case .analytics: return environmentConfig?.analyticsServerConnection
-        case .unknown: return nil
-        }
+    var getConnection: EnvironmentConfig.ServerSettings? {
+      switch type {
+      case .central: return environmentConfig?.connection.tt2CentralServer
+      case .analytics: return environmentConfig?.connection.tt2DataServer
+      case .ml: return environmentConfig?.connection.tt2MLModelServer
+      case .unknown: return nil
+      }
     }
 
+    var authType: AuthTypeEnum { getConnection?.authType ?? .apiKey }
+
     var baseURL: String {
-        guard let url = getServerConnection()?.serverAddress else { fatalError("baseURL is not exist") }
+        guard let url = getConnection?.baseUrl else { fatalError("baseURL is not exist") }
         return url
     }
 
@@ -59,10 +68,7 @@ extension Routing {
 
     var encoding: ParameterEncoding { .json }
 
-    var headers: [String: String]? {
-        guard let apiKey = getServerConnection()?.apiKey else { fatalError("apiKey is not exist") }
-        return  ["apiKey" : apiKey]
-    }
+    var headers: [String: String]? { nil }
 
     var urlRequest: URLRequest? {
         @Inject var logger: Logger
@@ -93,10 +99,15 @@ extension Routing {
         var urlRequest = URLRequest(url: urlComponents.url!)
         urlRequest.httpMethod = method.rawValue
 
-        if let headers = headers {
-          headers.forEach { (key, value) in
-                urlRequest.addValue(value, forHTTPHeaderField: key)
-            }
+        switch authType {
+        case .apiKey:
+          if let request = urlRequest.apiKeyInterceptor(routing: type) {
+            urlRequest = request
+          }
+        case .tokenBased:
+          if let request = urlRequest.authTokenInterceptor() {
+            urlRequest = request
+          }
         }
 
         if let parameters = parametersDictionary {
@@ -118,4 +129,33 @@ extension Routing {
         }
         return urlRequest
     }
+}
+
+private extension URLRequest {
+  static let HEADER_AUTHORIZATION: String = "Authorization"
+  static let TOKEN_TYPE: String = "Bearer"
+
+  func apiKeyInterceptor(routing: RoutingType) -> URLRequest? {
+    @Inject var repositoy: IApiKeyRepository
+    guard let apiKey = repositoy.get(for: routing) else { return nil }
+    var request = self
+    request.addValue(apiKey, forHTTPHeaderField: "apiKey")
+    return request
+  }
+
+  func authTokenInterceptor() -> URLRequest? {
+    @Inject var repositoy: IJWTTokenRepository
+    guard let token = repositoy.getAuthJWT() else { return nil }
+    var request = self
+    request.addValue("\(URLRequest.TOKEN_TYPE) \(token)", forHTTPHeaderField: URLRequest.HEADER_AUTHORIZATION)
+    return request
+  }
+
+  func refreshTokenInterceptor() -> URLRequest? {
+    @Inject var repositoy: IJWTTokenRepository
+    guard let token = repositoy.getRefreshJWT() else { return nil }
+    var request = self
+    request.addValue("\(URLRequest.TOKEN_TYPE) \(token)", forHTTPHeaderField: URLRequest.HEADER_AUTHORIZATION)
+    return request
+  }
 }

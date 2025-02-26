@@ -55,10 +55,10 @@ final public class TT2: ITT2 {
     private var positionKitParams: ParameterPackage = .retail
     private var settings: TT2Settings { tt2Internal.getTT2Settings.invoke() }
 
-    public init(with apiUrl: String, apiKey: String, settings: TT2Settings = .init()) {
-        URLCache.shared.removeAllCachedResponses()
-        context = Context(VSTT2Config(environment: EnvironmentConfig()))
-        _tt2Internal = TT2Internal(with: apiUrl, apiKey: apiKey, settings: settings)
+    public init(connectionSettings: EnvironmentConfig.Settings, authSettings: AuthSettings, settings: TT2Settings) {
+      URLCache.shared.removeAllCachedResponses()
+      context = Context(VSTT2Config(environment: EnvironmentConfig()))
+      _tt2Internal = TT2Internal(connectionSettings: connectionSettings, authSettings: authSettings, settings: settings)
     }
 
     deinit {
@@ -68,38 +68,38 @@ final public class TT2: ITT2 {
     }
 
     // MARK: Initialize
-    public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, completion: @escaping (Error?) -> ()) {
+    public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, returnOn queue: DispatchQueue = .main, completion: @escaping (Error?) -> ()) {
+      DispatchQueue.global(qos: .background).async { [weak self] in
+        guard let self = self else { return }
         let group = DispatchGroup()
         group.enter()
+        tt2Internal.login.invoke { (error) in
+          group.leave()
+        }
+        group.wait()
+        group.enter()
         tt2Internal.getClients() { [weak self] (result) in
-            switch result {
-            case .success(let clients):
-                guard
-                  let self = self,
-                  let client = clients.first(where: { $0.clientId == clientId }),
-                  let serverAddress = client.dataServerUrl,
-                  let apiKey = client.dataServerApiKey
-                else { completion(VSTT2Error.missingData); return }
-
-                tt2Internal.setActiveClient.invoke(clientId: clientId)
-                tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
-                self.positionKitParams = positionKitParams
-                tt2Internal.getStores(with: clientId) { (error) in
-                  if let error = error {
-                    completion(error)
-                  } else {
-                    group.leave()
-                  }
-                }
-            case .failure(let error):
-                completion(error)
+          switch result {
+          case .success(_):
+            guard let self = self else { queue.async { completion(VSTT2Error.missingData) }; return }
+            tt2Internal.setActiveClient.invoke(clientId: clientId)
+            self.positionKitParams = positionKitParams
+            tt2Internal.getStores(with: clientId) { (error) in
+              if let error = error {
+                queue.async { completion(error) }
+              } else {
+                group.leave()
+              }
             }
+          case .failure(let error):
+            queue.async { completion(error) }
+          }
         }
 
         group.enter()
         tt2Internal.mlModelManager.fetchInterface { (error) in
           if let error = error {
-            completion(error)
+            queue.async { completion(error) }
           } else {
             group.leave()
           }
@@ -107,10 +107,11 @@ final public class TT2: ITT2 {
 
         switch group.wait(timeout: .now() + 120) {
         case .success:
-          completion(nil)
+          queue.async { completion(nil) }
         case .timedOut:
-          completion(VSTT2Error.timeout)
+          queue.async { completion(VSTT2Error.timeout) }
         }
+      }
     }
     
     public func initiate(store: TT2Store, completion: @escaping (Error?) -> ()) {
@@ -145,14 +146,15 @@ final public class TT2: ITT2 {
                   self.tt2Internal.position.setup()
                   if let zones = self.zonesTree.getZonesForCurrentFloorLevel() {
                       self.tt2Internal.navigation.setup(
-                        inAndOutZone: InAndOutZone(triggers: zones.map({ InAndOutZone.Trigger(id: $0.name, polygon: $0.points) }))
+                        inAndOutZone: InAndOutZone(triggers: zones.map({ InAndOutZone.Trigger(id: $0.id, polygon: $0.points) }))
                       )
                   }
                   self.setupMap()
                   self.setupAnalytics(for: currentStore)
                   completion(nil)
               }
-            case .failure(let error): completion(error)
+            case .failure(let error):
+              DispatchQueue.main.async { completion(error) }
             }
         }
     }
@@ -307,8 +309,17 @@ private extension TT2 {
     }
     
     func setupAnalytics(for store: Store) {
-        guard let serverAddress = store.statServerConnection.serverAddress, let apiKey = store.statServerConnection.apiKey else { return }
-        tt2Internal.config.initAnalyticsServerConnection(with: serverAddress, endPoint: .v2, apiKey: apiKey)
+        if tt2Internal.config.connection.tt2DataServer == nil, let serverAddress = store.statServerConnection.serverAddress {
+          tt2Internal.config.connection.tt2DataServer = .init(
+            baseUrl: serverAddress.trimmingCharacters(in: .init(charactersIn: "/"))
+              .appending("/")
+              .appending(EnvironmentConfig.EndPoints.v2.rawValue),
+            authType: .apiKey
+          )
+        }
+        if let apiKey = store.statServerConnection.apiKey {
+          tt2Internal.setApiKey.invoke(type: .analytics, value: apiKey)
+        }
         tt2Internal.analytics.setup()
     }
     

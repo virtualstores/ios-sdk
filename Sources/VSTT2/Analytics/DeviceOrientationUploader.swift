@@ -24,7 +24,7 @@ class DeviceOrientationUploader {
 
   func upload(id: String, visitId: Int64, deviceOrientation: String, currentLocation: CGPoint, direction: Double, errorHandler: @escaping (Error) -> Void) {
     guard
-      let serverAddress = config.analyticsServerConnection.serverAddress,
+      let serverAddress = config.connection.tt2DataServer?.baseUrl,
       let clientName = client.name,
       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
       let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String

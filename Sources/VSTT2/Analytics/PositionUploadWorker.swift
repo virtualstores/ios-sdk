@@ -12,8 +12,11 @@ import VSFoundation
 final class PositionUploadWorker {
     @Inject var persistence: Persistence
     @Inject var activeStore: GetActiveStoreUseCase
+
+    // Should be cleaned up in a future version
     var positionObjects: [PositionObject] { persistence.get(arrayOf: PositionObject.self) }
 
+    // Should be cleaned up in a future version
     func insert(id: String, xPosition: Double, yPosition: Double, time: String, uploadStatus: PointStatus, visitId: Int64) {
         var object = PositionObject()
         object.key = id
@@ -42,7 +45,6 @@ final class PositionUploadWorker {
     func saveObjects() {
       positionObjects2.forEach { (key, value) in
         var object = UploadPositionsPersistence()
-        object.serverConnection = activeStore.invoke().statServerConnection
         object.visitId = key
         object.requestId = UUID().uuidString.uppercased()
         object.positionGrps = value

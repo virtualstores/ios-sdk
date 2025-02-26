@@ -41,9 +41,12 @@ struct VSTT2Config: Config {
 
   private func configureRepositories(_ injector: Injector) {
     injector.map(IAnalyticsRepository.self) { AnalyticsRepository() }
+    injector.map(IApiKeyRepository.self) { ApiKeyRepository() }
+    injector.map(IAuthRepository.self) { AuthRepository() }
     injector.map(IClientRepository.self) { ClientRepository() }
     injector.map(IFloorRepository.self) { FloorRepository() }
     injector.map(IItemsRepository.self) { ItemsRepository() }
+    injector.map(IJWTTokenRepository.self) { JWTTokenRepository() }
     injector.map(IMLRepository.self) { MLRepository() }
     injector.map(IStatusRepository.self) { StatusRepository() }
     injector.map(IStoreRepository.self) { StoreRepository() }
@@ -61,6 +64,16 @@ struct VSTT2Config: Config {
     injector.map(UploadPositionsForVisitUseCase.self) { UploadPositionsForVisitUseCase() }
     injector.map(UploadScanEventForActiveVisitUseCase.self) { UploadScanEventForActiveVisitUseCase() }
     injector.map(UploadTriggerEventForActiveVisitUseCase.self) { UploadTriggerEventForActiveVisitUseCase() }
+
+    // Authentication use cases
+    injector.map(GetApiKeyUseCase.self) { GetApiKeyUseCase() }
+    injector.map(GetAuthSettingsUseCase.self) { GetAuthSettingsUseCase() }
+    injector.map(GetAuthTokenUseCase.self) { GetAuthTokenUseCase() }
+    injector.map(GetRefreskTokenUseCase.self) { GetRefreskTokenUseCase() }
+    injector.map(LoginUseCase.self) { LoginUseCase() }
+    injector.map(RefreshUseCase.self) { RefreshUseCase() }
+    injector.map(SetApiKeyUseCase.self) { SetApiKeyUseCase() }
+    injector.map(SetAuthSettingsUseCase.self) { SetAuthSettingsUseCase() }
 
     // Barcode use case
     injector.map(GetPositionByBarcodeUseCase.self) { GetPositionByBarcodeUseCase() }

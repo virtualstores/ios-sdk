@@ -9,7 +9,7 @@ import Foundation
 import VSFoundation
 
 struct UploadStepEventsParameters {
-  let config: EnvironmentConfig
+  @Inject var config: EnvironmentConfig
   let visitId: Int64
   let requestId: String
   let events: [StepEvent]

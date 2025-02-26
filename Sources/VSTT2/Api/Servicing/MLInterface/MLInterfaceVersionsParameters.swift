@@ -6,18 +6,15 @@
 //
 
 import Foundation
+import VSFoundation
 
 struct MLInterfaceVersionsParameters {
-  private let config: EnvironmentConfig = EnvironmentConfig()
-
-  init() {
-    config.centralServerConnection = ServerConnection(apiKey: "kanelbulle", serverAddress: "https://lmz7vrr223.execute-api.eu-north-1.amazonaws.com")
-  }
+  @Inject var config: EnvironmentConfig
 }
 
 extension MLInterfaceVersionsParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .central }
+  var type: RoutingType { .ml }
   var method: RequestType { .GET }
   var path: String { "/getSdkAssetsMlInterfaceVersions" }
 }

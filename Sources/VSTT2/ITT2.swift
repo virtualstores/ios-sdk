@@ -55,8 +55,8 @@ public protocol ITT2 {
     var zonesTree: TT2ZonesTree { get }
 
     /// Method for initialize TT2 for specific client
-    func initialize(clientId: Int64, positionKitParams: ParameterPackage, completion: @escaping (Error?) -> ())
-    
+    func initialize(clientId: Int64, positionKitParams: ParameterPackage, returnOn queue: DispatchQueue, completion: @escaping (Error?) -> ())
+
     /// Method for initiate selected Store data
     func initiate(store: TT2Store, completion: @escaping (Error?) -> ())
 
@@ -83,6 +83,12 @@ public protocol ITT2 {
 
     func initRealWorldConverter()
     func initRealWorldConverter(point: CGPoint)
+}
+
+public extension ITT2 {
+  func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, returnOn queue: DispatchQueue = .main, completion: @escaping (Error?) -> ()) {
+    initialize(clientId: clientId, positionKitParams: positionKitParams, returnOn: queue, completion: completion)
+  }
 }
 
 public enum VSTT2Error: Error {

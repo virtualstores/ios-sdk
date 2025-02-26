@@ -44,7 +44,7 @@ class AccuracyUploader {
 
   private func upload(id: String, preScanLocation: CGPoint, position: ItemPosition, errorHandler: @escaping (Error) -> Void) {
     guard
-      let serverAddress = config.analyticsServerConnection.serverAddress,
+      let serverAddress = config.connection.tt2DataServer?.baseUrl,
       let clientName = client.name,
       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
       let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
@@ -213,7 +213,6 @@ class AccuracyUploader {
       tags: tags
     )
     let parameters = UploadSyncEventsParameters(
-      config: config,
       visitId: visitId,
       requestId: UUID().uuidString.uppercased(),
       event: event
@@ -288,10 +287,6 @@ extension URLQueryItem {
 extension UploadSyncEventsParameters {
   var asPersistence: UploadSyncEventsPersistence {
     let event = UploadSyncEventsPersistence()
-    event.apiKey = config.analyticsServerConnection.apiKey
-    event.serverAddress = config.analyticsServerConnection.serverAddress
-    event.mqttAddress = config.analyticsServerConnection.mqttAddress
-    event.storeId = config.analyticsServerConnection.storeId
 
     event.visitId = visitId
     event.requestId = requestId
@@ -334,10 +329,7 @@ extension UploadSyncEventsPersistence {
       let syncPositionOffsetsInMeters = syncPositionOffsetsInMeters,
       let tags = tags
     else { return nil }
-    let config = EnvironmentConfig()
-    config.analyticsServerConnection = ServerConnection(apiKey: apiKey, serverAddress: serverAddress, mqttAddress: mqttAddress, storeId: storeId)
     return UploadSyncEventsParameters(
-      config: config,
       visitId: visitId,
       requestId: requestId,
       event: SyncEvent(

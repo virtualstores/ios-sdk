@@ -330,7 +330,9 @@ extension TT2AnalyticsManager: TT2Analytics {
 
     createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData) { [weak self] (result) in
       self?.navigationManager.vpsPosition.set(sessionId: self?.visitId?.description)
-      completion(result)
+      DispatchQueue.main.async {
+        completion(result)
+      }
     }
   }
 
