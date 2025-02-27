@@ -166,6 +166,8 @@ internal class TT2Internal {
               case .rescueMode: analytics.rescueMode()
               case .floorChange(difference: let difference, timestamp: let timestamp):
                 floorManager.onNewFloor(floor: difference)
+              case .consistencyScoreSignal(let score):
+                analytics.report(visitScore: score)
               }
             }.store(in: &cancellable)
         

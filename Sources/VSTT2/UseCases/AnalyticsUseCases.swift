@@ -92,3 +92,12 @@ class UploadTriggerEventForActiveVisitUseCase {
     repository.upload(visitId: id, triggerEvent: request, completion: completion)
   }
 }
+
+class UploadVisitScoreForActiveVisitUseCase {
+  @Inject var repository: IAnalyticsRepository
+
+  func invoke(visitScore: VisitScore, completion: @escaping (Error?) -> ()) {
+    guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
+    repository.upload(visitId: id, visitScore: visitScore, completion: completion)
+  }
+}

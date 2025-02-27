@@ -17,6 +17,7 @@ protocol IAnalyticsRepository {
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ())
+  func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ())
 }
 
 class AnalyticsRepository {
@@ -66,5 +67,9 @@ extension AnalyticsRepository: IAnalyticsRepository {
 
   func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ()) {
     api.upload(visitId: visitId, triggerEvent: triggerEvent, completion: completion)
+  }
+
+  func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ()) {
+    api.upload(visitId: visitId, visitScore: visitScore, completion: completion)
   }
 }

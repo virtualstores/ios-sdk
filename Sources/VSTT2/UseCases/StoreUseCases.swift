@@ -66,3 +66,12 @@ class SetActiveStoreUseCase {
     floorRepository.set(cachedFloors: store.rtlsOptions)
   }
 }
+
+class ValidateVisitScoreUseCase {
+  @Inject var repository: IStoreRepository
+
+  func invoke(score: Int, timestamp: Date) -> VisitScore? {
+    guard let threshold = repository.activeStore.acceptedScoreLimit else { return nil }
+    return .init(score: score, isAccepted: score>=threshold, timestamp: timestamp)
+  }
+}

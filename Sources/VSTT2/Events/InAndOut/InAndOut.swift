@@ -40,33 +40,33 @@ class InAndOut {
     activeInside.removeAll()
   }
 
-  func onNewPosition(currentPosition: CGPoint) {
+  func on(new position: CGPoint) {
     var enterEvents = [IInAndOutTrigger]()
     var exitEvents = [IInAndOutTrigger]()
     triggers.forEach { (trigger) in
       switch trigger {
       case let type as Radius:
-        if isWithinRadius(position: currentPosition, trigger: type) {
-          if isNotActive(trigger: trigger, position: currentPosition) {
+        if isWithinRadius(position: position, trigger: type) {
+          if isNotActive(trigger: trigger, position: position) {
             enterEvents.append(trigger)
           }
-        } else if isActive(trigger: trigger, position: currentPosition) {
+        } else if isActive(trigger: trigger, position: position) {
           exitEvents.append(trigger)
         }
       case let type as Zone:
-        if isPointInside(point: currentPosition, coordinates: type.polygon) {
-          if isNotActive(trigger: trigger, position: currentPosition) {
+        if isPointInside(point: position, coordinates: type.polygon) {
+          if isNotActive(trigger: trigger, position: position) {
             enterEvents.append(trigger)
           }
-        } else if isActive(trigger: trigger, position: currentPosition) {
+        } else if isActive(trigger: trigger, position: position) {
           exitEvents.append(trigger)
         }
       default: break
       }
     }
 
-    delegate?.onEnter(triggers: enterEvents, position: currentPosition)
-    delegate?.onExit(triggers: exitEvents, position: currentPosition)
+    delegate?.onEnter(triggers: enterEvents, position: position)
+    delegate?.onExit(triggers: exitEvents, position: position)
   }
 
   private func isNotActive(trigger: IInAndOutTrigger, position: CGPoint) -> Bool {

@@ -331,9 +331,8 @@ private extension TT2 {
             zonesTree.add(rtls, value.mapZones, value.mapZonesPoints)
         }
 
-        guard let mapZones = zonesTree.getZonesFor(floorLevelId: activeFloor.id) else { return }
-        tt2Internal.analytics.zoneManager.setup(with: mapZones, rtlsOptions: activeFloor)
-        tt2Internal.analytics.eventManager.setup(with: activeStore.id, zones: mapZones, rtlsOptionsId: activeFloor.id)
+        tt2Internal.analytics.zoneManager.setup()
+        tt2Internal.analytics.eventManager.setup()
     }
 }
 

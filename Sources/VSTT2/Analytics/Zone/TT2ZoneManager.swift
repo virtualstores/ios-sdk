@@ -12,13 +12,15 @@ import VSFoundation
 
 ///ZoneManager is helping handle in-out events
 public class TT2ZoneManager: TT2Zone {
+    @Inject var activeFloor: GetActiveFloorUseCase
+    @Inject var getZonesTree: GetZonesTreeUseCase
     public var zoneEnteredPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
     public var zoneExitedPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
     var onEnterPublisher: CurrentValueSubject<Zone?, Never> = .init(nil)
     var onExitPublisher: CurrentValueSubject<Zone?, Never> = .init(nil)
     
-    private var rtlsOptions: RtlsOptions?
-    private var zones: [Zone] = []
+    private var rtlsOptionsId: Int64 { activeFloor.invoke().id }
+    private var zones: [Zone] { getZonesTree.invoke().getZonesFor(floorLevelId: rtlsOptionsId) ?? [] }
     private var zonesPoint: [[CGPoint]] = []
     private var entryPoints: [String: [TriggerEvent.ZoneTrigger.EntryPoint]] = [:]
     private var insideZones: [String: [CGPoint]] = [:]
@@ -27,13 +29,10 @@ public class TT2ZoneManager: TT2Zone {
 
     init() {}
     
-    func setup(with zones: [Zone], rtlsOptions: RtlsOptions) {
-        self.rtlsOptions = rtlsOptions
-        self.zones = zones
-        
+    func setup() {
         zones.forEach({ (zone) in
             zonesPoint.append(zone.points)
-            entryPoints[zone.name] = zone.entryPoints.map({ .init(line: $0.line, id: $0.id) })
+            entryPoints[zone.id] = zone.entryPoints.map({ .init(line: $0.line, id: $0.id) })
         })
     }
     
@@ -101,24 +100,24 @@ public class TT2ZoneManager: TT2Zone {
     
     
     private func createZoneEnteredEvent(for currentPosition: CGPoint, polygon: [CGPoint]) -> TriggerEvent? {
-        guard let zone = zones.first(where: { $0.points == polygon }), let rtlsOptions = self.rtlsOptions else { return nil }
+        guard let zone = zones.first(where: { $0.points == polygon }) else { return nil }
         onEnterPublisher.send(zone)
         
         let groupId = UUID().uuidString.uppercased()
         insideZones[groupId] = zone.polygon
         
-        let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: groupId, type: .enter, entryPoint: checkForZoneEntryPoint(entryPoints: entryPoints[zone.name] ?? [], positions: positionHistory.asArray())))
-        return TriggerEvent(rtlsOptionsId: rtlsOptions.id, name: zone.name, description: "", eventType: zoneTrigger, timestamp: Date(), userPosition: currentPosition)
+        let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: groupId, type: .enter, entryPoint: checkForZoneEntryPoint(entryPoints: entryPoints[zone.id] ?? [], positions: positionHistory.asArray())))
+        return TriggerEvent(rtlsOptionsId: rtlsOptionsId, name: zone.name, description: "", eventType: zoneTrigger, timestamp: Date(), userPosition: currentPosition)
     }
     
     private func exitZone(for currentPosition: CGPoint, polygon: [CGPoint]) {
-        guard let zone = zones.first(where: { $0.points == polygon }), let rtlsOptions = self.rtlsOptions else { return }
+        guard let zone = zones.first(where: { $0.points == polygon }) else { return }
         onExitPublisher.send(zone)
         insideZones.forEach { (key, value) in
             guard value == zone.polygon else { return }
             
-            let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: key, type: .exit, entryPoint: checkForZoneEntryPoint(entryPoints: entryPoints[zone.name] ?? [], positions: positionHistory.asArray())))
-            let event = TriggerEvent(rtlsOptionsId: rtlsOptions.id,name: zone.name, description: "", eventType: zoneTrigger, timestamp: Date(), userPosition: currentPosition)
+            let zoneTrigger = TriggerEvent.EventType.zoneTrigger(TriggerEvent.ZoneTrigger(zoneId: zone.name, groupId: key, type: .exit, entryPoint: checkForZoneEntryPoint(entryPoints: entryPoints[zone.id] ?? [], positions: positionHistory.asArray())))
+            let event = TriggerEvent(rtlsOptionsId: rtlsOptionsId, name: zone.name, description: "", eventType: zoneTrigger, timestamp: Date(), userPosition: currentPosition)
 
             zoneExitedPublisher.send(event)
             self.activeInside.removeAll(where: { $0 == polygon })
