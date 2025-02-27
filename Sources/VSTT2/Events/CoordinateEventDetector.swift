@@ -43,11 +43,11 @@ internal class CoordinateEventDetector: IEventDetector {
 
     var count = 0
     var threshhold = 5
-    func onNewPosition(currentPosition: CGPoint) {
+    func on(new position: VPSOutputSignal.Position) {
         count += 1
         guard count >= threshhold else { return }
         count = 0
-        inAndOut?.onNewPosition(currentPosition: currentPosition)
+        inAndOut?.onNewPosition(currentPosition: position.point)
     }
     
     func setup(with zones: [Zone]) { }

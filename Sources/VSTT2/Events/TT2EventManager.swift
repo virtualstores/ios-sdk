@@ -11,6 +11,9 @@ import Combine
 import UIKit
 
 public class TT2EventManager {
+  @Inject var activeStore: GetActiveStoreUseCase
+  @Inject var activeFloor: GetActiveFloorUseCase
+  @Inject var getZonesTree: GetZonesTreeUseCase
   @Inject var messagesService: MessagesService
   @Inject var triggerEventsService: TriggerEventsService
   @Inject var eventDetector: EventDetector
@@ -20,13 +23,13 @@ public class TT2EventManager {
 
   var messageShownPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
 
-  private var activeStoreId: Int64?
-  private var rtlsOptionsId: Int64 = 0
+  private var activeStoreId: Int64 { activeStore.invoke().id }
+  private var rtlsOptionsId: Int64 { activeFloor.invoke().id }
 
   public var triggerEvents: [TriggerEvent] = []
   private var latestMessageLoad: Date?
   private let reloadMessageInterval: TimeInterval = 3600.0
-  private var zones: [Zone] = []
+  private var zones: [Zone] { getZonesTree.invoke().getZonesFor(floorLevelId: rtlsOptionsId) ?? [] }
   private var view: UIView?
   private var inAndOut: InAndOut?
 
@@ -40,19 +43,14 @@ public class TT2EventManager {
     cancellable.removeAll()
   }
 
-  func setup(with storeId: Int64, zones: [Zone], rtlsOptionsId: Int64) {
-    self.activeStoreId = storeId
-    self.zones = zones
-    self.rtlsOptionsId = rtlsOptionsId
-
+  func setup() {
     eventDetector.setup(with: zones)
     latestMessageLoad = nil
     loadMessagesIfNeeded()
-
   }
 
-  func onNewPosition(currentPosition: CGPoint) {
-    eventDetector.onNewPosition(currentPosition: currentPosition)
+  func on(new position: VPSOutputSignal.Position) {
+    eventDetector.on(new: position)
   }
 }
 
@@ -99,11 +97,8 @@ private extension TT2EventManager {
   }
 
   func loadMessages() {
-    guard let storeId = activeStoreId else { return }
-
-    let parameters = TriggerEventsParameters(storeId: storeId)
     triggerEventsService
-      .call(with: parameters)
+      .call(with: TriggerEventsParameters(storeId: activeStoreId))
       .sink { (result) in
         switch result {
         case .finished: break

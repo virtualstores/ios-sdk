@@ -29,6 +29,7 @@ public struct Store: Codable {
     public let positionServiceSettings: PositionServiceSettings?
     public let syncPositionFilter: SyncFilter?
     public let syncCompassFilter: SyncFilter?
+    public let acceptedScoreLimit: Int?
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -50,6 +51,7 @@ public struct Store: Codable {
         case positionServiceSettings
         case syncPositionFilter
         case syncCompassFilter
+        case acceptedScoreLimit
     }
 
     public init(from decoder: Decoder) throws {
@@ -74,6 +76,7 @@ public struct Store: Codable {
         positionServiceSettings = try container.decodeIfPresent(PositionServiceSettings.self, forKey: .positionServiceSettings)
         syncPositionFilter = try container.decodeIfPresent(SyncFilter.self, forKey: .syncPositionFilter)
         syncCompassFilter = try container.decodeIfPresent(SyncFilter.self, forKey: .syncCompassFilter)
+        acceptedScoreLimit = try container.decodeIfPresent(Int.self, forKey: .acceptedScoreLimit)
     }
 
     public func getCodesFor(type: PositionedCode.CodeType, floorLevel: Int) -> [PositionedCode] {

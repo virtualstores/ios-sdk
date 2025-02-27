@@ -31,8 +31,9 @@ private extension EventDetector {
         triggers.append(InAndOut.Radius(id: event.id, centerPoint: trigger.point, radius: trigger.radius))
       case .shelfTrigger(_): break
       case .zoneTrigger(let trigger):
-        guard let zone = zones?.first(where: { $0.id == trigger.zoneId }) else { return }
-        triggers.append(InAndOut.Zone(id: event.id, zoneId: zone.id, polygon: zone.points))
+        // TODO: Filter on name?
+        guard let zone = zones?.first(where: { $0.name == trigger.zoneId }) else { return }
+        triggers.append(InAndOut.Zone(id: event.id, zoneId: zone.id, polygon: zone.extendedPoints ?? zone.points))
         triggersAndEvents[event.id] = (trigger.type, event)
       }
     }
@@ -52,11 +53,13 @@ extension EventDetector: IEventDetector {
     self.zones = zones
   }
 
-  func onNewPosition(currentPosition: CGPoint) {
+  func on(new position: VPSOutputSignal.Position) {
     positionCount += 1
     guard positionCount >= positionThreshhold else { return }
     positionCount = 0
-    inAndOut?.onNewPosition(currentPosition: currentPosition)
+    if position.trustedPosition {
+      inAndOut?.on(new: position.point)
+    }
   }
 
   func add(event: TriggerEvent) {

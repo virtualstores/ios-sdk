@@ -98,7 +98,7 @@ public extension EnvironmentConfig {
   }
 
   struct ServerSettings {
-    let baseUrl: String
-    let authType: AuthTypeEnum
+    public let baseUrl: String
+    public let authType: AuthTypeEnum
   }
 }

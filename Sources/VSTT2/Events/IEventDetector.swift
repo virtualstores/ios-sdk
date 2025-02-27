@@ -21,7 +21,7 @@ protocol IEventDetector {
     func setup(with zones: [Zone])
     
     /// Method which will receave user position change each time
-    func onNewPosition(currentPosition: CGPoint)
+    func on(new position: VPSOutputSignal.Position)
     
     /// Methode for being able to addEvent
     func add(event: TriggerEvent)

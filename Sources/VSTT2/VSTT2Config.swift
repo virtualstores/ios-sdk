@@ -65,6 +65,9 @@ struct VSTT2Config: Config {
     injector.map(UploadScanEventForActiveVisitUseCase.self) { UploadScanEventForActiveVisitUseCase() }
     injector.map(UploadTriggerEventForActiveVisitUseCase.self) { UploadTriggerEventForActiveVisitUseCase() }
 
+    injector.map(UploadVisitScoreForActiveVisitUseCase.self) { UploadVisitScoreForActiveVisitUseCase() }
+    injector.map(ValidateVisitScoreUseCase.self) { ValidateVisitScoreUseCase() }
+
     // Authentication use cases
     injector.map(GetApiKeyUseCase.self) { GetApiKeyUseCase() }
     injector.map(GetAuthSettingsUseCase.self) { GetAuthSettingsUseCase() }

@@ -36,6 +36,7 @@ final public class TT2AnalyticsManager {
 
     lazy var accuracyUploader: AccuracyUploader = { .init() }()
     lazy var stepEventUploader: StepEventUploader = { .init() }()
+    lazy var visitScoreManager: TT2AnalyticsScoreManager = { .init() }()
     let geopositionsManager: TT2AnalyticsGeopositionManager = .init()
     var tt2Tags: [String:String] = [:]
     var leaseExpired = false
@@ -270,7 +271,7 @@ extension TT2AnalyticsManager {
     if isRecording {
       recordPosition(rtlsOptionId: rtlsOptionId, position: position)
       zoneManager.onNewPosition(currentPosition: position.point)
-      eventManager.onNewPosition(currentPosition: position.point)
+      eventManager.on(new: position)
     }
   }
 
@@ -314,6 +315,10 @@ extension TT2AnalyticsManager {
     accuracyUploader.numberOfRescueModes += 1
     uploadTriggerEvents(request: postTriggerEvent(for: TriggerEvent(rtlsOptionsId: rtlsOptionId, name: "RescueModeTriggerEvent", description: "", eventType: .appTrigger(.init(event: "RescueModeTriggerEvent")), userPosition: currentPosition)))
   }
+
+  func report(visitScore: Int) {
+    visitScoreManager.report(score: visitScore)
+  }
 }
 
 extension TT2AnalyticsManager: TT2Analytics {
@@ -330,6 +335,7 @@ extension TT2AnalyticsManager: TT2Analytics {
 
     createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData) { [weak self] (result) in
       self?.navigationManager.vpsPosition.set(sessionId: self?.visitId?.description)
+      self?.visitScoreManager.startVisit()
       DispatchQueue.main.async {
         completion(result)
       }
@@ -355,6 +361,7 @@ extension TT2AnalyticsManager: TT2Analytics {
     }
     postMLPositionsAsTriggerEvent()
     updateVisitWithStopTags()
+    visitScoreManager.stopVisit()
     endVisit.invoke { [weak self] (error) in
       if let error = error {
         Logger(verbosity: .debug).log(message: "StopVisitError: \(error.localizedDescription)")
