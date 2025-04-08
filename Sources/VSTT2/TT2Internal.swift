@@ -115,9 +115,10 @@ internal class TT2Internal {
           .sink { [weak self] (isActive, isReferenceAngleCertain) in
               self?.mapManager?.set(isPositionActive: isActive)
               if isActive {
+                  self?.mapManager?.set(isReferenceAngleCertain: isReferenceAngleCertain)
                   self?.mapController?.reset()
                   if self?.automaticActivationOfUserMark ?? true {
-                      self?.mapController?.start(isReferenceAngleCertain: isReferenceAngleCertain)
+                      self?.mapController?.start()
                   }
               } else {
                   self?.mapController?.stop()
