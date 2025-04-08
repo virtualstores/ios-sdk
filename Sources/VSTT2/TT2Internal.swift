@@ -114,8 +114,8 @@ internal class TT2Internal {
         isVPSRunning.invoke()
           .sink { [weak self] (isActive, isReferenceAngleCertain) in
               self?.mapManager?.set(isPositionActive: isActive)
+              self?.mapManager?.set(isReferenceAngleCertain: isReferenceAngleCertain)
               if isActive {
-                  self?.mapManager?.set(isReferenceAngleCertain: isReferenceAngleCertain)
                   self?.mapController?.reset()
                   if self?.automaticActivationOfUserMark ?? true {
                       self?.mapController?.start()
