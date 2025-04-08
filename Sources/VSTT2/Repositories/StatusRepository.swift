@@ -21,12 +21,12 @@ protocol IStatusRepository {
   func set(gpsPosition: VPSOutputSignal.LatLngPosition.Location)
   func set(policy: LeasePolicyEnum)
   func set(vpsPosition: VPSOutputSignal.Position)
-  func set(isVPSRunning: Bool)
+  func set(isVPSRunning: Bool, qrStart: Bool)
   func set(settings: TT2Settings)
   func compassHeadingPublisher() -> AnyPublisher<Double?, Never>
   func gpsPositionPublisher() -> AnyPublisher<VPSOutputSignal.LatLngPosition.Location?, Never>
   func vpsPositionPublisher() -> AnyPublisher<VPSOutputSignal.Position?, Never>
-  func isVPSRunningPublisher() -> AnyPublisher<Bool, Never>
+  func isVPSRunningPublisher() -> AnyPublisher<(running: Bool, isReferenceAngleCertain: Bool), Never>
 }
 
 class StatusRepository {
@@ -35,7 +35,7 @@ class StatusRepository {
   private var _currentLeasePolicy: LeasePolicyEnum?
   private var currentPositionPublisher: CurrentValueSubject<VPSOutputSignal.Position?, Never> = .init(nil)
   private var _currentSettings: TT2Settings = .init()
-  private var isVPSRunningSubscriber: CurrentValueSubject<Bool, Never> = .init(false)
+  private var isVPSRunningSubscriber: CurrentValueSubject<(running: Bool, isReferenceAngleCertain: Bool), Never> = .init((running: false, isReferenceAngleCertain: false))
 }
 
 extension StatusRepository: IStatusRepository {
@@ -44,7 +44,7 @@ extension StatusRepository: IStatusRepository {
   var currentLeasePolicy: LeasePolicyEnum? { _currentLeasePolicy }
   var currentPosition: VPSOutputSignal.Position? { currentPositionPublisher.value }
   var currentSettings: TT2Settings { _currentSettings }
-  var isVPSRunning: Bool { isVPSRunningSubscriber.value }
+  var isVPSRunning: Bool { isVPSRunningSubscriber.value.running }
 
   func set(compassHeading: Double) {
     currentCompassHeadingPublisher.send(compassHeading)
@@ -62,8 +62,8 @@ extension StatusRepository: IStatusRepository {
     currentPositionPublisher.send(vpsPosition)
   }
 
-  func set(isVPSRunning: Bool) {
-    isVPSRunningSubscriber.send(isVPSRunning)
+  func set(isVPSRunning: Bool, qrStart: Bool) {
+    isVPSRunningSubscriber.send((isVPSRunning, qrStart))
   }
 
   func set(settings: TT2Settings) {
@@ -82,7 +82,7 @@ extension StatusRepository: IStatusRepository {
     currentPositionPublisher.eraseToAnyPublisher()
   }
 
-  func isVPSRunningPublisher() -> AnyPublisher<Bool, Never> {
+  func isVPSRunningPublisher() -> AnyPublisher<(running: Bool, isReferenceAngleCertain: Bool), Never> {
     isVPSRunningSubscriber.eraseToAnyPublisher()
   }
 }

@@ -90,7 +90,7 @@ public extension EnvironmentConfig {
       )
       tt2MLModelServer = ServerSettings(
         baseUrl: url.appending("/lambda"),
-        authType: authType
+        authType: .apiKey
       )
       tt2ResourceUrl = url.appending("/s3")
       tt2MLResourceUrl = url.appending("/ml")

@@ -36,10 +36,11 @@ final public class Navigation {
       getTT2Settings.invoke().isAutomaticFloorChangeEanbled
     }
 
-    public var currentPosition: CGPoint? {
-        @Inject var getPosition: GetCurrentVPSPositionUseCase
-        return getPosition.invoke()?.point
-    }
+    @Inject var getPosition: GetCurrentVPSPositionUseCase
+    public var currentPosition: CGPoint? { getPosition.invoke()?.point }
+
+    @Inject var vpsPositionPublisher: SubscribeToVPSUpdatesUseCase
+    public var positionPublisher: AnyPublisher<VPSOutputSignal.Position?, Never> { vpsPositionPublisher.invoke() }
 
     var accuracyPublisher: CurrentValueSubject<(event: AccuracySyncEvent.Event, isFloorSwap: Bool)?,Never> = .init(nil)
     var scanEventsPublisher: CurrentValueSubject<[ScanEvent]?, Never> = .init(nil)
@@ -103,7 +104,7 @@ extension Navigation: INavigation {
         try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
         certainAngle = true
         vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startAngle, uncertainAngle: false)
-        setIsVPSRunning.invoke(isVPSRunning: true)
+        setIsVPSRunning.invoke(isVPSRunning: true, qrStart: true)
         userStartAngle = TT2Course(fromDegrees: startAngle)
     }
 
@@ -111,7 +112,11 @@ extension Navigation: INavigation {
         try floors.forEach {
             guard $0.scanLocations?.first(where: { $0.code == code.code }) != nil else { return }
             try validateFloorLevel(floorId: $0.id) { [self] (isValid) in
-                try start(startPosition: code.point, startAngle: code.direction)
+                //if isActive {
+                //    vpsPosition.forceSyncPosition(position: code.point, angle: code.direction)
+                //} else {
+                    try start(startPosition: code.point, startAngle: code.direction)
+                //}
                 prepareAccuracyUpload(code: code, isFloorSwap: !isValid)
             }
         }
@@ -152,7 +157,7 @@ extension Navigation: INavigation {
             try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
             vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startWithAngle ?? heading.degrees, uncertainAngle: startWithAngle == nil)
             prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
-            setIsVPSRunning.invoke(isVPSRunning: true)
+            setIsVPSRunning.invoke(isVPSRunning: true, qrStart: false)
             userStartAngle = heading
         }
     }
@@ -249,7 +254,7 @@ extension Navigation: INavigation {
     public func stop() {
         vpsPosition.stop()
         hasStartLocationAngle = false
-        setIsVPSRunning.invoke(isVPSRunning: false)
+        setIsVPSRunning.invoke(isVPSRunning: false, qrStart: false)
     }
 
     public func prepareAngle() { vpsPosition.prepareAngle() }
