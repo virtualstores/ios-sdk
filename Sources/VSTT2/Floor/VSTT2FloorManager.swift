@@ -110,8 +110,8 @@ private extension VSTT2FloorManager {
 
 extension VSTT2FloorManager {
   var zoneData: [Int64: ZoneData] { getMapZones.invoke() }
-  var startCode: PositionedCode? { activeFloor.scanLocations?.first(where: { $0.type == .start }) }
-  var stopCode: PositionedCode? { activeFloor.scanLocations?.first(where: { $0.type == .stop }) ?? startCode }
+  var startCode: PositionedCode? { activeFloor.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .start }) }
+  var stopCode: PositionedCode? { activeFloor.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .stop }) ?? startCode }
 
   func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence, zoneData: [Int64: ZoneData])) -> ()) {
     guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }

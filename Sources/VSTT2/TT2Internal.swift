@@ -52,6 +52,7 @@ internal class TT2Internal {
     @Inject var stopTT2: StopTT2UseCase
 
     let deviceOrientationUploader: DeviceOrientationUploader = .init()
+    var mapManager: IMapManager?
     var mapController: IMapController?
     var wifiController: IWiFiController?
 
@@ -111,11 +112,12 @@ internal class TT2Internal {
 
     private func bindPublishers() {
         isVPSRunning.invoke()
-          .sink { [weak self] (isActive) in
+          .sink { [weak self] (isActive, isReferenceAngleCertain) in
+              self?.mapManager?.set(isPositionActive: isActive)
               if isActive {
                   self?.mapController?.reset()
                   if self?.automaticActivationOfUserMark ?? true {
-                      self?.mapController?.start()
+                      self?.mapController?.start(isReferenceAngleCertain: isReferenceAngleCertain)
                   }
               } else {
                   self?.mapController?.stop()
@@ -138,7 +140,8 @@ internal class TT2Internal {
               case .position(position: let position):
                 setVPSPosition.invoke(vpsPosition: position)
                 floorManager.onNewPostion(location: position.point)
-                mapController?.updateUserLocation(newLocation: position.point, std: position.std)
+                mapManager?.set(currentLocation: position)
+                mapController?.updateUserLocation(position: position)
                 analytics.onNewPositionBundle(position: position)
               case .latLng(let latLng):
                 mapController?.updateLatLngPosition(latLng: latLng)
@@ -168,6 +171,7 @@ internal class TT2Internal {
                 floorManager.onNewFloor(floor: difference)
               case .consistencyScoreSignal(let score):
                 analytics.report(visitScore: score)
+                mapController?.visitScore(score)
               }
             }.store(in: &cancellable)
         

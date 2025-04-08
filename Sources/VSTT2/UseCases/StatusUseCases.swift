@@ -92,8 +92,8 @@ class SetVPSPositionUseCase {
 class SetIsVPSRunningUseCase {
   @Inject var repository: IStatusRepository
 
-  func invoke(isVPSRunning: Bool) {
-    repository.set(isVPSRunning: isVPSRunning)
+  func invoke(isVPSRunning: Bool, qrStart: Bool) {
+    repository.set(isVPSRunning: isVPSRunning, qrStart: qrStart)
   }
 }
 
@@ -132,7 +132,7 @@ class SubscribeToVPSUpdatesUseCase {
 class SubscribeToIsVPSRunningUseCase {
   @Inject var repository: IStatusRepository
 
-  func invoke() -> AnyPublisher<Bool, Never> {
+  func invoke() -> AnyPublisher<(running: Bool, isReferenceAngleCertain: Bool), Never> {
     repository.isVPSRunningPublisher()
   }
 }

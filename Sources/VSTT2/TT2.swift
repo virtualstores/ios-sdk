@@ -37,7 +37,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.7.0"
+    static let version = "2.8.0"
 
     // MARK: Private members
     private let context: Context
@@ -59,6 +59,15 @@ final public class TT2: ITT2 {
       URLCache.shared.removeAllCachedResponses()
       context = Context(VSTT2Config(environment: EnvironmentConfig()))
       _tt2Internal = TT2Internal(connectionSettings: connectionSettings, authSettings: authSettings, settings: settings)
+    }
+
+    @available(*, deprecated, message: "Please use init(connectionSettings:authSettings:settings:)")
+    public convenience init(with apiUrl: String, apiKey: String, settings: TT2Settings = .init()) {
+      self.init(
+        connectionSettings: EnvironmentConfig.Direct(authType: .apiKey, tt2CentralServer: apiUrl),
+        authSettings: .apiKey(apiKey),
+        settings: settings
+      )
     }
 
     deinit {
@@ -165,6 +174,11 @@ final public class TT2: ITT2 {
     }
 
     // MARK: Setters
+    public func set(mapManager: IMapManager) {
+      tt2Internal.mapManager = mapManager
+      tt2Internal.mapManager?.set(isPositionActive: tt2Internal.navigation.isActive)
+    }
+
     public func set(map: IMapController) {
         tt2Internal.mapController = map
         setupMap()
@@ -250,7 +264,6 @@ private extension TT2 {
         let mapData = mapData,
         let converter = coordinateConverter,
         let navData = tt2Internal.floorManager.getActiveNavGraph.invoke(),
-        let start = tt2Internal.floorManager.startCode,
         let stop = tt2Internal.floorManager.stopCode,
         let zones = zonesTree.getZonesFor(floorLevelId: activeFloor.id)
       else { return }
@@ -258,7 +271,7 @@ private extension TT2 {
       let height = converter.convertFromMetersToPixels(input: activeFloor.heightInMeters)
       let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
 
-      let convertedAndFlippedStart = start.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
+      let convertedAndFlippedStart = tt2Internal.floorManager.startCode?.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
       let convertedAndFlippedStop = stop.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
 
       let pathfinder = VPSPathfinderAdapter(

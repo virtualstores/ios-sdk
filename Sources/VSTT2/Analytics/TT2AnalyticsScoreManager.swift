@@ -24,7 +24,7 @@ class TT2AnalyticsScoreManager {
   @Inject var uploadVisitScore: UploadVisitScoreForActiveVisitUseCase
   @Inject var validateVisitScore: ValidateVisitScoreUseCase
   private var latestVisitScore: VisitScore?
-  private var latestUploadedVisitScore: VisitScore?
+  var latestUploadedVisitScore: VisitScore?
   private var lastUploadTimestamp: Date = .init()
   private var uploadIntervalThreshold: Double = 15
 
