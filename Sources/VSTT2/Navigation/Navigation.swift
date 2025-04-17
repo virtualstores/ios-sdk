@@ -248,7 +248,17 @@ extension Navigation: INavigation {
         try start(startPosition: location.coordinate.asPoint, startAngle: location.course)
         return
       }
-      //vpsPosition.syncPosition(location: location)
+      vpsPosition.syncPosition(location: location)
+    }
+
+    public func syncGNSS(isStartSequence: Bool) {
+      guard isActive else { return }
+      vpsPosition.syncGNSS(isStartSequence: isStartSequence)
+    }
+
+    public func syncManual(location: CLLocation?, isStartSequence: Bool) {
+      guard isActive else { return }
+      vpsPosition.syncManual(location: location, isStartSequence: isStartSequence)
     }
 
     public func stop() {
@@ -258,6 +268,14 @@ extension Navigation: INavigation {
     }
 
     public func prepareAngle() { vpsPosition.prepareAngle() }
+
+    public func startGPS() {
+        vpsPosition.startGPS()
+    }
+
+    public func stopGPS() {
+        vpsPosition.stopGPS()
+    }
 }
 
 // MARK: Internal

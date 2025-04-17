@@ -257,6 +257,11 @@ internal class TT2Internal {
         pixelsPerMeter: 50
       )
     }
+
+    func set(visitId: Int64, isMocked: Bool) {
+      @Inject var repository: AnalyticsRepository
+      repository.set(visitId: visitId, isMocked: isMocked)
+    }
 }
 
 private extension String {

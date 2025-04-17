@@ -23,27 +23,38 @@ protocol IAnalyticsRepository {
 class AnalyticsRepository {
   private let api: IAnalyticsApi = AnalyticsApi()
   private var visitId: Int64?
+  private var isMocked: Bool = false
 }
 
 extension AnalyticsRepository: IAnalyticsRepository {
   var activeVisitId: Int64? { visitId }
 
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ()) {
-    api.createVisit(storeId: storeId, deviceInformation: deviceInformation, tags: tags, metaData: metaData) { [weak self] (result) in
-      switch result {
-      case .success(let visitId):
-        self?.visitId = visitId
-        completion(.success(visitId))
-      case .failure(let error):
-        completion(.failure(error))
+    if isMocked {
+      completion(.success(visitId!))
+    } else {
+      api.createVisit(storeId: storeId, deviceInformation: deviceInformation, tags: tags, metaData: metaData) { [weak self] (result) in
+        switch result {
+        case .success(let visitId):
+          self?.visitId = visitId
+          completion(.success(visitId))
+        case .failure(let error):
+          completion(.failure(error))
+        }
       }
     }
   }
 
+  func set(visitId: Int64, isMocked: Bool) {
+    self.visitId = visitId
+    self.isMocked = isMocked
+  }
+
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ()) {
     api.stopVisit(visitId: visitId) { [weak self] (error) in
-      if error == nil {
-        self?.visitId = nil
+      guard let self = self else { return }
+      if error == nil, !(isMocked) {
+        self.visitId = nil
       }
       completion(error)
     }

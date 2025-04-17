@@ -197,6 +197,10 @@ final public class TT2: ITT2 {
         tt2Internal.set(tt2Settings: .init(engine: vpsEngine, params: settings.params))
     }
 
+    public func set(mockVisitID visitId: Int64) {
+      tt2Internal.set(visitId: visitId, isMocked: true)
+    }
+
     public func getMapData() -> MapData? {
         mapData
     }
@@ -317,7 +321,8 @@ private extension TT2 {
             automaticSensorRecording: tt2Internal.automaticSensorRecording,
             positionServiceSettings: tt2Internal.activeStore.positionServiceSettings,
             converter: converter,
-            modelManger: tt2Internal.mlModelManager
+            modelManger: tt2Internal.mlModelManager,
+            engine: settings.engine
         )
     }
     
@@ -347,34 +352,4 @@ private extension TT2 {
         tt2Internal.analytics.zoneManager.setup()
         tt2Internal.analytics.eventManager.setup()
     }
-}
-
-public struct TT2Settings {
-  let engine: TT2Engine
-  let params: TT2ModelParams
-  let isAutomaticFloorChangeEanbled: Bool
-
-  public init(engine: TT2Engine = .indoor, params: TT2ModelParams = .init(), isAutomaticFloorChangeEanbled: Bool = true) {
-    self.engine = engine
-    self.params = params
-    self.isAutomaticFloorChangeEanbled = isAutomaticFloorChangeEanbled
-  }
-
-  public enum TT2Engine: String {
-    case gpsFusion = "GPS_FUSION"
-    case indoor = "INDOOR"
-    case openTerrain = "OPEN_TERRAIN"
-  }
-
-  public struct TT2ModelParams {
-    let target: Int
-    let targetMLModelVersion: Int?
-    let targetNLModelVersion: Int?
-
-    public init(target: Int = 1, targetMLModelVersion: Int? = nil, targetNLModelVersion: Int? = nil) {
-      self.target = target
-      self.targetMLModelVersion = targetMLModelVersion
-      self.targetNLModelVersion = targetNLModelVersion
-    }
-  }
 }
