@@ -145,10 +145,12 @@ internal class TT2Internal {
                 mapController?.updateUserLocation(position: position)
                 analytics.onNewPositionBundle(position: position)
               case .latLng(let latLng):
+                //print("LatLng", "Source", latLng.reliableSource, "ML", "(\(latLng.mlLocation.latitude), \(latLng.mlLocation.longitude))", "GPS", "(\(latLng.gpsLocation.latitude), \(latLng.gpsLocation.longitude))")
                 mapController?.updateLatLngPosition(latLng: latLng)
                 analytics.geopositionsManager.update(location: latLng)
                 setGPSPosition.invoke(gpsPosition: latLng.gpsLocation)
               case .gps(let location):
+                //print("GPS", location.coordinate)
                 mapController?.update(location: location)
                 setGPSPosition.invoke(gpsPosition: location)
               case .ux(position: let position): break

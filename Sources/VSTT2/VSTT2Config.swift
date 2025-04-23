@@ -61,6 +61,7 @@ struct VSTT2Config: Config {
     injector.map(UpdateTagsForActiveVisitUseCase.self) { UpdateTagsForActiveVisitUseCase() }
     injector.map(UploadGeopositionsForActiveVisitUseCase.self) { UploadGeopositionsForActiveVisitUseCase() }
     injector.map(UploadGeopositionsForVisitUseCase.self) { UploadGeopositionsForVisitUseCase() }
+    injector.map(UploadSavedGeopositionsUseCase.self) { .init() }
     injector.map(UploadPositionsForVisitUseCase.self) { UploadPositionsForVisitUseCase() }
     injector.map(UploadScanEventForActiveVisitUseCase.self) { UploadScanEventForActiveVisitUseCase() }
     injector.map(UploadTriggerEventForActiveVisitUseCase.self) { UploadTriggerEventForActiveVisitUseCase() }
@@ -164,6 +165,7 @@ struct VSTT2Config: Config {
     injector.map(MapZoneParser.self) { MapZoneParser() }
     injector.map(Navigation.self) { Navigation() }
     injector.map(Persistence.self) { Persistence() }
+    injector.map(PersistenceManager.self) { PersistenceManager() }
     injector.map(Position.self) { Position() }
     injector.map(VPSPositionManager.self) { VPSPositionManager() }
     injector.map(PositionUploadWorker.self) { PositionUploadWorker() }

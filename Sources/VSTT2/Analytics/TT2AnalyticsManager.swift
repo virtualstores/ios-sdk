@@ -30,6 +30,7 @@ final public class TT2AnalyticsManager {
     @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
     @Inject var updateTags: UpdateTagsForActiveVisitUseCase
     @Inject var uploadGeopositions: UploadGeopositionsForActiveVisitUseCase
+    @Inject var uploadSavedGeopositions: UploadSavedGeopositionsUseCase
     @Inject var uploadPositions: UploadPositionsForVisitUseCase
     @Inject var uploadScanEvent: UploadScanEventForActiveVisitUseCase
     @Inject var uploadTriggerEvent: UploadTriggerEventForActiveVisitUseCase
@@ -214,6 +215,7 @@ extension TT2AnalyticsManager {
   func setup(uploadThreshold: Int = 100) {
     self.uploadThreshold = uploadThreshold
     bindPublishers()
+    uploadSavedGeopositions.invoke()
   }
 
   func addMLPositions(position: VPSOutputSignal.Position) {

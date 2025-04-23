@@ -67,6 +67,23 @@ class UploadGeopositionsForVisitUseCase {
   }
 }
 
+class UploadSavedGeopositionsUseCase {
+  @Inject var persistence: PersistenceManager
+  @Inject var repository: IAnalyticsRepository
+
+  func invoke() {
+    persistence
+      .getGeoPositions()
+      .forEach { (parameters) in
+        repository.upload(parameters: parameters) { [weak self] (error) in
+          if error == nil {
+            self?.persistence.delete(with: parameters.requestId)
+          }
+        }
+      }
+  }
+}
+
 class UploadPositionsForVisitUseCase {
   @Inject var repository: IAnalyticsRepository
 

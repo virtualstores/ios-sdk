@@ -39,3 +39,32 @@ extension UploadGeoPositionsParameters: Routing {
   }
   var parameters: Any? { positions.asDictionary() }
 }
+
+class PersistGeoPositionsParameters: IPersistenceModel {
+  var retainOriginalIndex: Bool = false
+  var index: String?
+
+  convenience init(index: String) {
+    self.init()
+    self.index = index
+  }
+
+  var visitId: Int64?
+  var requestId: String?
+  var positions: [String: [RecordedPositionLngLat]]?
+}
+
+extension PersistGeoPositionsParameters {
+  var asParams: UploadGeoPositionsParameters? {
+    guard
+      let visitId = visitId,
+      let requestId = requestId,
+      let positions = positions
+    else { return nil }
+    return UploadGeoPositionsParameters(
+      visitId: visitId,
+      requestId: requestId,
+      positions: positions
+    )
+  }
+}

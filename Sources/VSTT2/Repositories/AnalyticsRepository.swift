@@ -14,6 +14,7 @@ protocol IAnalyticsRepository {
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
   func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ())
+  func upload(parameters: UploadGeoPositionsParameters, completion: @escaping (Error?) -> ())
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ())
@@ -66,6 +67,10 @@ extension AnalyticsRepository: IAnalyticsRepository {
 
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ()) {
     api.upload(visitId: visitId, geopositions: geopositions, completion: completion)
+  }
+
+  func upload(parameters: UploadGeoPositionsParameters, completion: @escaping (Error?) -> ()) {
+    api.upload(parameters: parameters, completion: completion)
   }
 
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ()) {

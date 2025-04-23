@@ -14,6 +14,7 @@ protocol IAnalyticsApi {
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
   func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ())
+  func upload(parameters: UploadGeoPositionsParameters, completion: @escaping (Error?) -> ())
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ())
@@ -21,6 +22,7 @@ protocol IAnalyticsApi {
 }
 
 class AnalyticsApi {
+  @Inject private var manager: PersistenceManager
   private let createVisitService = CreateVisitService(with: NetworkManager())
   private let stopVisitService = StopVisitService(with: NetworkManager())
   private let tagsVisitService = TagsVisitService(with: NetworkManager())
@@ -86,13 +88,41 @@ extension AnalyticsApi: IAnalyticsApi {
       }.store(in: &cancellable)
   }
 
+  private func uploadGeopositionsService(requestId: String, completion: @escaping (Error?) -> ()) {
+    manager.getGeoPositions().forEach { (params) in
+      uploadGeopositionsService
+        .call(with: params)
+        .sink { (result) in
+          switch result {
+          case .finished: break
+          case .failure(let error):
+            if requestId == params.requestId {
+              completion(error)
+            }
+          }
+        } receiveValue: { [weak self] (_) in
+          self?.manager.delete(with: params.requestId)
+          if requestId == params.requestId {
+            completion(nil)
+          }
+        }.store(in: &cancellable)
+    }
+  }
+  
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ()) {
+    let params = UploadGeoPositionsParameters(
+      visitId: visitId,
+      requestId: UUID().uuidString.uppercased(),
+      positions: geopositions
+    )
+    manager.save(geoposition: params)
+    uploadGeopositionsService(requestId: params.requestId, completion: completion)
+  }
+
+  func upload(parameters: UploadGeoPositionsParameters, completion: @escaping (Error?) -> ()) {
     uploadGeopositionsService
-      .call(with: UploadGeoPositionsParameters(
-        visitId: visitId,
-        requestId: UUID().uuidString.uppercased(),
-        positions: geopositions
-      )).sink { (result) in
+      .call(with: parameters)
+      .sink { (result) in
         switch result {
         case .finished: break
         case .failure(let error): completion(error)
