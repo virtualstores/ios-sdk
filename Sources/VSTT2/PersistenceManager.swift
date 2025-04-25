@@ -36,4 +36,8 @@ class PersistenceManager {
       try? persistence.delete(object)
     }
   }
+
+  func deleteAll() {
+    try? persistence.delete(by: PersistGeoPositionsParameters.self)
+  }
 }

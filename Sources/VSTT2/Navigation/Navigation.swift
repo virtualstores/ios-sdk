@@ -261,6 +261,13 @@ extension Navigation: INavigation {
       vpsPosition.syncManual(location: location, isStartSequence: isStartSequence)
     }
 
+    public func startLngLatFixedNorth(location: CLLocation) throws {
+      try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
+      certainAngle = true
+      vpsPosition.startLngLatFixedNorth(location: location)
+      setIsVPSRunning.invoke(isVPSRunning: true, qrStart: true)
+    }
+
     public func stop() {
         vpsPosition.stop()
         hasStartLocationAngle = false

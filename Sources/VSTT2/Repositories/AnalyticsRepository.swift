@@ -25,6 +25,11 @@ class AnalyticsRepository {
   private let api: IAnalyticsApi = AnalyticsApi()
   private var visitId: Int64?
   private var isMocked: Bool = false
+  private var sessionId: Int64 { sessionIds[visitId ?? 0] ?? 0 }
+  private var sessionIds: [Int64: Int64] {
+    get { UserDefaults.standard.dictionary(forKey: "sessionIds") as? [Int64: Int64] ?? [:] }
+    set { UserDefaults.standard.set(newValue, forKey: "sessionIds") }
+  }
 }
 
 extension AnalyticsRepository: IAnalyticsRepository {
@@ -44,6 +49,11 @@ extension AnalyticsRepository: IAnalyticsRepository {
         }
       }
     }
+  }
+
+  func newSession() {
+    guard let id = visitId else { return }
+    sessionIds[id]
   }
 
   func set(visitId: Int64, isMocked: Bool) {

@@ -63,6 +63,7 @@ final class NetworkManager: DataHandler {
 
   func fetchEmptyBody<R: Routing>(_ routing: R) -> AnyPublisher<Void, Error> {
     let urlSession = URLSession(configuration: .default)
+    urlSession.configuration.httpMaximumConnectionsPerHost = 32
 
     guard let url = routing.urlRequest else { fatalError("Could not create url") }
 

@@ -116,20 +116,37 @@ extension AnalyticsApi: IAnalyticsApi {
       positions: geopositions
     )
     manager.save(geoposition: params)
-    uploadGeopositionsService(requestId: params.requestId, completion: completion)
+    //uploadGeopositionsService(requestId: params.requestId, completion: completion)
+    uploadGeopositionsService
+      .call(with: params)
+      .sink { (result) in
+        switch result {
+        case .finished: break
+        case .failure(let error): completion(error)
+        }
+      } receiveValue: { [weak self] (_) in
+        self?.manager.delete(with: params.requestId)
+        completion(nil)
+      }.store(in: &cancellable)
   }
 
   func upload(parameters: UploadGeoPositionsParameters, completion: @escaping (Error?) -> ()) {
-    uploadGeopositionsService
+    var test: AnyCancellable?
+    test = uploadGeopositionsService
       .call(with: parameters)
       .sink { (result) in
         switch result {
         case .finished: break
         case .failure(let error): completion(error)
         }
+        if let test = test {
+          self.cancellable.remove(test)
+        }
       } receiveValue: { (_) in
         completion(nil)
-      }.store(in: &cancellable)
+      }
+    test?
+      .store(in: &cancellable)
   }
 
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ()) {

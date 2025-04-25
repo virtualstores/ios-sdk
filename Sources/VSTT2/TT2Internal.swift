@@ -261,8 +261,8 @@ internal class TT2Internal {
     }
 
     func set(visitId: Int64, isMocked: Bool) {
-      @Inject var repository: AnalyticsRepository
-      repository.set(visitId: visitId, isMocked: isMocked)
+      @Inject var repository: IAnalyticsRepository
+      (repository as? AnalyticsRepository)?.set(visitId: visitId, isMocked: isMocked)
     }
 }
 

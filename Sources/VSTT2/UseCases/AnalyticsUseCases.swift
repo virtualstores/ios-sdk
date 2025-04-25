@@ -71,16 +71,35 @@ class UploadSavedGeopositionsUseCase {
   @Inject var persistence: PersistenceManager
   @Inject var repository: IAnalyticsRepository
 
+  let semaphore = DispatchSemaphore(value: 1)
+
   func invoke() {
-    persistence
+    let geo = persistence
       .getGeoPositions()
+    print("COUNT GEO", geo.count)
+    geo
       .forEach { (parameters) in
-        repository.upload(parameters: parameters) { [weak self] (error) in
-          if error == nil {
-            self?.persistence.delete(with: parameters.requestId)
-          }
+        DispatchQueue.global(qos: .background).async { [weak self] in
+          guard let self = self else { return }
+          semaphore.wait()
+          upload(parameters: parameters)
         }
       }
+  }
+
+  private func upload(parameters: UploadGeoPositionsParameters, attempt: Double = 0) {
+    guard attempt < 10 else { semaphore.signal(); return }
+    repository.upload(parameters: parameters) { [weak self] (error) in
+      if let error = error {
+        print("GEO ERROR", error)
+        print("CONNECTION", parameters.config.connection.tt2DataServer)
+        Thread.sleep(forTimeInterval: 3 * (attempt + 1))
+        self?.upload(parameters: parameters, attempt: attempt + 1)
+      } else {
+        self?.persistence.delete(with: parameters.requestId)
+        self?.semaphore.signal()
+      }
+    }
   }
 }
 

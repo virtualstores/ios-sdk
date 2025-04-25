@@ -215,7 +215,7 @@ extension TT2AnalyticsManager {
   func setup(uploadThreshold: Int = 100) {
     self.uploadThreshold = uploadThreshold
     bindPublishers()
-    uploadSavedGeopositions.invoke()
+    //uploadSavedGeopositions.invoke()
   }
 
   func addMLPositions(position: VPSOutputSignal.Position) {
