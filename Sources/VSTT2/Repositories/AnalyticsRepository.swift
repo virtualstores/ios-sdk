@@ -10,6 +10,8 @@ import VSFoundation
 
 protocol IAnalyticsRepository {
   var activeVisitId: Int64? { get }
+  var directoryURLS: [Int64: URL] { get }
+  func setDirectoryURL(visitId: Int64, url: URL)
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ())
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
   func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
@@ -24,6 +26,7 @@ protocol IAnalyticsRepository {
 class AnalyticsRepository {
   private let api: IAnalyticsApi = AnalyticsApi()
   private var visitId: Int64?
+  private var _directoryURLS: [Int64: URL] = [:]
   private var isMocked: Bool = false
   private var sessionId: Int64 { sessionIds[visitId ?? 0] ?? 0 }
   private var sessionIds: [Int64: Int64] {
@@ -34,6 +37,7 @@ class AnalyticsRepository {
 
 extension AnalyticsRepository: IAnalyticsRepository {
   var activeVisitId: Int64? { visitId }
+  var directoryURLS: [Int64 : URL] { _directoryURLS }
 
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ()) {
     if isMocked {
@@ -97,5 +101,9 @@ extension AnalyticsRepository: IAnalyticsRepository {
 
   func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ()) {
     api.upload(visitId: visitId, visitScore: visitScore, completion: completion)
+  }
+
+  func setDirectoryURL(visitId: Int64, url: URL) {
+    _directoryURLS[visitId] = url
   }
 }
