@@ -21,6 +21,7 @@ final public class TT2AnalyticsManager {
     @Inject var activeFloor: GetActiveFloorUseCase
     @Inject var activeStore: GetActiveStoreUseCase
     @Inject var activeVisitId: GetActiveVisitIDUseCase
+    @Inject var activeSessionId: GetActiveSessionIDUseCase
     @Inject var createVisit: CreateVisitUseCase
     @Inject var endVisit: StopVisitUseCase
     @Inject var getCurrentPosition: GetCurrentVPSPositionUseCase
@@ -42,6 +43,7 @@ final public class TT2AnalyticsManager {
     var tt2Tags: [String:String] = [:]
     var leaseExpired = false
     var visitId: Int64? { activeVisitId.invoke() }
+    var sessionId: Int { activeSessionId.invoke() }
     private var store: Store { activeStore.invoke() }
     private var uploadThreshold = 100
     private var rtlsOptionId: Int64 { activeFloor.invoke().id }
@@ -336,9 +338,9 @@ extension TT2AnalyticsManager: TT2Analytics {
     tt2Tags = editedTags.filter { $0.key.lowercased().contains("tt2") }
 
     createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData) { [weak self] (result) in
-      self?.navigationManager.vpsPosition.set(sessionId: self?.visitId?.description)
-      self?.visitScoreManager.startVisit()
-      self?.navigationManager.vpsPosition.startGPS()
+      guard let self = self else { return }
+      visitScoreManager.startVisit()
+      navigationManager.vpsPosition.startGPS()
       DispatchQueue.main.async {
         completion(result)
       }

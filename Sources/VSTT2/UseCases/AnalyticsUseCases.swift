@@ -24,11 +24,27 @@ class CreateVisitUseCase {
   }
 }
 
+class CreateNewSessionUseCase {
+  @Inject var repository: IAnalyticsRepository
+
+  func invoke() {
+    repository.newSession()
+  }
+}
+
 class GetActiveVisitIDUseCase {
   @Inject var repository: IAnalyticsRepository
 
   func invoke() -> Int64? {
     repository.activeVisitId
+  }
+}
+
+class GetActiveSessionIDUseCase {
+  @Inject var repository: IAnalyticsRepository
+
+  func invoke() -> Int {
+    repository.activeSessionId
   }
 }
 

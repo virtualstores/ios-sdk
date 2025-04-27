@@ -128,9 +128,12 @@ internal class TT2Internal {
         navigation.vpsPosition.recordingPublisher
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data, sessionId, lastFile) in
-                let sessionId = self?.analytics.visitId?.description ?? sessionId
-                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderName: self?.generateAWSFolderPath(sessionId: sessionId, additionalData: lastFile), date: Date())
-                self?.awsS3UploadManager.sendCollectedDataToS3()
+                guard
+                  let self = self,
+                  let visitId = analytics.visitId?.description
+                else { print("VisitID not set"); return }
+                awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderName: generateAWSFolderPath(sessionId: "\(visitId)_\(sessionId)", additionalData: lastFile), date: Date())
+                awsS3UploadManager.sendCollectedDataToS3()
             }).store(in: &cancellable)
 
         navigation.vpsPosition.outputSignalPublisher

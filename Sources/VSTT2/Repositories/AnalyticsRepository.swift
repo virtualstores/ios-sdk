@@ -10,9 +10,11 @@ import VSFoundation
 
 protocol IAnalyticsRepository {
   var activeVisitId: Int64? { get }
+  var activeSessionId: Int { get }
   var directoryURLS: [Int64: URL] { get }
   func setDirectoryURL(visitId: Int64, url: URL)
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ())
+  func newSession()
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
   func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ())
@@ -28,15 +30,20 @@ class AnalyticsRepository {
   private var visitId: Int64?
   private var _directoryURLS: [Int64: URL] = [:]
   private var isMocked: Bool = false
-  private var sessionId: Int64 { sessionIds[visitId ?? 0] ?? 0 }
-  private var sessionIds: [Int64: Int64] {
-    get { UserDefaults.standard.dictionary(forKey: "sessionIds") as? [Int64: Int64] ?? [:] }
-    set { UserDefaults.standard.set(newValue, forKey: "sessionIds") }
+  private var _sessionId: Int {
+    get { UserDefaults.standard.integer(forKey: "TT2-SessionID-\(visitId ?? 0)") }
+    set { UserDefaults.standard.setValue(newValue, forKey: "TT2-SessionID-\(visitId ?? 0)") }
   }
+  //private var _sessionId: Int { _sessionIds[visitId ?? 0] ?? 0 }
+  //private var _sessionIds: [Int64: Int] {
+  //  get { UserDefaults.standard.dictionary(forKey: "TT2-sessionIds") as! [Int64: Int] }
+  //  set { UserDefaults.standard.setValue(newValue.asDictionary(), forKey: "TT2-sessionIds") }
+  //}
 }
 
 extension AnalyticsRepository: IAnalyticsRepository {
   var activeVisitId: Int64? { visitId }
+  var activeSessionId: Int { _sessionId }
   var directoryURLS: [Int64 : URL] { _directoryURLS }
 
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ()) {
@@ -56,8 +63,10 @@ extension AnalyticsRepository: IAnalyticsRepository {
   }
 
   func newSession() {
-    guard let id = visitId else { return }
-    sessionIds[id]
+    //guard let id = visitId else { return }
+    print("Session ID", _sessionId)
+    //_sessionIds[id] = _sessionId + 1
+    _sessionId += 1
   }
 
   func set(visitId: Int64, isMocked: Bool) {
