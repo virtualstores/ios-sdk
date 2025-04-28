@@ -38,7 +38,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.8.1"
+    static let version = "2.9.0-1-SNAPSHOT"
 
     // MARK: Private members
     private let context: Context
