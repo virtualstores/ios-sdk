@@ -393,4 +393,8 @@ extension TT2AnalyticsManager: TT2Analytics {
       eventType: .coordinateTrigger(.init(point: coordinate.asPoint, radius: 0, type: .enter))
     ))
   }
+
+  public func uploadPersistedGeopositions() {
+    uploadSavedGeopositions.invoke()
+  }
 }

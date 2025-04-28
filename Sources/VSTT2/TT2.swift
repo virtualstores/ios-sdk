@@ -24,6 +24,7 @@ final public class TT2: ITT2 {
     public var user: IUserManager { tt2Internal.user }
     public var recording: IRecordingManager { tt2Internal.recording }
     public var lease: ILeaseManager { tt2Internal.leaseManager }
+    public var persistence: IPersistenceManager { tt2Internal.persistence }
 
     public var activeStore: TT2Store { tt2Internal.activeStore.toTT2Store() }
     public var activeFloor: RtlsOptions { floor.activeFloor }
@@ -89,9 +90,18 @@ final public class TT2: ITT2 {
         group.enter()
         tt2Internal.getClients() { [weak self] (result) in
           switch result {
-          case .success(_):
+          case .success(let clients):
             guard let self = self else { queue.async { completion(VSTT2Error.missingData) }; return }
             tt2Internal.setActiveClient.invoke(clientId: clientId)
+            if tt2Internal.config.connection.tt2DataServer == nil, let client = clients.first(where: { $0.clientId == clientId }), let url = client.dataServerUrl, let key = client.dataServerApiKey {
+              tt2Internal.config.connection.tt2DataServer = .init(
+                baseUrl: url.trimmingCharacters(in: .init(charactersIn: "/"))
+                  .appending("/")
+                  .appending(EnvironmentConfig.EndPoints.v2.rawValue),
+                authType: .apiKey
+              )
+              tt2Internal.setApiKey.invoke(type: .analytics, value: key)
+            }
             self.positionKitParams = positionKitParams
             tt2Internal.getStores(with: clientId) { (error) in
               if let error = error {

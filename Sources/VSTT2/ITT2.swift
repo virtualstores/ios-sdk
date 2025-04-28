@@ -41,6 +41,8 @@ public protocol ITT2 {
     /// Lease manager
     var lease: ILeaseManager { get }
 
+    var persistence: IPersistenceManager { get }
+
     /// Active store
     var activeStore: TT2Store { get }
     

@@ -8,6 +8,10 @@
 import Foundation
 import VSFoundation
 
+public protocol IPersistenceManager {
+  func countGeoPositions() -> Int
+}
+
 class PersistenceManager {
   @Inject var persistence: Persistence
 
@@ -39,5 +43,11 @@ class PersistenceManager {
 
   func deleteAll() {
     try? persistence.delete(by: PersistGeoPositionsParameters.self)
+  }
+}
+
+extension PersistenceManager: IPersistenceManager {
+  func countGeoPositions() -> Int {
+    geoPositions.count
   }
 }

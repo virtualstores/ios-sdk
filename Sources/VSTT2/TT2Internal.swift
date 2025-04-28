@@ -23,6 +23,7 @@ internal class TT2Internal {
     @Inject var position: Position
     @Inject var recording: RecordingManager
     @Inject var user: IUserManager
+    @Inject var persistence: PersistenceManager
 
     /// Usecases - Auth
     @Inject var login: LoginUseCase
@@ -153,6 +154,10 @@ internal class TT2Internal {
                 analytics.geopositionsManager.update(location: latLng)
                 setGPSPosition.invoke(gpsPosition: latLng.gpsLocation)
               case .gps(let location):
+                guard
+                  -1...1 ~= location.coordinate.latitude,
+                  -1...1 ~= location.coordinate.longitude
+                else { return }
                 //print("GPS", location.coordinate)
                 mapController?.update(location: location)
                 setGPSPosition.invoke(gpsPosition: location)
