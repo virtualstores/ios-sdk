@@ -154,10 +154,6 @@ internal class TT2Internal {
                 analytics.geopositionsManager.update(location: latLng)
                 setGPSPosition.invoke(gpsPosition: latLng.gpsLocation)
               case .gps(let location):
-                guard
-                  -1...1 ~= location.coordinate.latitude,
-                  -1...1 ~= location.coordinate.longitude
-                else { return }
                 //print("GPS", location.coordinate)
                 mapController?.update(location: location)
                 setGPSPosition.invoke(gpsPosition: location)

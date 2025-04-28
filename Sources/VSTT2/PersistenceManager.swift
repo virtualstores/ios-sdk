@@ -20,7 +20,12 @@ class PersistenceManager {
   var geoPositions: [PersistGeoPositionsParameters] { persistence.get(arrayOf: PersistGeoPositionsParameters.self) }
 
   func getGeoPositions() -> [UploadGeoPositionsParameters] {
-    geoPositions.map { $0.asParams }.compactMap { $0 }
+    geoPositions
+      .map { $0.asParams }
+      .compactMap { $0 }
+      .filter {
+        !$0.positions.keys.contains(UploadGeoPositionsParameters.TypeEnum.vpsMlProcessed.rawValue)
+      }
   }
 
   func save(geoposition: UploadGeoPositionsParameters) {
@@ -48,6 +53,6 @@ class PersistenceManager {
 
 extension PersistenceManager: IPersistenceManager {
   func countGeoPositions() -> Int {
-    geoPositions.count
+    getGeoPositions().count
   }
 }
