@@ -332,13 +332,13 @@ extension TT2AnalyticsManager: TT2Analytics {
 
   public func startVisit(deviceInformation: DeviceInformation, tags: [String:String] = [:], metaData: [String:String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
     guard getMLVersion.invoke() != nil else { completion(.failure(VSTT2Error.missingData)); return }
-    guard visitId == nil else { completion(.failure(TT2AnalyticsError.visitAlreadyStarted)); return }
 
     var editedTags = tags
     tt2VisitStartTags.forEach { editedTags[$0.key] = $0.value }
     (tt2VPSSettingsTags ?? tt2VPSSettingsDefaultTags).forEach { editedTags[$0.key] = $0.value }
     tt2Tags = editedTags.filter { $0.key.lowercased().contains("tt2") }
 
+    guard visitId == nil else { completion(.failure(TT2AnalyticsError.visitAlreadyStarted)); return }
     createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData) { [weak self] (result) in
       guard let self = self else { return }
       visitScoreManager.startVisit()

@@ -54,6 +54,7 @@ struct VSTT2Config: Config {
   }
 
   private func configureUseCases(_ injector: Injector) {
+    injector.map(SaveReplayDataToJSONUseCase.self) { .init() }
     // Analytics use cases
     injector.map(CreateVisitUseCase.self) { .init() }
     injector.map(CreateNewSessionUseCase.self) { .init() }

@@ -3,51 +3,37 @@
 
 // Created by: CJ on 2025-04-25
 // Copyright (c) 2025
+
 import Foundation
 import VSFoundation
 
 class CreateOfflineVisitDirectoryUseCase {
   @Inject var repository: IAnalyticsRepository
+  @Inject var statusRepository: IStatusRepository
 
   func invoke() {
-    /// todo
-    /// Create a directory: 2025-04-25T10-50-34_visitId_sessionId
-    if let visitId = repository.activeVisitId {
+    guard
+      statusRepository.currentSettings.saveToDiskEnabled,
+      let visitId = repository.activeVisitId,
       let directoryURL = CreateOfflineVisitDirectoryBusiness().invoke(visitId: visitId, sessionId: repository.activeSessionId, timestamp: DateFormatter.standardFormatter.string(from: Date()))
-      if let directoryURL = directoryURL {
-        // todo save directory Url in repository dict [visitId+sessionId:directoryUrl]
-        repository.setDirectoryURL(visitId: visitId, url: directoryURL)
-      }
-    }
+    else { return }
+    repository.setDirectoryURL(visitId: visitId, url: directoryURL)
   }
 }
 
 class CreateOfflineVisitDirectoryBusiness {
   func invoke(visitId: Int64, sessionId: Int, timestamp: String) -> URL? {
-    /// Create a directory: 2025-04-25T10-50-34_visitId_sessionId
-    /// Set directory in repoisitory
-
-    var directoryURL: URL? = nil
-
-    let normalizedTimestamp = timestamp.replacingOccurrences(of: ":", with: "-").replacingOccurrences(of: ".", with: "-")
-
-    if #available(iOS 14.0, *) {
-      do {
-
-        let documentDirectory = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        let ducumentUrl = documentDirectory.appendingPathComponent("\(normalizedTimestamp)_\(visitId)_\(sessionId)", conformingTo: .directory)
-
-        do {
-          try FileManager.default.createDirectory(at: ducumentUrl, withIntermediateDirectories: true, attributes: nil)
-          directoryURL = ducumentUrl
-        } catch {
-          print("Failed to create directory: $\(error.localizedDescription)")
-        }
-      } catch {
-        print("Failed to directory path: $\(error.localizedDescription)")
-      }
-    } else {
-      // Fallback on earlier versions
+    // Create a directory: 2025-04-25T10-50-34_visitId_sessionId
+    // Set directory in repoisitory
+    var directoryURL: URL?
+    do {
+      let documentDirectory = try FileManager.default.createRootDirectory
+      let normalizedTimestamp = timestamp.replacingOccurrences(of: ":", with: "-").replacingOccurrences(of: ".", with: "-")
+      let documentUrl = documentDirectory.appendingPathComponent("\(normalizedTimestamp)_\(visitId)_\(sessionId)")
+      try FileManager.default.createDirectory(at: documentUrl, withIntermediateDirectories: true, attributes: nil)
+      directoryURL = documentUrl
+    } catch {
+      print(#function, "ERROR", error)
     }
 
     return directoryURL
@@ -57,6 +43,7 @@ class CreateOfflineVisitDirectoryBusiness {
 class SaveAnalyticsGeoPositionsToJSONFileUseCase {
   @Inject var persistence: PersistenceManager
   @Inject var repository: IAnalyticsRepository
+  @Inject var statusRepository: IStatusRepository
   let business = SaveAnalyticsToFileBusiness()
 
   func invoke() {
@@ -64,25 +51,66 @@ class SaveAnalyticsGeoPositionsToJSONFileUseCase {
     /// Combine all visit geoPositions into one dictionary
     /// Convert to Json file
     /// Save Json file to directory found in the repository
-    guard let visitId = repository.activeVisitId else { return }
+    guard
+      statusRepository.currentSettings.saveToDiskEnabled,
+      let visitId = repository.activeVisitId
+    else { return }
     let bundledGeoPositions = business.bundle(params: persistence.getGeoPositions())
     guard
       let visitGeoPositions = business.createVisitGeoPositions(geoPositionsBundles: bundledGeoPositions, visitId: visitId),
       let directoryURL = repository.directoryURLS[visitId]
     else { return }
     // todo get directoryURL from repository to save the data
-    business.writeToFile(data: visitGeoPositions, directoryUrl: directoryURL)
+    do {
+      let jsonData = try JSONEncoder().encode(visitGeoPositions)
+      try jsonData.write(to: directoryURL
+        .appendingPathComponent("GeoPositions")
+        .appendingPathComponent("geoPositions")
+        .appendingPathExtension("json"))
+    } catch {
+      print(#function, "Couldn't encode data", error)
+    }
+  }
+}
+
+class SaveReplayDataToJSONUseCase {
+  @Inject var repository: IAnalyticsRepository
+  @Inject var statusRepository: IStatusRepository
+
+  func invoke(object: AWSRecordedObject) {
+    guard
+      statusRepository.currentSettings.saveToDiskEnabled,
+      let visitId = repository.activeVisitId,
+      let directoryURL = repository.directoryURLS[visitId],
+      let identifier = object.identifier,
+      let data = object.data?.data(using: .utf8)
+    else { return }
+    DispatchQueue.global(qos: .background).async {
+      let directoryURL = directoryURL.appendingPathComponent("ReplayData")
+      do {
+        if !FileManager.default.fileExists(atPath: directoryURL.path) {
+          try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true, attributes: nil)
+        }
+        try data.write(to: directoryURL
+          .appendingPathComponent(identifier)
+          .appendingPathExtension("json"))
+      } catch {
+        print(#function, "Error saving ReplayData", error)
+      }
+    }
   }
 }
 
 class StreamToFileUseCase {
   @Inject var repository: IAnalyticsRepository
+  @Inject var statusRepository: IStatusRepository
   let business = SaveAnalyticsToFileBusiness()
   let semaphore = DispatchSemaphore(value: 1)
 
   func invoke(param: UploadGeoPositionsParameters) {
     let bundledGeoPositions = business.bundle(params: [param])
     guard
+      statusRepository.currentSettings.saveToDiskEnabled,
       let visitGeoPositions = business.createVisitGeoPositions(geoPositionsBundles: bundledGeoPositions, visitId: param.visitId),
       let directoryURL = repository.directoryURLS[param.visitId]
     else { return }
@@ -101,18 +129,24 @@ class StreamToFileUseCase {
 }
 
 class DeleteEmptyDirectoryUseCase {
+  @Inject var repository: IStatusRepository
   let business = SaveAnalyticsToFileBusiness()
   func invoke() {
-    guard let directoryUrl = FileManager.default
-      .urls(for: .documentDirectory, in: .userDomainMask).first
+    guard
+      repository.currentSettings.saveToDiskEnabled,
+      let directoryUrl = FileManager.default.rootDirectory
     else { return }
 
     do {
       try FileManager.default
         .contentsOfDirectory(atPath: directoryUrl.path)
-        .map { directoryUrl.appendingPathComponent($0) }
+        .map {
+          print("urlString", $0)
+          return directoryUrl.appendingPathComponent($0)
+        }
         .filter { $0.hasDirectoryPath }
         .forEach {
+          print("try DELETE", $0)
           try business.deleteEmptyDirectories(at: $0)
         }
     } catch {
@@ -123,12 +157,15 @@ class DeleteEmptyDirectoryUseCase {
 
 class SaveAnalyticsToFileBusiness {
   func deleteEmptyDirectories(at url: URL) throws {
-    guard
-      try FileManager.default
-        .contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
-        .isEmpty
-    else { return }
-    try FileManager.default.removeItem(at: url)
+    if !FileManager.default.fileExists(atPath: url.appendingPathComponent("GeoPositions").path) {
+      print("DELETE", "1", url)
+      try FileManager.default.removeItem(at: url)
+    } else if try FileManager.default
+      .contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
+      .isEmpty {
+      print("DELETE", "2", url)
+      try FileManager.default.removeItem(at: url)
+    }
   }
 
   func streamToFile(data: VisitGeoPositions, directoryUrl: URL) throws {
@@ -151,25 +188,12 @@ class SaveAnalyticsToFileBusiness {
     let file = try FileHandle(forWritingTo: url)
     defer { file.closeFile() }
     data.forEach { (positions) in
-      //gpsFile.write(positions)
       guard
         let data = "\(positions.timestamp),\(positions.airPressure?.description ?? "null"),\(positions.lngLat[0]),\(positions.lngLat[1])\n"
           .data(using: .utf8)
       else { return }
       file.seekToEndOfFile()
       file.write(data)
-    }
-  }
-
-  func writeToFile(data: VisitGeoPositions, directoryUrl: URL) {
-    do {
-      let jsonData = try JSONEncoder().encode(data)
-      let fileUrl = directoryUrl
-        .appendingPathComponent("geoPositions")
-        .appendingPathExtension("json")
-      try jsonData.write(to: fileUrl)
-    } catch {
-      print(#function, "Couldn't encode data", error)
     }
   }
 
@@ -211,4 +235,19 @@ struct VisitGeoPositions: Codable {
   var sessionId: Int64
   var tt2Positions: [RecordedPositionLngLat]
   var gpsPositions: [RecordedPositionLngLat]
+}
+
+extension FileManager {
+  var createRootDirectory: URL {
+    get throws {
+      try FileManager.default
+        .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        .appendingPathComponent("TT2")
+    }
+  }
+
+  var rootDirectory: URL? {
+    FileManager.default
+      .urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("TT2")
+  }
 }

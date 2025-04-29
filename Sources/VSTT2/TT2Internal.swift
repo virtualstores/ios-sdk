@@ -218,7 +218,7 @@ internal class TT2Internal {
         let dataServerAddress = (activeStore.statServerConnection.serverAddress ?? config.connection.tt2DataServer?.baseUrl ?? "undefined").trimServerAddress
         let folderName: String = "\(serverAddress)/\(dataServerAddress)/\(sessionId)/"
         if additionalData, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, sessionId: sessionId) {
-            awsS3UploadManager.prepareDataToSend(identifier: "tags.json", data: tags, folderName: folderName, date: Date())
+            awsS3UploadManager.prepareDataToSend(identifier: "tags", data: tags, folderName: folderName, date: Date())
         }
         return folderName
     }

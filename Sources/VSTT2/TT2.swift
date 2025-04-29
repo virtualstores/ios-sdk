@@ -204,7 +204,12 @@ final public class TT2: ITT2 {
     }
 
     public func set(vpsEngine: TT2Settings.TT2Engine) {
-        tt2Internal.set(tt2Settings: .init(engine: vpsEngine, params: settings.params))
+      tt2Internal.set(tt2Settings: .init(
+        engine: vpsEngine,
+        params: settings.params,
+        isAutomaticFloorChangeEnabled: settings.isAutomaticFloorChangeEnabled,
+        saveToDiskEnabled: settings.saveToDiskEnabled
+      ))
     }
 
     public func set(mockVisitID visitId: Int64) {

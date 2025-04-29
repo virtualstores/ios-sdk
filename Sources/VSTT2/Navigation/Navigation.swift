@@ -38,8 +38,8 @@ final public class Navigation {
         return getFloors.invoke()
     }
 
-    var isAutoFloorChangeEanbled: Bool {
-      getTT2Settings.invoke().isAutomaticFloorChangeEanbled
+    var isAutoFloorChangeEnabled: Bool {
+      getTT2Settings.invoke().isAutomaticFloorChangeEnabled
     }
 
     @Inject var getPosition: GetCurrentVPSPositionUseCase
@@ -107,7 +107,7 @@ extension Navigation: INavigation {
             return
         }
 
-        try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
+        try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEnabled)
         certainAngle = true
         newSession.invoke()
         vpsPosition.set(sessionId: activeSessionId.description)
@@ -162,7 +162,7 @@ extension Navigation: INavigation {
 
         let startWithAngle = startWithAngle(startPosition: startPosition)
         try validateFloorLevel(floorId: position?.floorLevelId) { [self] (isValid) in
-            try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
+            try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEnabled)
             newSession.invoke()
             vpsPosition.set(sessionId: activeSessionId.description)
             vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startWithAngle ?? heading.degrees, uncertainAngle: startWithAngle == nil)
@@ -286,7 +286,7 @@ extension Navigation: INavigation {
         if let error = err { throw error }
         return
       }
-      try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
+      try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEnabled)
       certainAngle = true
       newSession.invoke()
       vpsPosition.set(sessionId: activeSessionId.description)
@@ -338,7 +338,7 @@ extension Navigation {
     func changeFloorStart(startPosition: CGPoint?) throws {
         guard let point = startPosition, isActive else { try onValidateFloorCompletion?(); return }
 
-        try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
+        try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEnabled)
         newSession.invoke()
         vpsPosition.set(sessionId: activeSessionId.description)
         vpsPosition.startNavigation(positions: [point], syncPosition: true, syncAngle: true, angle: userStartAngle.degrees, uncertainAngle: false)
