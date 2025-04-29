@@ -75,6 +75,7 @@ internal class TT2Internal {
       setAuthSettings.invoke(settings: authSettings)
       set(tt2Settings: settings)
       bindPublishers()
+      analytics.deleteEmptyDirectory.invoke()
     }
 
     deinit {

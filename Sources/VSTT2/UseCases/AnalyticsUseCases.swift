@@ -25,10 +25,12 @@ class CreateVisitUseCase {
 }
 
 class CreateNewSessionUseCase {
+  @Inject var createOfflineVisitDirectory: CreateOfflineVisitDirectoryUseCase
   @Inject var repository: IAnalyticsRepository
 
   func invoke() {
     repository.newSession()
+    createOfflineVisitDirectory.invoke()
   }
 }
 

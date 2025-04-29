@@ -36,6 +36,8 @@ final public class TT2AnalyticsManager {
     @Inject var uploadScanEvent: UploadScanEventForActiveVisitUseCase
     @Inject var uploadTriggerEvent: UploadTriggerEventForActiveVisitUseCase
 
+    @Inject var deleteEmptyDirectory: DeleteEmptyDirectoryUseCase
+
     lazy var accuracyUploader: AccuracyUploader = { .init() }()
     lazy var stepEventUploader: StepEventUploader = { .init() }()
     lazy var visitScoreManager: TT2AnalyticsScoreManager = { .init() }()

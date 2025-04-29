@@ -57,8 +57,12 @@ struct VSTT2Config: Config {
     // Analytics use cases
     injector.map(CreateVisitUseCase.self) { .init() }
     injector.map(CreateNewSessionUseCase.self) { .init() }
+    injector.map(CreateOfflineVisitDirectoryUseCase.self) { .init() }
+    injector.map(DeleteEmptyDirectoryUseCase.self) { .init() }
     injector.map(GetActiveVisitIDUseCase.self) { GetActiveVisitIDUseCase() }
     injector.map(GetActiveSessionIDUseCase.self) { .init() }
+    injector.map(SaveAnalyticsGeoPositionsToJSONFileUseCase.self) { .init() }
+    injector.map(StreamToFileUseCase.self) { .init() }
     injector.map(StopVisitUseCase.self) { StopVisitUseCase() }
     injector.map(UpdateTagsForActiveVisitUseCase.self) { UpdateTagsForActiveVisitUseCase() }
     injector.map(UploadGeopositionsForActiveVisitUseCase.self) { UploadGeopositionsForActiveVisitUseCase() }
