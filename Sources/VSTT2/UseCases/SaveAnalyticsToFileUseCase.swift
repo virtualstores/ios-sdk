@@ -140,13 +140,9 @@ class DeleteEmptyDirectoryUseCase {
     do {
       try FileManager.default
         .contentsOfDirectory(atPath: directoryUrl.path)
-        .map {
-          print("urlString", $0)
-          return directoryUrl.appendingPathComponent($0)
-        }
+        .map { directoryUrl.appendingPathComponent($0) }
         .filter { $0.hasDirectoryPath }
         .forEach {
-          print("try DELETE", $0)
           try business.deleteEmptyDirectories(at: $0)
         }
     } catch {
@@ -158,12 +154,10 @@ class DeleteEmptyDirectoryUseCase {
 class SaveAnalyticsToFileBusiness {
   func deleteEmptyDirectories(at url: URL) throws {
     if !FileManager.default.fileExists(atPath: url.appendingPathComponent("GeoPositions").path) {
-      print("DELETE", "1", url)
       try FileManager.default.removeItem(at: url)
     } else if try FileManager.default
       .contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
       .isEmpty {
-      print("DELETE", "2", url)
       try FileManager.default.removeItem(at: url)
     }
   }
