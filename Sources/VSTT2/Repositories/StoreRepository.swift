@@ -21,8 +21,7 @@ protocol IStoreRepository {
 }
 
 class StoreRepository {
-  let api: IStoreApi = MockStoreApi()
-
+  private var api: IStoreApi = StoreApi()
   private var _activeStore: Store?
   private var cachedStores: [Store] = []
   private var cachedSwapLocations: [SwapLocation] = []
@@ -78,5 +77,14 @@ extension StoreRepository: IStoreRepository {
 
   func set(cachedStores stores: [Store]) {
     cachedStores = stores
+  }
+}
+
+extension StoreRepository: IStatusTT2Settings {
+  func update(with settings: TT2Settings) {
+    switch settings.offlineModeEnabled {
+    case true: api = MockStoreApi()
+    case false: api = StoreApi()
+    }
   }
 }

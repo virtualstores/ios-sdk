@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import VSFoundation
 
 protocol IClientRepository {
   var client: Client { get }
@@ -17,7 +18,7 @@ protocol IClientRepository {
 }
 
 class ClientRepository {
-  private let api: IClientsApi = MockClientsApi()
+  private var api: IClientsApi = ClientsApi()
   private var _activeClient: Client?
   private var clients: [Client] = []
 }
@@ -42,5 +43,14 @@ extension ClientRepository: IClientRepository {
 
   func fetch(completion: @escaping (Result<[Client], Error>) -> ()) {
     api.get(completion: completion)
+  }
+}
+
+extension ClientRepository: IStatusTT2Settings {
+  func update(with settings: TT2Settings) {
+    switch settings.offlineModeEnabled {
+    case true: api = MockClientsApi()
+    case false: api = ClientsApi()
+    }
   }
 }

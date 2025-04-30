@@ -31,7 +31,7 @@ public class TT2EventManager {
   private var zones: [Zone] { getZonesTree.invoke().getZonesFor(floorLevelId: rtlsOptionsId) ?? [] }
   private var view: UIView?
   private var inAndOut: InAndOut?
-  private var api: IEventsApi = MockEventsApi()
+  private var api: IEventsApi = EventsApi()
 
   private var cancellable = Set<AnyCancellable>()
 
@@ -127,5 +127,14 @@ extension TT2EventManager: TT2Event {
 
   public func enableAutoShow(view: UIView?) {
     self.view = view
+  }
+}
+
+extension TT2EventManager: IStatusTT2Settings {
+  func update(with settings: VSFoundation.TT2Settings) {
+    switch settings.offlineModeEnabled {
+    case true: api = MockEventsApi()
+    case false: api = EventsApi()
+    }
   }
 }

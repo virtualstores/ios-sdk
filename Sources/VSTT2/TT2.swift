@@ -208,7 +208,8 @@ final public class TT2: ITT2 {
         engine: vpsEngine,
         params: settings.params,
         isAutomaticFloorChangeEnabled: settings.isAutomaticFloorChangeEnabled,
-        saveToDiskEnabled: settings.saveToDiskEnabled
+        saveToDiskEnabled: settings.saveToDiskEnabled,
+        offlineModeEnabled: settings.offlineModeEnabled
       ))
     }
 

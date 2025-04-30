@@ -28,7 +28,7 @@ protocol IFloorRepository {
 
 class FloorRepository {
   @Inject var config: EnvironmentConfig
-  private let api: IFloorApi = MockFloorApi()
+  private var api: IFloorApi = FloorApi()
   private var _activeFloor: RtlsOptions?
   private var converters: [Int64: ICoordinateConverter] = [:]
   private var floors: [RtlsOptions] = []
@@ -164,6 +164,15 @@ extension FloorRepository: IFloorRepository {
 
   func set(cachedFloors: [RtlsOptions]) {
     floors = cachedFloors
+  }
+}
+
+extension FloorRepository: IStatusTT2Settings {
+  func update(with settings: TT2Settings) {
+    switch settings.offlineModeEnabled {
+    case true: api = MockFloorApi()
+    case false: api = FloorApi()
+    }
   }
 }
 
