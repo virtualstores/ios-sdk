@@ -6,14 +6,9 @@
 //
 
 import Foundation
-import Combine
 import VSFoundation
 
-class MockStoreApi {
-  private let storesService = StoresListService(with: NetworkManager())
-  private let swapLocationsService = SwapLocationsService(with: NetworkManager())
-  private var cancellable = Set<AnyCancellable>()
-}
+class MockStoreApi {}
 
 extension MockStoreApi: IStoreApi {
   func fetchStores(clientId: Int64, completion: @escaping (Result<[Store], Error>) -> Void) {
@@ -39,14 +34,14 @@ extension MockStoreApi: IStoreApi {
         name: "Mock Floorlevel",
         startOffsetX: 0,
         startOffsetY: 0,
-        mapBoxUrl: "",
-        mapBoxToken: "",
-        mapFenceUrl: "",
-        mapZonesUrl: "",
-        navGraphUrl: "",
-        mapOffsetsUrl: "",
-        mapDataVersionUrl: "",
-        mapBoxImageUrl: "",
+        mapBoxUrl: nil,
+        mapBoxToken: nil,
+        mapFenceUrl: "https://example.com/",
+        mapZonesUrl: "https://example.com/",
+        navGraphUrl: "https://example.com/",
+        mapOffsetsUrl: nil,
+        mapDataVersionUrl: nil,
+        mapBoxImageUrl: nil,
         pixelsPerMeter: 50.0,
         boundingBoxInMeters: nil,
         scanLocations: [

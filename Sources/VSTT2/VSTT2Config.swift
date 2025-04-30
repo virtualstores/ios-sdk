@@ -34,7 +34,6 @@ struct VSTT2Config: Config {
     injector.map(ShelfGroupService.self) { ShelfGroupService(with: NetworkManager()) }
     injector.map(StoresListService.self) { StoresListService(with: NetworkManager()) }
     injector.map(SwapLocationsService.self) { SwapLocationsService(with: NetworkManager()) }
-    injector.map(TriggerEventsService.self) { TriggerEventsService(with: NetworkManager()) }
     injector.map(UploadStepEventsService.self) { UploadStepEventsService(with: NetworkManager()) }
     injector.map(UploadSyncEventsService.self) { UploadSyncEventsService(with: NetworkManager()) }
   }

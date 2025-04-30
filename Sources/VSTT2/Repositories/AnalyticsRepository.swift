@@ -26,7 +26,7 @@ protocol IAnalyticsRepository {
 }
 
 class AnalyticsRepository {
-  private let api: IAnalyticsApi = AnalyticsApi()
+  private let api: IAnalyticsApi = MockAnalyticsApi()
   private var visitId: Int64?
   private var _directoryURLS: [Int64: URL] = [:]
   private var isMocked: Bool = false
