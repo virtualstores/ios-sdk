@@ -21,7 +21,7 @@ protocol IStoreRepository {
 }
 
 class StoreRepository {
-  let api: IStoreApi = StoreApi()
+  let api: IStoreApi = MockStoreApi()
 
   private var _activeStore: Store?
   private var cachedStores: [Store] = []

@@ -30,7 +30,11 @@ class VSMLModelManager {
     fetchMLInterfaceVersions.invoke { [weak self] (error) in
       if let error = error {
         print("File", "Error getting Version", error)
-        completion(error)
+        //if let mlVersion = self?.currentMLVersion {
+        //  self?.load(mlVersion: mlVersion, completion: completion)
+        //} else {
+          completion(error)
+        //}
       } else if let catalog = self?.getMLCatalog.invoke(), let settings = self?.getTT2Settings.invoke() {
         self?.handle(mlCatalog: catalog, params: settings.params, completion: completion)
       }

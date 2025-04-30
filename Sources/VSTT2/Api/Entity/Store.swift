@@ -79,6 +79,50 @@ public struct Store: Codable {
         acceptedScoreLimit = try container.decodeIfPresent(Int.self, forKey: .acceptedScoreLimit)
     }
 
+    init(
+        id: Int64,
+        externalId: String?,
+        clientId: Int64,
+        name: String,
+        address: Address,
+        latitude: Double,
+        longitude: Double,
+        active: Bool,
+        hasSensorRecordingActive: Bool,
+        hasWiFiRecordingActive: Bool,
+        startCodes: [PositionedCode],
+        stopCodes: [PositionedCode],
+        rtlsOptions: [RtlsOptions],
+        minVersion: String?,
+        serverConnection: ServerConnection?,
+        statServerConnection: ServerConnection,
+        positionServiceSettings: PositionServiceSettings?,
+        syncPositionFilter: SyncFilter?,
+        syncCompassFilter: SyncFilter?,
+        acceptedScoreLimit: Int?
+    ) {
+        self.id = id
+        self.externalId = externalId
+        self.clientId = clientId
+        self.name = name
+        self.address = address
+        self.latitude = latitude
+        self.longitude = longitude
+        self.active = active
+        self.hasSensorRecordingActive = hasSensorRecordingActive
+        self.hasWiFiRecordingActive = hasWiFiRecordingActive
+        self.startCodes = startCodes
+        self.stopCodes = stopCodes
+        self.rtlsOptions = rtlsOptions
+        self.minVersion = minVersion
+        self.serverConnection = serverConnection
+        self.statServerConnection = statServerConnection
+        self.positionServiceSettings = positionServiceSettings
+        self.syncPositionFilter = syncPositionFilter
+        self.syncCompassFilter = syncCompassFilter
+        self.acceptedScoreLimit = acceptedScoreLimit
+    }
+
     public func getCodesFor(type: PositionedCode.CodeType, floorLevel: Int) -> [PositionedCode] {
         guard let rtls = rtlsOptions.first(where: { $0.floorLevel == floorLevel }), let scanLocations = rtls.scanLocations, scanLocations.count > 0 else {
             switch type {
