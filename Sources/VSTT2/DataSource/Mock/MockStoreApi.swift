@@ -53,7 +53,25 @@ extension MockStoreApi: IStoreApi {
       minVersion: nil,
       serverConnection: nil,
       statServerConnection: .init(apiKey: nil, serverAddress: nil),
-      positionServiceSettings: nil,
+      positionServiceSettings: .init(
+        useML: false,
+        useCoefficientOptimizer: false,
+        useDriftCompensator: false,
+        boolValues: ["ios_magnetometerDriftEstimatorParams_useMagnetometer": true],
+        stringValues: nil,
+        stringArrayValues: nil,
+        intValues: nil,
+        intArrayValues: nil,
+        floatValues: [
+          "ios_magnetometerDriftEstimatorParams_maxRate": 0.025,
+          "ios_magnetometerDriftEstimatorParams_alpha": 0.99995,
+          "ios_magnetometerDriftEstimatorParams_accLowerLimit": 0.8,
+          "ios_magnetometerDriftEstimatorParams_accUpperLimit": 15,
+          "ios_magnetometerDriftEstimatorParams_sigmaMag": 30,
+          "ios_magnetometerDriftEstimatorParams_magExpectedNorm": 49.4
+        ],
+        floatArrayValues: nil
+      ),
       syncPositionFilter: nil,
       syncCompassFilter: nil,
       acceptedScoreLimit: 500
