@@ -283,13 +283,11 @@ private extension TT2 {
       guard
         let mapData = mapData,
         let converter = coordinateConverter,
-
-        let stop = tt2Internal.floorManager.stopCode,
         let zones = zonesTree.getZonesFor(floorLevelId: activeFloor.id)
       else { return }
 
       var pathfinder: VPSPathfinderAdapter?
-      if let navData = tt2Internal.floorManager.getActiveNavGraph.invoke() {
+      if let navData = tt2Internal.floorManager.getActiveNavGraph.invoke(), let stop = tt2Internal.floorManager.stopCode {
         let height = converter.convertFromMetersToPixels(input: activeFloor.heightInMeters)
         let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
 
