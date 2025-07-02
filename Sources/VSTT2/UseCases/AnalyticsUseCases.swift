@@ -101,3 +101,12 @@ class UploadVisitScoreForActiveVisitUseCase {
     repository.upload(visitId: id, visitScore: visitScore, completion: completion)
   }
 }
+
+class UploadZoneSummaryForActiveVisitUseCase {
+  @Inject var repository: IAnalyticsRepository
+
+  func invoke(summary: [String:AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ()) {
+    guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
+    repository.upload(visitId: id, summary: summary, completion: completion)
+  }
+}

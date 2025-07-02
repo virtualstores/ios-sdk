@@ -141,7 +141,9 @@ extension FloorRepository: IFloorRepository {
         switch result {
         case .success(let shelfGroups):
           if shelfGroups.count > 0 {
-            self?.shelfGroups[floor.id] = shelfGroups
+            DispatchQueue.main.async {
+              self?.shelfGroups[floor.id] = shelfGroups
+            }
           }
         case .failure(let err): error = err
         }

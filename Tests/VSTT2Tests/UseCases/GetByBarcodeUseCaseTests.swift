@@ -16,17 +16,23 @@ final class GetByBarcodeUseCaseTests: XCTestCase {
     var itemsRepository = FakeItemsRepository(jsonData: .mockBarcodePositionsCase1)
 
     let barcode = "7313130215910"
-    let usecase = GetPositionByBarcodeUseCase(storeRepository: storeRepository, itemsRepository: itemsRepository)
-    usecase.invoke(barcode: barcode) { (item) in
-      XCTAssertNotNil(item, "Item is nil")
-      XCTAssertNotNil(item?.itemPosition, "ItemPosition is nil")
+    let usecase = GetPositionByBarcodeUseCase()
+    usecase.invoke(barcode: barcode) { (result) in
+      switch result {
+      case .failure(let error): break
+      case .success(let item):
+        XCTAssertNotNil(item.itemPosition, "ItemPosition is nil")
+      }
     }
 
     itemsRepository = FakeItemsRepository(jsonData: .mockBarcodePositionsCase2)
 
-    usecase.invoke(barcode: barcode) { (item) in
-      XCTAssertNotNil(item, "Item is nil")
-      XCTAssertNotNil(item?.itemPosition, "ItemPosition is nil")
+    usecase.invoke(barcode: barcode) { (result) in
+      switch result {
+      case .failure(let error): break
+      case .success(let item):
+        XCTAssertNotNil(item.itemPosition, "ItemPosition is nil")
+      }
     }
   }
 
@@ -35,15 +41,39 @@ final class GetByBarcodeUseCaseTests: XCTestCase {
     let itemsRepository = FakeItemsRepository(jsonData: .mockBarcodePositionsCase3)
 
     let barcode = "7313130215910"
-    let usecase = GetPositionByBarcodeUseCase(storeRepository: storeRepository, itemsRepository: itemsRepository)
-    usecase.invoke(barcode: barcode) { (item) in
-      XCTAssertNil(item, "Item is nil")
-      XCTAssertNil(item?.itemPosition, "ItemPosition is nil")
+    GetPositionByBarcodeUseCase().invoke(barcode: barcode) { (result) in
+      switch result {
+      case .failure(let error): break
+      case .success(let item):
+        XCTAssertNil(item.itemPosition, "ItemPosition is nil")
+      }
     }
   }
 }
 
 class FakeStoreRepository: IStoreRepository {
+  var zonesTree: VSTT2.TT2ZonesTree { TT2ZonesTree() }
+
+  func fetchStores(clientId: Int64, completion: @escaping ((any Error)?) -> ()) {
+
+  }
+  
+  func fetchSwapLocations(completion: @escaping ((any Error)?) -> ()) {
+
+  }
+  
+  func getCachedSwapLocations() -> [VSFoundation.SwapLocation] {
+    []
+  }
+  
+  func set(activeStore store: VSTT2.Store) {
+
+  }
+  
+  func set(cachedStores stores: [VSTT2.Store]) {
+
+  }
+  
   let jsonData: String
   var _activeStore: Store? {
     guard

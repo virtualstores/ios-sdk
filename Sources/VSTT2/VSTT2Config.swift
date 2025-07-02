@@ -64,6 +64,7 @@ struct VSTT2Config: Config {
     injector.map(UploadPositionsForVisitUseCase.self) { UploadPositionsForVisitUseCase() }
     injector.map(UploadScanEventForActiveVisitUseCase.self) { UploadScanEventForActiveVisitUseCase() }
     injector.map(UploadTriggerEventForActiveVisitUseCase.self) { UploadTriggerEventForActiveVisitUseCase() }
+    injector.map(UploadZoneSummaryForActiveVisitUseCase.self) { .init() }
 
     injector.map(UploadVisitScoreForActiveVisitUseCase.self) { UploadVisitScoreForActiveVisitUseCase() }
     injector.map(ValidateVisitScoreUseCase.self) { ValidateVisitScoreUseCase() }
