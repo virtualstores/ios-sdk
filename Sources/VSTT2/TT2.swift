@@ -37,7 +37,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.8.1"
+    static let version = "2.10.0"
 
     // MARK: Private members
     private let context: Context
@@ -317,7 +317,8 @@ private extension TT2 {
             automaticSensorRecording: tt2Internal.automaticSensorRecording,
             positionServiceSettings: tt2Internal.activeStore.positionServiceSettings,
             converter: converter,
-            modelManger: tt2Internal.mlModelManager
+            modelManger: tt2Internal.mlModelManager,
+            engine: .indoor
         )
     }
     
@@ -347,34 +348,4 @@ private extension TT2 {
         tt2Internal.analytics.zoneManager.setup()
         tt2Internal.analytics.eventManager.setup()
     }
-}
-
-public struct TT2Settings {
-  let engine: TT2Engine
-  let params: TT2ModelParams
-  let isAutomaticFloorChangeEanbled: Bool
-
-  public init(engine: TT2Engine = .indoor, params: TT2ModelParams = .init(), isAutomaticFloorChangeEanbled: Bool = true) {
-    self.engine = engine
-    self.params = params
-    self.isAutomaticFloorChangeEanbled = isAutomaticFloorChangeEanbled
-  }
-
-  public enum TT2Engine: String {
-    case gpsFusion = "GPS_FUSION"
-    case indoor = "INDOOR"
-    case openTerrain = "OPEN_TERRAIN"
-  }
-
-  public struct TT2ModelParams {
-    let target: Int
-    let targetMLModelVersion: Int?
-    let targetNLModelVersion: Int?
-
-    public init(target: Int = 1, targetMLModelVersion: Int? = nil, targetNLModelVersion: Int? = nil) {
-      self.target = target
-      self.targetMLModelVersion = targetMLModelVersion
-      self.targetNLModelVersion = targetNLModelVersion
-    }
-  }
 }

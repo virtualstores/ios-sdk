@@ -73,7 +73,6 @@ class AnalyticsZoneSummaryBusiness {
   }
 
   func popCurrentZoneSummary() -> [String: ZoneCountsDTO]? {
-    // TODO: Guard for is not empty?
     guard !zoneTriggerCounts.isEmpty else { return nil }
     defer { zoneTriggerCounts.removeAll() }
     return convertToDTO(zoneSummary: zoneTriggerCounts)
