@@ -64,6 +64,7 @@ struct VSTT2Config: Config {
     injector.map(UploadPositionsForVisitUseCase.self) { UploadPositionsForVisitUseCase() }
     injector.map(UploadScanEventForActiveVisitUseCase.self) { UploadScanEventForActiveVisitUseCase() }
     injector.map(UploadTriggerEventForActiveVisitUseCase.self) { UploadTriggerEventForActiveVisitUseCase() }
+    injector.map(UploadZoneSummaryForActiveVisitUseCase.self) { .init() }
 
     injector.map(UploadVisitScoreForActiveVisitUseCase.self) { UploadVisitScoreForActiveVisitUseCase() }
     injector.map(ValidateVisitScoreUseCase.self) { ValidateVisitScoreUseCase() }
@@ -91,6 +92,7 @@ struct VSTT2Config: Config {
     injector.map(DecideWhichTriggerEventToDisplayUseCase.self) { DecideWhichTriggerEventToDisplayUseCase() }
 
     // Floor use cases
+    injector.map(CreateVPSPathfindersUseCase.self) { .init() }
     injector.map(FetchMapFenceUseCase.self) { FetchMapFenceUseCase() }
     injector.map(FetchMapZonesUseCase.self) { FetchMapZonesUseCase() }
     injector.map(FetchNavGraphUseCase.self) { FetchNavGraphUseCase() }
@@ -100,6 +102,7 @@ struct VSTT2Config: Config {
     injector.map(GetActiveMapFenceUseCase.self) { GetActiveMapFenceUseCase() }
     injector.map(GetActiveMapZonesUseCase.self) { GetActiveMapZonesUseCase() }
     injector.map(GetActiveNavGraphUseCase.self) { GetActiveNavGraphUseCase() }
+    injector.map(GetActivePathfinderUseCase.self) { .init() }
     injector.map(GetActiveShelfGroupsUseCase.self) { GetActiveShelfGroupsUseCase() }
     injector.map(GetCachedFloorsUseCase.self) { GetCachedFloorsUseCase() }
     injector.map(GetMapZonesUseCase.self) { GetMapZonesUseCase() }

@@ -33,7 +33,7 @@ final public class Navigation {
     }
 
     var isAutoFloorChangeEanbled: Bool {
-      getTT2Settings.invoke().isAutomaticFloorChangeEanbled
+      getTT2Settings.invoke().isAutomaticFloorChangeEnabled
     }
 
     @Inject var getPosition: GetCurrentVPSPositionUseCase
@@ -85,19 +85,21 @@ extension Navigation: INavigation {
     }
     public var compassHeading: Double? { heading?.degrees }
 
+    /// Start Positioning System
     public func start(startPosition: CGPoint, startAngle: Double) throws {
         guard modelManager.mlModel != nil, modelManager.mlParams != nil else { throw VSTT2Error.missingData }
         guard !isActive else {
-            self.stop()
-            var err: Error?
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-              do {
-                try self.start(startPosition: startPosition, startAngle: startAngle)
-              } catch {
-                err = error
-              }
-            }
-            if let error = err { throw error }
+//            self.stop()
+//            var err: Error?
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+//              do {
+//                try self.start(startPosition: startPosition, startAngle: startAngle)
+//              } catch {
+//                err = error
+//              }
+//            }
+//            if let error = err { throw error }
+            forceSyncPosition(position: startPosition, angle: startAngle)
             return
         }
 
@@ -111,7 +113,8 @@ extension Navigation: INavigation {
     public func start(code: PositionedCode) throws {
         try floors.forEach {
             guard $0.scanLocations?.first(where: { $0.code == code.code }) != nil else { return }
-            try validateFloorLevel(floorId: $0.id) { [self] (isValid) in
+            try validateFloorLevel(floorId: $0.id) { [weak self] (isValid) in
+                guard let self = self else { return }
                 //if isActive {
                 //    vpsPosition.forceSyncPosition(position: code.point, angle: code.direction)
                 //} else {
@@ -130,30 +133,34 @@ extension Navigation: INavigation {
           return
         }
 
-        try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
+        try validateFloorLevel(floorId: position.floorLevelId) { [weak self] (isValid) in
+            guard let self = self else { return }
             prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
             vpsPosition.syncPosition(positions: [position.pointWithOffset], syncPosition: !position.isDisabled, syncAngle: syncRotation, angle: angle, uncertainAngle: false)
         }
     }
 
+    /// Start Positioning System with Compass angle
     public func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
         guard modelManager.mlModel != nil, modelManager.mlParams != nil, let heading = heading else { throw VSTT2Error.missingData }
         guard !isActive else {
-            self.stop()
-            var err: Error?
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-              do {
-                try self.start(startPosition: startPosition, position: position)
-              } catch {
-                err = error
-              }
-            }
-            if let error = err { throw error }
+//            self.stop()
+//            var err: Error?
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+//              do {
+//                try self.start(startPosition: startPosition, position: position)
+//              } catch {
+//                err = error
+//              }
+//            }
+//            if let error = err { throw error }
+            forceSyncPosition(position: startPosition, angle: heading.degrees)
             return
         }
 
         let startWithAngle = startWithAngle(startPosition: startPosition)
-        try validateFloorLevel(floorId: position?.floorLevelId) { [self] (isValid) in
+        try validateFloorLevel(floorId: position?.floorLevelId) { [weak self] (isValid) in
+            guard let self = self else { return }
             try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
             vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startWithAngle ?? heading.degrees, uncertainAngle: startWithAngle == nil)
             prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
@@ -169,7 +176,8 @@ extension Navigation: INavigation {
         }
 
         let point = position.pointWithOffset
-        try validateFloorLevel(floorId: position.floorLevelId) { [self] (isValid) in
+        try validateFloorLevel(floorId: position.floorLevelId) { [weak self] (isValid) in
+            guard let self = self else { return }
             prepareAccuracyUpload(position: position, isFloorSwap: !isValid)
             if let startLocationAngle = startWithAngle(startPosition: position.point) {
                 vpsPosition.syncPosition(positions: [point], syncPosition: !position.isDisabled, syncAngle: true, angle: startLocationAngle, uncertainAngle: false)
@@ -248,7 +256,7 @@ extension Navigation: INavigation {
         try start(startPosition: location.coordinate.asPoint, startAngle: location.course)
         return
       }
-      //vpsPosition.syncPosition(location: location)
+      vpsPosition.syncPosition(location: location)
     }
 
     public func stop() {
@@ -258,6 +266,10 @@ extension Navigation: INavigation {
     }
 
     public func prepareAngle() { vpsPosition.prepareAngle() }
+
+  public func forceSyncPosition(position: CGPoint, angle: Double) {
+    vpsPosition.forceSyncPosition(position: position, angle: angle, forceAngle: true)
+  }
 }
 
 // MARK: Internal

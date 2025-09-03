@@ -11,6 +11,7 @@ import Combine
 import CoreGraphics
 
 class VSTT2FloorManager {
+  @Inject var createPathfinders: CreateVPSPathfindersUseCase
   @Inject var fetchMapFence: FetchMapFenceUseCase
   @Inject var fetchMapZones: FetchMapZonesUseCase
   @Inject var fetchNavGraph: FetchNavGraphUseCase
@@ -20,6 +21,7 @@ class VSTT2FloorManager {
   @Inject var getActiveMapFence: GetActiveMapFenceUseCase
   @Inject var getActiveMapZones: GetActiveMapZonesUseCase
   @Inject var getActiveNavGraph: GetActiveNavGraphUseCase
+  @Inject var getActivePathfinder: GetActivePathfinderUseCase
   @Inject var getActiveShelfGroups: GetActiveShelfGroupsUseCase
   @Inject var getFloors: GetCachedFloorsUseCase
   @Inject var getMapZones: GetMapZonesUseCase
@@ -57,6 +59,7 @@ private extension VSTT2FloorManager {
     getShelfGroups()
 
     dispatchGroup.notify(queue: .main) {
+      self.createPathfinders.invoke()
       if let mapFence = self.getActiveMapFence.invoke() {
         completion((mapFence: mapFence, zoneData: self.zoneData))
       }

@@ -110,19 +110,21 @@ class AWSS3UploadManager {
   typealias Async = (_ success: @escaping (_ identifier: String, _ key: String) -> Void, _ failure: @escaping (_ identifier: String, _ key: String, _ error: Error) -> Void) -> Void
   func retry(_ numberOfTimes: Int = 0, task: @escaping () -> Async?) {
     guard let asyncTask = task() else { return }
-    serialDispatch.asyncAfter(deadline: .now() + getWaitTimeExp(retryCount: numberOfTimes)) { [self] in
-      asyncTask ({ (identifier, key) in
-        self.updateRecordsAfter(uploadingFailed: false, identifier: identifier, key: key)
-        if self.getAllRecordedObjects.filter({ $0.status == AWSRecordedObject.Status.inProgress.rawValue }).count == 0 {
+    serialDispatch.asyncAfter(deadline: .now() + getWaitTimeExp(retryCount: numberOfTimes)) { [weak self] in
+      asyncTask ({ [weak self] (identifier, key) in
+        guard let self = self else { return }
+        updateRecordsAfter(uploadingFailed: false, identifier: identifier, key: key)
+        if getAllRecordedObjects.filter({ $0.status == AWSRecordedObject.Status.inProgress.rawValue }).count == 0 {
           DispatchQueue.main.async { self.dataUploadedPublisher.send(true) }
         }
-      }, { [self] (identifier, key, error) in
+      }, { [weak self] (identifier, key, error) in
+        guard let self = self else { return }
         Logger().log(message: "Failure uploading file: \(error)")
         if numberOfTimes < AWSS3UploadManager.MAX_TRIES {
           retry(numberOfTimes + 1, task: task)
         } else {
-          self.updateRecordsAfter(uploadingFailed: true, identifier: identifier, key: key)
-          if self.getAllRecordedObjects.filter({ $0.status == AWSRecordedObject.Status.inProgress.rawValue }).count == 0 {
+          updateRecordsAfter(uploadingFailed: true, identifier: identifier, key: key)
+          if getAllRecordedObjects.filter({ $0.status == AWSRecordedObject.Status.inProgress.rawValue }).count == 0 {
             DispatchQueue.main.async { self.dataUploadedPublisher.send(false) }
           }
         }

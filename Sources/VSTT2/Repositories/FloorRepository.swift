@@ -7,6 +7,7 @@
 
 import Foundation
 import VSFoundation
+import VSPositionKit
 
 protocol IFloorRepository {
   var activeConverter: ICoordinateConverter? { get }
@@ -14,8 +15,10 @@ protocol IFloorRepository {
   var activeMapFence: MapFence? { get }
   var activeMapZones: ZoneData? { get }
   var activeNavGraph: Data? { get }
+  var activeVpsPathfinder: VPSPathfinderAdapter? { get }
   var activeShelfGroups: [ShelfGroup]? { get }
 
+  func createVPSPathfinders()
   func fetchMapFence(completion: @escaping (Error?) -> ())
   func fetchMapZones(completion: @escaping (Error?) -> ())
   func fetchNavGraph(completion: @escaping (Error?) -> ())
@@ -35,6 +38,7 @@ class FloorRepository {
   private var mapFences: [Int64: MapFence] = [:]
   private var mapZonesData: [Int64: ZoneData] = [:]
   private var navgraphs: [Int64: Data] = [:]
+  private var vpsPathfinders: [Int64: VPSPathfinderAdapter] = [:]
   private var shelfGroups: [Int64: [ShelfGroup]] = [:]
 
   private func createConverters() {
@@ -58,7 +62,33 @@ extension FloorRepository: IFloorRepository {
   var activeMapFence: MapFence? { mapFences[activeFloor.id] }
   var activeMapZones: ZoneData? { mapZonesData[activeFloor.id] }
   var activeNavGraph: Data? { navgraphs[activeFloor.id] }
+  var activeVpsPathfinder: VPSPathfinderAdapter? { vpsPathfinders[activeFloor.id] }
   var activeShelfGroups: [ShelfGroup]? { shelfGroups[activeFloor.id] }
+
+  func createVPSPathfinders() {
+    floors.forEach { (rtls) in
+      guard
+        let converter = converters[rtls.id],
+        let navData = navgraphs[rtls.id],
+        let stopCode = rtls.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .stop })
+      else { return }
+
+      let height = converter.convertFromMetersToPixels(input: activeFloor.heightInMeters)
+      let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
+      let startCode = rtls.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .start })
+      let convertedAndFlippedStart = startCode?.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
+      let convertedAndFlippedStop = stopCode.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
+      vpsPathfinders[rtls.id] = VPSPathfinderAdapter(
+        converter: converter,
+        height: activeFloor.heightInMeters,
+        width: activeFloor.widthInMeters,
+        pixelsPerMeter: Float(activeFloor.pixelsPerMeter),
+        navGraph: navGraph,
+        startPosition: convertedAndFlippedStart,
+        stopPosition: convertedAndFlippedStop
+      )
+    }
+  }
 
   func fetchMapFence(completion: @escaping (Error?) -> ()) {
     guard !floors.isEmpty else { completion(VSTT2Error.missingData); return }
@@ -141,7 +171,9 @@ extension FloorRepository: IFloorRepository {
         switch result {
         case .success(let shelfGroups):
           if shelfGroups.count > 0 {
-            self?.shelfGroups[floor.id] = shelfGroups
+            DispatchQueue.main.async {
+              self?.shelfGroups[floor.id] = shelfGroups
+            }
           }
         case .failure(let err): error = err
         }
