@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import VSFoundation
 
 final class MLInterfaceVersionsService: DataFetchingManager {
   func call(with parameters: MLInterfaceVersionsParameters) -> AnyPublisher<MLInterfaceVersions, Error> {

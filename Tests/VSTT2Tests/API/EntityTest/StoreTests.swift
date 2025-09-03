@@ -187,8 +187,6 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(store.stores.first?.startCodes.first?.yPosition, 21)
         XCTAssertEqual(store.stores.first?.startCodes.first?.direction, 0)
         XCTAssertEqual(store.stores.first?.rtlsOptions.first?.id, 6)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.width, 100)
-        XCTAssertEqual(store.stores.first?.rtlsOptions.first?.height, 70)
         XCTAssertEqual(store.stores.first?.rtlsOptions.first?.widthInMeters, 20.2)
         XCTAssertEqual(store.stores.first?.rtlsOptions.first?.heightInMeters, 30.3)
         XCTAssertEqual(store.stores.first?.rtlsOptions.first?.floorLevel, 21)

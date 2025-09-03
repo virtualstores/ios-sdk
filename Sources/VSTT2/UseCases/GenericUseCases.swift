@@ -18,3 +18,14 @@ class StopTT2UseCase {
     analytics.stopVisit()
   }
 }
+
+class CreateLoggerUseCase {
+  @Inject var repository: IStatusRepository
+
+  func invoke(verbosity: Verbosity) -> Logger? {
+    if repository.currentSettings.debugModeEnabled {
+      return Logger(verbosity: verbosity)
+    }
+    return nil
+  }
+}

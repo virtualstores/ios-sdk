@@ -7,6 +7,16 @@
 
 import Foundation
 import VSFoundation
+import VSPositionKit
+
+class CreateVPSPathfindersUseCase {
+  @Inject var repository: IFloorRepository
+
+  func invoke() {
+    repository.createVPSPathfinders()
+  }
+}
+
 
 // MARK: - Fetchers
 
@@ -81,6 +91,14 @@ class GetActiveNavGraphUseCase {
 
   func invoke() -> Data? {
     repository.activeNavGraph
+  }
+}
+
+class GetActivePathfinderUseCase {
+  @Inject var repository: IFloorRepository
+
+  func invoke() -> VPSPathfinderAdapter? {
+    repository.activeVpsPathfinder
   }
 }
 

@@ -63,12 +63,12 @@ public protocol ITT2 {
     /// Convenience method to initiate selected Store data
     func initiate(storeId: Int64, completion: @escaping (Error?) -> Void)
 
-    func set(mapManager: IMapManager)
+    func set(mapManager: IMapManager?)
     /// Setup the Map
-    func set(map: IMapController)
+    func set(map: IMapController?)
 
     /// Setup the WiFi
-    func set(wifi: IWiFiController)
+    func set(wifi: IWiFiController?)
 
     /// Settings for TT2
     func set(automaticActivationOfUserMark: Bool)

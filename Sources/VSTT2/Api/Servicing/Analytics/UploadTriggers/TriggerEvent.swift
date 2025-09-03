@@ -42,10 +42,10 @@ public class TriggerEvent {
         self.tags = tags
         self.metaData = metaData
         self.hasBeenTriggered = false
-        self.timestamp = Date()
+        self.timestamp = timestamp
         self.userPosition = userPosition
     }
-
+  
     public convenience init(
         id: String,
         rtlsOptionsId: Int64,
@@ -53,9 +53,10 @@ public class TriggerEvent {
         description: String,
         eventType: EventType,
         tags: [String: String] = [:],
-        metaData: [String: String] = [:]
+        metaData: [String: String] = [:],
+        timestamp: Date = Date()
     ) {
-        self.init(rtlsOptionsId: rtlsOptionsId, name: name, description: description, eventType: eventType, tags: tags, metaData: metaData)
+        self.init(rtlsOptionsId: rtlsOptionsId, name: name, description: description, eventType: eventType, tags: tags, metaData: metaData, timestamp: timestamp)
         self.tags[.id] = id
     }
     

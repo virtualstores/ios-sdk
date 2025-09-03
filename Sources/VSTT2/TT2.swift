@@ -37,7 +37,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.8.1"
+    static let version = "2.10.1"
 
     // MARK: Private members
     private let context: Context
@@ -174,17 +174,17 @@ final public class TT2: ITT2 {
     }
 
     // MARK: Setters
-    public func set(mapManager: IMapManager) {
+    public func set(mapManager: IMapManager?) {
       tt2Internal.mapManager = mapManager
       tt2Internal.mapManager?.set(isPositionActive: tt2Internal.navigation.isActive)
     }
 
-    public func set(map: IMapController) {
+    public func set(map: IMapController?) {
         tt2Internal.mapController = map
         setupMap()
     }
 
-    public func set(wifi: IWiFiController) {
+    public func set(wifi: IWiFiController?) {
         tt2Internal.wifiController = wifi
         bindWiFiPublishers()
     }
@@ -262,27 +262,10 @@ private extension TT2 {
     func setupMap(changedFloor: Bool = false) {
       guard
         let mapData = mapData,
-        let converter = coordinateConverter,
-        let navData = tt2Internal.floorManager.getActiveNavGraph.invoke(),
-        let stop = tt2Internal.floorManager.stopCode,
-        let zones = zonesTree.getZonesFor(floorLevelId: activeFloor.id)
+        let zones = zonesTree.getZonesFor(floorLevelId: activeFloor.id),
+        let pathfinder = tt2Internal.floorManager.getActivePathfinder.invoke()
       else { return }
-
-      let height = converter.convertFromMetersToPixels(input: activeFloor.heightInMeters)
-      let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
-
-      let convertedAndFlippedStart = tt2Internal.floorManager.startCode?.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
-      let convertedAndFlippedStop = stop.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
-
-      let pathfinder = VPSPathfinderAdapter(
-        converter: converter,
-        height: activeFloor.heightInMeters,
-        width: activeFloor.widthInMeters,
-        pixelsPerMeter: Float(activeFloor.pixelsPerMeter),
-        navGraph: navGraph,
-        startPosition: convertedAndFlippedStart,
-        stopPosition: convertedAndFlippedStop
-      )
+      
       tt2Internal.mapController?.loadMap(with: mapData)
       let sharedProperties = tt2Internal.floorManager.getActiveMapZones.invoke()?.sharedProperties
       tt2Internal.mapController?.setup(pathfinder: pathfinder, zones: zones, sharedProperties: sharedProperties, shelves: position.shelfGroups ?? [], changedFloor: changedFloor)
@@ -317,7 +300,8 @@ private extension TT2 {
             automaticSensorRecording: tt2Internal.automaticSensorRecording,
             positionServiceSettings: tt2Internal.activeStore.positionServiceSettings,
             converter: converter,
-            modelManger: tt2Internal.mlModelManager
+            modelManger: tt2Internal.mlModelManager,
+            engine: .indoor
         )
     }
     
@@ -347,34 +331,4 @@ private extension TT2 {
         tt2Internal.analytics.zoneManager.setup()
         tt2Internal.analytics.eventManager.setup()
     }
-}
-
-public struct TT2Settings {
-  let engine: TT2Engine
-  let params: TT2ModelParams
-  let isAutomaticFloorChangeEanbled: Bool
-
-  public init(engine: TT2Engine = .indoor, params: TT2ModelParams = .init(), isAutomaticFloorChangeEanbled: Bool = true) {
-    self.engine = engine
-    self.params = params
-    self.isAutomaticFloorChangeEanbled = isAutomaticFloorChangeEanbled
-  }
-
-  public enum TT2Engine: String {
-    case gpsFusion = "GPS_FUSION"
-    case indoor = "INDOOR"
-    case openTerrain = "OPEN_TERRAIN"
-  }
-
-  public struct TT2ModelParams {
-    let target: Int
-    let targetMLModelVersion: Int?
-    let targetNLModelVersion: Int?
-
-    public init(target: Int = 1, targetMLModelVersion: Int? = nil, targetNLModelVersion: Int? = nil) {
-      self.target = target
-      self.targetMLModelVersion = targetMLModelVersion
-      self.targetNLModelVersion = targetNLModelVersion
-    }
-  }
 }

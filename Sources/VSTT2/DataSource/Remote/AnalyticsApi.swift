@@ -18,6 +18,7 @@ protocol IAnalyticsApi {
   func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ())
+  func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ())
 }
 
 class AnalyticsApi {
@@ -29,6 +30,7 @@ class AnalyticsApi {
   private let uploadScanEventsService = UploadScanEventsService(with: NetworkManager())
   private let uploadTriggersService = UploadTriggersService(with: NetworkManager())
   private let uploadVisitScoreService = UploadVisitScoreService(with: NetworkManager())
+  private let uploadZoneSummmaryService = UploadZoneSummaryService(with: NetworkManager())
   private var cancellable = Set<AnyCancellable>()
 }
 
@@ -154,6 +156,23 @@ extension AnalyticsApi: IAnalyticsApi {
         requestId: UUID().uuidString.uppercased(),
         visitScore: visitScore
       )).sink { (result) in
+        switch result {
+        case .finished: break
+        case .failure(let error): completion(error)
+        }
+      } receiveValue: { (_) in
+        completion(nil)
+      }.store(in: &cancellable)
+  }
+
+  func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ()) {
+    uploadZoneSummmaryService
+      .call(with: .init(
+        visitId: visitId,
+        requestId: UUID().uuidString.uppercased(),
+        summary: summary
+      ))
+      .sink { (result) in
         switch result {
         case .finished: break
         case .failure(let error): completion(error)
