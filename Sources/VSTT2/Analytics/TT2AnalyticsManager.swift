@@ -12,7 +12,7 @@ import CoreLocation
 import UIKit
 import VSPositionKit
 
-final public class TT2AnalyticsManager {
+final public class TT2AnalyticsManager: Disposable {
   @Inject var positionUploadWorker: PositionUploadWorker
   @Inject var zoneManager: TT2ZoneManager
   @Inject var eventManager: TT2EventManager
@@ -35,13 +35,14 @@ final public class TT2AnalyticsManager {
   @Inject var uploadTriggerEvent: UploadTriggerEventForActiveVisitUseCase
   @Inject var uploadZoneSummary: UploadZoneSummaryForActiveVisitUseCase
 
-  lazy var accuracyUploader: AccuracyUploader = { .init() }()
-  lazy var stepEventUploader: StepEventUploader = { .init() }()
+  lazy var accuracyUploader: AccuracyUploader? = { .init() }()
+  lazy var stepEventUploader: StepEventUploader? = { .init() }()
   lazy var visitScoreManager: TT2AnalyticsScoreManager = { .init() }()
   let geopositionsManager: TT2AnalyticsGeopositionManager = .init()
   var tt2Tags: [String:String] = [:]
   var leaseExpired = false
   var visitId: Int64? { activeVisitId.invoke() }
+  private let tag = "TT2AnalyticsManager"
   private var store: Store { activeStore.invoke() }
   private var uploadThreshold = 100
   private var rtlsOptionId: Int64 { activeFloor.invoke().id }
@@ -57,6 +58,14 @@ final public class TT2AnalyticsManager {
   private let serialDispatch = DispatchQueue(label: "TT2ANALYTICSMANAGERSERIAL")
 
   deinit {
+    Logger(verbosity: .info).log(tag: tag, message: "deinit")
+    dispose()
+  }
+
+  public func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    accuracyUploader = nil
+    stepEventUploader = nil
     cancellable.removeAll()
   }
 }
@@ -334,7 +343,7 @@ extension TT2AnalyticsManager {
   }
 
   func rescueMode() {
-    accuracyUploader.numberOfRescueModes += 1
+    accuracyUploader?.numberOfRescueModes += 1
     uploadTriggerEvents(request: postTriggerEvent(for: TriggerEvent(rtlsOptionsId: rtlsOptionId, name: "RescueModeTriggerEvent", description: "", eventType: .appTrigger(.init(event: "RescueModeTriggerEvent")), userPosition: currentPosition)))
   }
 
@@ -378,7 +387,7 @@ extension TT2AnalyticsManager: TT2Analytics {
       guard let self = self else { return }
       positionUploadWorker.saveObjects()
       uploadPositionData()
-      stepEventUploader.upload()
+      stepEventUploader?.upload()
       geopositionsManager.stopVisit()
       if let point = currentPosition {
         zoneManager.stopped(currentPosition: point)

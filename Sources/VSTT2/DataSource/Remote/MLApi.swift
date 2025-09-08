@@ -7,19 +7,26 @@
 
 import Foundation
 import Combine
+import VSFoundation
 
-protocol IMLApi {
+protocol IMLApi: Disposable {
   func fetchMLInterfaceVersions(completion: @escaping (Result<MLInterfaceVersions, Error>) -> ())
   func fetchModel(url: URL, completion: @escaping (Result<Data, Error>) -> ())
 }
 
 class MLApi {
-  let downloadManager = DownloadManager()
-  let mlInterfaceVersionService = MLInterfaceVersionsService(with: NetworkManager())
-  var cancellable = Set<AnyCancellable>()
+  private let tag = "MLApi"
+  private let downloadManager = DownloadManager()
+  private let mlInterfaceVersionService = MLInterfaceVersionsService(with: NetworkManager())
+  private var cancellable = Set<AnyCancellable>()
 }
 
 extension MLApi: IMLApi {
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    cancellable.removeAll()
+  }
+  
   func fetchMLInterfaceVersions(completion: @escaping (Result<MLInterfaceVersions, Error>) -> ()) {
     mlInterfaceVersionService
       .call(with: MLInterfaceVersionsParameters())

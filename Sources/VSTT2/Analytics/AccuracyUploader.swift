@@ -28,7 +28,7 @@ class AccuracyUploader {
 
   var client: Client { getActiveClient.invoke() }
   var store: Store { getActiveStore.invoke() }
-  var stepEventUploader: StepEventUploader { analytics.stepEventUploader }
+  var stepEventUploader: StepEventUploader? { analytics.stepEventUploader }
 
   var numberOfRescueModes: Int64 = 0
 
@@ -115,7 +115,8 @@ class AccuracyUploader {
     guard
       let visitId = analytics.visitId,
       let mapFence = getActiveMapFence.invoke(),
-      let converter = converter.invoke()
+      let converter = converter.invoke(),
+      let stepEventUploader = stepEventUploader
     else { return }
     let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
     let identifier: String
@@ -195,7 +196,7 @@ class AccuracyUploader {
     //if (tags["isWifiResetSync"]! as NSString).boolValue {
     //  tags["wifiResetSyncRadius"] = String(0)
     //}
-    let distance: Double = stepEventUploader.events.map { $0.distance }.sum()
+    let distance = stepEventUploader.events.map { $0.distance }.sum()
     let event = SyncEvent(
       rtlsOptionsId: activeFloor.invoke().id,
       identifier: identifier,

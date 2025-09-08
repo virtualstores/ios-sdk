@@ -32,7 +32,6 @@ final public class TT2: ITT2 {
 
     var coordinateConverter: ICoordinateConverter? { tt2Internal.floorManager.getActiveConverter.invoke() }
     var mapData: MapData?
-    var map: Map?
 
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
@@ -40,7 +39,8 @@ final public class TT2: ITT2 {
     static let version = "2.10.1"
 
     // MARK: Private members
-    private let context: Context
+    private let tag: String = "TT2"
+    private var context: Context?
     private var _tt2Internal: TT2Internal?
     private var tt2Internal: TT2Internal {
         guard let tt2Internal = _tt2Internal else { fatalError("tt2Internal is not initialized") }
@@ -55,10 +55,12 @@ final public class TT2: ITT2 {
     private var positionKitParams: ParameterPackage = .retail
     private var settings: TT2Settings { tt2Internal.getTT2Settings.invoke() }
 
+    var repo: MLRepository?
     public init(connectionSettings: EnvironmentConfig.Settings, authSettings: AuthSettings, settings: TT2Settings) {
       URLCache.shared.removeAllCachedResponses()
-      context = Context(VSTT2Config(environment: EnvironmentConfig()))
+      context = Context(VSTT2Config(environment: .init()))
       _tt2Internal = TT2Internal(connectionSettings: connectionSettings, authSettings: authSettings, settings: settings)
+      Logger.debugModeEnabled = settings.debugModeEnabled
     }
 
     @available(*, deprecated, message: "Please use init(connectionSettings:authSettings:settings:)")
@@ -71,9 +73,20 @@ final public class TT2: ITT2 {
     }
 
     deinit {
-        _tt2Internal = nil
-        cancellable.removeAll()
-        wifiCancellable.removeAll()
+      Logger(verbosity: .info).log(tag: tag, message: "deinit")
+      dispose()
+    }
+  
+    /// Disposes both TT2 and TT2Map, remember to nil both.
+    public func dispose() {
+      Logger(verbosity: .info).log(tag: tag, message: "dispose")
+      _tt2Internal?.dispose()
+      _tt2Internal = nil
+      mapData = nil
+      context?.dispose()
+      context = nil
+      cancellable.removeAll()
+      wifiCancellable.removeAll()
     }
 
     // MARK: Initialize

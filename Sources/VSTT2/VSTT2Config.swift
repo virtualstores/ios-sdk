@@ -9,15 +9,21 @@ import Foundation
 import VSFoundation
 import VSPositionKit
 
-struct VSTT2Config: Config {
+class VSTT2Config: Config {
   let environment: EnvironmentConfig
+
+  var disposables = [Disposable]()
 
   init(environment: EnvironmentConfig) {
     self.environment = environment
   }
 
+  func dispose() {
+    // TODO:
+  }
+
   func configure(_ injector: Injector) {
-    injector.map(EnvironmentConfig.self) { environment }
+    injector.map(EnvironmentConfig.self) { self.environment }
     configureServices(injector)
     configureRepositories(injector)
     configureUseCases(injector)
@@ -40,16 +46,44 @@ struct VSTT2Config: Config {
   }
 
   private func configureRepositories(_ injector: Injector) {
-    injector.map(IAnalyticsRepository.self) { AnalyticsRepository() }
+    injector.map(IAnalyticsRepository.self) { [weak self] in
+      let inject = AnalyticsRepository()
+      self?.disposables.append(inject)
+      return inject
+    }
     injector.map(IApiKeyRepository.self) { ApiKeyRepository() }
-    injector.map(IAuthRepository.self) { AuthRepository() }
-    injector.map(IClientRepository.self) { ClientRepository() }
-    injector.map(IFloorRepository.self) { FloorRepository() }
-    injector.map(IItemsRepository.self) { ItemsRepository() }
+    injector.map(IAuthRepository.self) { [weak self] in
+      let inject = AuthRepository()
+      self?.disposables.append(inject)
+      return inject
+    }
+    injector.map(IClientRepository.self) { [weak self] in
+      let inject = ClientRepository()
+      self?.disposables.append(inject)
+      return inject
+    }
+    injector.map(IFloorRepository.self) { [weak self] in
+      let inject = FloorRepository()
+      self?.disposables.append(inject)
+      return inject
+    }
+    injector.map(IItemsRepository.self) { [weak self] in
+      let inject = ItemsRepository()
+      self?.disposables.append(inject)
+      return inject
+    }
     injector.map(IJWTTokenRepository.self) { JWTTokenRepository() }
-    injector.map(IMLRepository.self) { MLRepository() }
+    injector.map(IMLRepository.self) { [weak self] in
+      let inject = MLRepository()
+      self?.disposables.append(inject)
+      return inject
+    }
     injector.map(IStatusRepository.self) { StatusRepository() }
-    injector.map(IStoreRepository.self) { StoreRepository() }
+    injector.map(IStoreRepository.self) { [weak self] in
+      let inject = StoreRepository()
+      self?.disposables.append(inject)
+      return inject
+    }
     injector.map(IUserRepository.self) { UserRepository() }
   }
 
@@ -65,7 +99,6 @@ struct VSTT2Config: Config {
     injector.map(UploadScanEventForActiveVisitUseCase.self) { UploadScanEventForActiveVisitUseCase() }
     injector.map(UploadTriggerEventForActiveVisitUseCase.self) { UploadTriggerEventForActiveVisitUseCase() }
     injector.map(UploadZoneSummaryForActiveVisitUseCase.self) { .init() }
-
     injector.map(UploadVisitScoreForActiveVisitUseCase.self) { UploadVisitScoreForActiveVisitUseCase() }
     injector.map(ValidateVisitScoreUseCase.self) { ValidateVisitScoreUseCase() }
 
@@ -165,17 +198,33 @@ struct VSTT2Config: Config {
     injector.map(DownloadManager.self) { DownloadManager() }
     injector.map(EventDetector.self) { EventDetector() }
     injector.map(MapZoneParser.self) { MapZoneParser() }
-    injector.map(Navigation.self) { Navigation() }
+    injector.map(Navigation.self) { [weak self] in
+      let inject = Navigation()
+      self?.disposables.append(inject)
+      return inject
+    }
     injector.map(Persistence.self) { Persistence() }
     injector.map(Position.self) { Position() }
-    injector.map(VPSPositionManager.self) { VPSPositionManager() }
+    injector.map(VPSPositionManager.self) { [weak self] in
+      let inject = VPSPositionManager()
+      self?.disposables.append(inject)
+      return inject
+    }
     injector.map(PositionUploadWorker.self) { PositionUploadWorker() }
     injector.map(RecordingManager.self) { RecordingManager() }
-    injector.map(TT2AnalyticsManager.self) { TT2AnalyticsManager() }
+    injector.map(TT2AnalyticsManager.self) { [weak self] in
+      let inject = TT2AnalyticsManager()
+      self?.disposables.append(inject)
+      return inject
+    }
     injector.map(TT2EventManager.self) { TT2EventManager() }
     injector.map(TT2ZoneManager.self) { TT2ZoneManager()}
     injector.map(IUserManager.self) { UserManager() }
-    injector.map(VSMLModelManager.self) { VSMLModelManager() }
+    injector.map(VSMLModelManager.self) { [weak self] in
+      let inject = VSMLModelManager()
+      self?.disposables.append(inject)
+      return inject
+    }
     injector.map(VSTT2FloorManager.self) { VSTT2FloorManager() }
     injector.map(ZoneEventDetector.self) { ZoneEventDetector() }
     injector.map(ILeaseManager.self) { LeaseManager() }
@@ -183,5 +232,161 @@ struct VSTT2Config: Config {
 
   private func configureHelpers(_ injector: Injector) {
     injector.map(Logger.self) { Logger(verbosity: .debug) }
+  }
+
+  func deconfigure(_ injector: Injector) {
+    disposables.reversed().forEach { $0.dispose() }
+    disposables.removeAll()
+
+    // Services
+    injector.unmap(DeleteUserService.self)
+    injector.unmap(GetUserService.self)
+    injector.unmap(MessagesService.self)
+    injector.unmap(OrdersService.self)
+    injector.unmap(PutUserService.self)
+    injector.unmap(ShelfGroupService.self)
+    injector.unmap(StoresListService.self)
+    injector.unmap(SwapLocationsService.self)
+    injector.unmap(TriggerEventsService.self)
+    injector.unmap(UploadStepEventsService.self)
+    injector.unmap(UploadSyncEventsService.self)
+
+    // Repositories
+    injector.unmap(IAnalyticsRepository.self)
+    injector.unmap(IApiKeyRepository.self)
+    injector.unmap(IAuthRepository.self)
+    injector.unmap(IClientRepository.self)
+    injector.unmap(IFloorRepository.self)
+    injector.unmap(IItemsRepository.self)
+    injector.unmap(IJWTTokenRepository.self)
+    injector.unmap(IMLRepository.self)
+    injector.unmap(IStatusRepository.self)
+    injector.unmap(IStoreRepository.self)
+    injector.unmap(IUserRepository.self)
+
+    // Analytics use cases
+    injector.unmap(CreateVisitUseCase.self)
+    injector.unmap(GetActiveVisitIDUseCase.self)
+    injector.unmap(StopVisitUseCase.self)
+    injector.unmap(UpdateTagsForActiveVisitUseCase.self)
+    injector.unmap(UploadGeopositionsForActiveVisitUseCase.self)
+    injector.unmap(UploadGeopositionsForVisitUseCase.self)
+    injector.unmap(UploadPositionsForVisitUseCase.self)
+    injector.unmap(UploadScanEventForActiveVisitUseCase.self)
+    injector.unmap(UploadTriggerEventForActiveVisitUseCase.self)
+    injector.unmap(UploadZoneSummaryForActiveVisitUseCase.self)
+
+    injector.unmap(UploadVisitScoreForActiveVisitUseCase.self)
+    injector.unmap(ValidateVisitScoreUseCase.self)
+
+    // Authentication use cases
+    injector.unmap(GetApiKeyUseCase.self)
+    injector.unmap(GetAuthSettingsUseCase.self)
+    injector.unmap(GetAuthTokenUseCase.self)
+    injector.unmap(GetRefreskTokenUseCase.self)
+    injector.unmap(LoginUseCase.self)
+    injector.unmap(RefreshUseCase.self)
+    injector.unmap(SetApiKeyUseCase.self)
+    injector.unmap(SetAuthSettingsUseCase.self)
+
+    // Barcode use case
+    injector.unmap(GetPositionByBarcodeUseCase.self)
+
+    // Client use cases
+    injector.unmap(FetchClientsUseCase.self)
+    injector.unmap(GetActiveClientUseCase.self)
+    injector.unmap(GetCachedClientsUseCase.self)
+    injector.unmap(SetActiveClientUseCase.self)
+
+    // Event use cases
+    injector.unmap(DecideWhichTriggerEventToDisplayUseCase.self)
+
+    // Floor use cases
+    injector.unmap(CreateVPSPathfindersUseCase.self)
+    injector.unmap(FetchMapFenceUseCase.self)
+    injector.unmap(FetchMapZonesUseCase.self)
+    injector.unmap(FetchNavGraphUseCase.self)
+    injector.unmap(FetchShelfGroupsUseCase.self)
+    injector.unmap(GetActiveCoordinateConverterUseCase.self)
+    injector.unmap(GetActiveFloorUseCase.self)
+    injector.unmap(GetActiveMapFenceUseCase.self)
+    injector.unmap(GetActiveMapZonesUseCase.self)
+    injector.unmap(GetActiveNavGraphUseCase.self)
+    injector.unmap(GetActivePathfinderUseCase.self)
+    injector.unmap(GetActiveShelfGroupsUseCase.self)
+    injector.unmap(GetCachedFloorsUseCase.self)
+    injector.unmap(GetMapZonesUseCase.self)
+    injector.unmap(SetActiveFloorUseCase.self)
+    injector.unmap(SetFloorsUseCase.self)
+
+    // Generic use cases
+    injector.unmap(StopTT2UseCase.self)
+
+    // ML use cases
+    injector.unmap(CompileModelUseCase.self)
+    injector.unmap(FetchMLInterfaceVersionsUseCase.self)
+    injector.unmap(GetMLCatalogUseCase.self)
+    injector.unmap(GetMLModelUseCase.self)
+    injector.unmap(GetMLVersionUseCase.self)
+    injector.unmap(GetNLModelUseCase.self)
+    injector.unmap(GetNLVersionUseCase.self)
+    injector.unmap(GetVPSMLModelParamsUseCase.self)
+    injector.unmap(GetVPSNLModelParamsUseCase.self)
+    injector.unmap(LoadMLVersionUseCase.self)
+    injector.unmap(LoadNLVersionUseCase.self)
+    injector.unmap(SetMLVersionUseCase.self)
+    injector.unmap(SetNLVersionUseCase.self)
+
+    // Status use cases
+    injector.unmap(GetCurrentCompassHeadingUseCase.self)
+    injector.unmap(GetCurrentGPSLocationUseCase.self)
+    injector.unmap(GetCurrentLeasePolicyUseCase.self)
+    injector.unmap(GetCurrentVPSPositionUseCase.self)
+    injector.unmap(GetCurrentTT2SettingsUseCase.self)
+    injector.unmap(GetIsVPSRunningUseCase.self)
+    injector.unmap(SetCompassHeadingUseCase.self)
+    injector.unmap(SetGPSPositionUseCase.self)
+    injector.unmap(SetLeasePolicyUseCase.self)
+    injector.unmap(SetVPSPositionUseCase.self)
+    injector.unmap(SetIsVPSRunningUseCase.self)
+    injector.unmap(SetTT2SettingsUseCase.self)
+    injector.unmap(SubscribeToCompassHeadingUpdatesUseCase.self)
+    injector.unmap(SubscribeToGPSUpdatesUseCase.self)
+    injector.unmap(SubscribeToVPSUpdatesUseCase.self)
+    injector.unmap(SubscribeToIsVPSRunningUseCase.self)
+
+    // Store use cases
+    injector.unmap(FetchStoreUseCase.self)
+    injector.unmap(FetchSwapLocationsUseCase.self)
+    injector.unmap(GetActiveStoreUseCase.self)
+    injector.unmap(GetCachedStoreUseCase.self)
+    injector.unmap(GetCachedSwapLocationsUseCase.self)
+    injector.unmap(GetZonesTreeUseCase.self)
+    injector.unmap(SetActiveStoreUseCase.self)
+
+    // User use cases
+    injector.unmap(GetUserProfileUseCase.self)
+    injector.unmap(SetUserProfileUseCase.self)
+
+    // Managers
+    injector.unmap(AWSS3UploadManager.self)
+    injector.unmap(CoordinateEventDetector.self)
+    injector.unmap(DownloadManager.self)
+    injector.unmap(EventDetector.self)
+    injector.unmap(MapZoneParser.self)
+    injector.unmap(Navigation.self)
+    injector.unmap(Persistence.self)
+    injector.unmap(Position.self)
+    injector.unmap(VPSPositionManager.self)
+    injector.unmap(PositionUploadWorker.self)
+    injector.unmap(RecordingManager.self)
+    injector.unmap(TT2AnalyticsManager.self)
+    injector.unmap(TT2EventManager.self)
+    injector.unmap(TT2ZoneManager.self)
+    injector.unmap(IUserManager.self)
+    injector.unmap(VSMLModelManager.self)
+    injector.unmap(VSTT2FloorManager.self)
+    injector.unmap(ZoneEventDetector.self)
+    injector.unmap(ILeaseManager.self)
   }
 }

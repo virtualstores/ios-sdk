@@ -9,7 +9,7 @@ import Foundation
 import Combine
 import VSFoundation
 
-protocol IFloorApi {
+protocol IFloorApi: Disposable {
   func getMapFence(url: String, completion: @escaping (Result<MapFence, Error>) -> ())
   func getMapZones(url: URL, completion: @escaping (Result<ZoneData, Error>) -> ())
   func getNavGraph(url: URL, completion: @escaping (Result<Data, Error>) -> ())
@@ -17,6 +17,7 @@ protocol IFloorApi {
 }
 
 class FloorApi {
+  private let tag = "FloorApi"
   private let downloadManager = DownloadManager()
   private let mapFenceService = MapFenceDataService(with: NetworkManager())
   private let shelfGroupService = ShelfGroupService(with: NetworkManager())
@@ -24,6 +25,11 @@ class FloorApi {
 }
 
 extension FloorApi: IFloorApi {
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    cancellable.removeAll()
+  }
+  
   func getMapFence(url: String, completion: @escaping (Result<MapFence, Error>) -> ()) {
     mapFenceService
       .call(with: MapFenceDataParameters(url: url))

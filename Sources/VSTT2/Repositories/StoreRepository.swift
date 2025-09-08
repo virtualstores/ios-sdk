@@ -8,7 +8,7 @@
 import Foundation
 import VSFoundation
 
-protocol IStoreRepository {
+protocol IStoreRepository: Disposable {
   var activeStore: Store { get }
   var zonesTree: TT2ZonesTree { get }
 
@@ -23,10 +23,16 @@ protocol IStoreRepository {
 class StoreRepository {
   let api: IStoreApi = StoreApi()
 
+  private let tag = "StoreRepository"
   private var _activeStore: Store?
   private var cachedStores: [Store] = []
   private var cachedSwapLocations: [SwapLocation] = []
   private var _zonesTree: TT2ZonesTree?
+
+  deinit {
+    Logger(verbosity: .info).log(tag: tag, message: "deinit")
+    dispose()
+  }
 }
 
 extension StoreRepository: IStoreRepository {
@@ -38,6 +44,16 @@ extension StoreRepository: IStoreRepository {
   var zonesTree: TT2ZonesTree {
     guard let tree = _zonesTree else { fatalError("Tree not initialized") }
     return tree
+  }
+
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    api.dispose()
+    _activeStore = nil
+    cachedStores = []
+    cachedSwapLocations = []
+    _zonesTree?.dispose()
+    _zonesTree = nil
   }
 
   func fetchStores(clientId: Int64, completion: @escaping (Error?) -> ()) {

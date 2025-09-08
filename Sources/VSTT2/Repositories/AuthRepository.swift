@@ -5,7 +5,9 @@
 //  Created by Théodore Roos on 2025-02-03.
 //
 
-protocol IAuthRepository {
+import VSFoundation
+
+protocol IAuthRepository: Disposable {
   func getAuthSettings() -> AuthSettings?
   func login(username: String, password: String, completion: @escaping (Result<LoginDto, Error>) -> Void)
   func refresh(authToken: String, refreshToken: String, completion: @escaping (Result<RefreshDto, Error>) -> ())
@@ -13,11 +15,22 @@ protocol IAuthRepository {
 }
 
 class AuthRepository {
-  let api: IAuthApi = AuthApi()
+  private let tag = "AuthRepository"
+  private let api: IAuthApi = AuthApi()
   private var authSettings: AuthSettings?
+
+  deinit {
+    Logger(verbosity: .info).log(tag: tag, message: "deinit")
+    dispose()
+  }
 }
 
 extension AuthRepository: IAuthRepository {
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    api.dispose()
+  }
+  
   func getAuthSettings() -> AuthSettings? {
     authSettings
   }

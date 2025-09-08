@@ -9,11 +9,12 @@ import Foundation
 import VSFoundation
 import CoreGraphics
 
-public class TT2ZonesTree {
+public class TT2ZonesTree: Disposable {
     @Inject var activeCoordinateConverter: GetActiveCoordinateConverterUseCase
     @Inject var activeFloor: GetActiveFloorUseCase
     @Inject var activeStore: GetActiveStoreUseCase
 
+    private let tag = "TT2ZonesTree"
     private lazy var _root: Zone? = {
       guard let converter = converter else { return nil }
       let name = activeStore.invoke().name
@@ -33,7 +34,16 @@ public class TT2ZonesTree {
     private var converter: ICoordinateConverter? { activeCoordinateConverter.invoke() }
 
     deinit {
-        _root = nil
+      Logger(verbosity: .info).log(tag: tag, message: "deinit")
+      dispose()
+    }
+
+    public func dispose() {
+      Logger(verbosity: .info).log(tag: tag, message: "dispose")
+      activeZones = []
+      zonesToAdd = []
+      _root?.dispose()
+      _root = nil
     }
 
     public func print() {

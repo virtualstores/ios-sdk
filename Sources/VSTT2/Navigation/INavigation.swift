@@ -10,7 +10,7 @@ import Combine
 import VSFoundation
 import CoreGraphics
 
-public protocol INavigation {
+public protocol INavigation: Disposable {
     /// Flag for checking if sdk is active
     var isActive: Bool { get }
     var compassHeading: Double? { get }

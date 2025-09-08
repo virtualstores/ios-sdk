@@ -8,7 +8,7 @@
 import Foundation
 import VSFoundation
 
-protocol IAnalyticsRepository {
+protocol IAnalyticsRepository: Disposable {
   var activeVisitId: Int64? { get }
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ())
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
@@ -22,12 +22,24 @@ protocol IAnalyticsRepository {
 }
 
 class AnalyticsRepository {
+  private let tag = "AnalyticsRepository"
   private let api: IAnalyticsApi = AnalyticsApi()
   private var visitId: Int64?
+
+  deinit {
+    Logger(verbosity: .info).log(tag: tag, message: "deinit")
+    dispose()
+  }
 }
 
 extension AnalyticsRepository: IAnalyticsRepository {
   var activeVisitId: Int64? { visitId }
+
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    api.dispose()
+    visitId = nil
+  }
 
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ()) {
     api.createVisit(storeId: storeId, deviceInformation: deviceInformation, tags: tags, metaData: metaData) { [weak self] (result) in
