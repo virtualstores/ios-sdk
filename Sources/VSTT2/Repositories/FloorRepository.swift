@@ -9,7 +9,7 @@ import Foundation
 import VSFoundation
 import VSPositionKit
 
-protocol IFloorRepository {
+protocol IFloorRepository: Disposable {
   var activeConverter: ICoordinateConverter? { get }
   var activeFloor: RtlsOptions { get }
   var activeMapFence: MapFence? { get }
@@ -31,6 +31,7 @@ protocol IFloorRepository {
 
 class FloorRepository {
   @Inject var config: EnvironmentConfig
+  private let tag = "FloorRepository"
   private let api: IFloorApi = FloorApi()
   private var _activeFloor: RtlsOptions?
   private var converters: [Int64: ICoordinateConverter] = [:]
@@ -40,6 +41,11 @@ class FloorRepository {
   private var navgraphs: [Int64: Data] = [:]
   private var vpsPathfinders: [Int64: VPSPathfinderAdapter] = [:]
   private var shelfGroups: [Int64: [ShelfGroup]] = [:]
+
+  deinit {
+    Logger(verbosity: .info).log(tag: tag, message: "deinit")
+    dispose()
+  }
 
   private func createConverters() {
     mapFences.forEach { (key, value) in
@@ -64,6 +70,20 @@ extension FloorRepository: IFloorRepository {
   var activeNavGraph: Data? { navgraphs[activeFloor.id] }
   var activeVpsPathfinder: VPSPathfinderAdapter? { vpsPathfinders[activeFloor.id] }
   var activeShelfGroups: [ShelfGroup]? { shelfGroups[activeFloor.id] }
+
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    api.dispose()
+    _activeFloor = nil
+    converters = [:]
+    floors = []
+    mapFences = [:]
+    mapZonesData = [:]
+    navgraphs = [:]
+    vpsPathfinders.forEach { $0.value.dispose() }
+    vpsPathfinders = [:]
+    shelfGroups = [:]
+  }
 
   func createVPSPathfinders() {
     floors.forEach { (rtls) in
@@ -195,6 +215,7 @@ extension FloorRepository: IFloorRepository {
   }
 
   func set(cachedFloors: [RtlsOptions]) {
+    dispose()
     floors = cachedFloors
   }
 }

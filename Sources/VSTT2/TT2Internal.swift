@@ -11,7 +11,7 @@ import Combine
 import UIKit
 import CoreLocation
 
-internal class TT2Internal {
+internal class TT2Internal: Disposable {
     /// Managers for helping VSTT2 to work with separate small modules
     @Inject var analytics: TT2AnalyticsManager
     @Inject var awsS3UploadManager: AWSS3UploadManager
@@ -56,6 +56,7 @@ internal class TT2Internal {
     var mapController: IMapController?
     var wifiController: IWiFiController?
 
+    private let tag = "TT2Internal"
     private var cancellable = Set<AnyCancellable>()
     
     private var offset: Double
@@ -77,9 +78,19 @@ internal class TT2Internal {
     }
 
     deinit {
-        cancellable.removeAll()
+      Logger(verbosity: .info).log(message: "\(tag): deinit")
+      dispose()
     }
-    
+
+    func dispose() {
+      Logger(verbosity: .info).log(message: "\(tag): dispose")
+      mapController?.dispose()
+      mapController = nil
+      mapManager?.dispose()
+      mapManager = nil
+      cancellable.removeAll()
+    }
+
     func createMapData(rtlsOptions: RtlsOptions, mapFence: MapFence, coordinateConverter: ICoordinateConverter?) -> MapData? {
         guard let converter = coordinateConverter else { return nil }
         return MapData(rtlsOptions: rtlsOptions, converter: converter)
@@ -179,7 +190,7 @@ internal class TT2Internal {
         navigation.accuracyPublisher
             .compactMap { $0 }
             .sink { [weak self] (data) in
-                self?.analytics.accuracyUploader.upload(syncEvent: data.event, isFloorSwap: data.isFloorSwap)
+                self?.analytics.accuracyUploader?.upload(syncEvent: data.event, isFloorSwap: data.isFloorSwap)
             }.store(in: &cancellable)
 
         navigation.scanEventsPublisher

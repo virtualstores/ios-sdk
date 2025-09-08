@@ -14,17 +14,19 @@ class VSMLModelManager {
   @Inject var compileModel: CompileModelUseCase
   @Inject var fetchMLInterfaceVersions: FetchMLInterfaceVersionsUseCase
   @Inject var getMLCatalog: GetMLCatalogUseCase
-  @Inject var getMLModel: GetMLModelUseCase
+  @OptionalInject var getMLModel: GetMLModelUseCase?
   @Inject var getMLVersion: GetMLVersionUseCase
-  @Inject var getNLModel: GetNLModelUseCase
+  @OptionalInject var getNLModel: GetNLModelUseCase?
   @Inject var getNLVersion: GetNLVersionUseCase
   @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
-  @Inject var getVPSMLModelParams: GetVPSMLModelParamsUseCase
-  @Inject var getVPSNLModelParams: GetVPSNLModelParamsUseCase
+  @OptionalInject var getVPSMLModelParams: GetVPSMLModelParamsUseCase?
+  @OptionalInject var getVPSNLModelParams: GetVPSNLModelParamsUseCase?
   @Inject var loadMLVersion: LoadMLVersionUseCase
   @Inject var loadNLVersion: LoadNLVersionUseCase
   @Inject var setMLVersion: SetMLVersionUseCase
   @Inject var setNLVersion: SetNLVersionUseCase
+
+  private let tag = "VSMLModelManager"
 
   func fetchInterface(completion: @escaping (Error?) -> Void) {
     fetchMLInterfaceVersions.invoke { [weak self] (error) in
@@ -69,13 +71,26 @@ class VSMLModelManager {
       }
     }
   }
+
+  deinit {
+    Logger(verbosity: .info).log(tag: tag, message: "deinit")
+    dispose()
+  }
 }
 
 extension VSMLModelManager: VPSModelManager {
-  var mlModel: MLModel? { getMLModel.invoke() }
-  var nlModel: MLModel? { getNLModel.invoke() }
-  var mlParams: VPSMLModelParams? { getVPSMLModelParams.invoke() }
-  var nlParams: VPSNLModelParams? { getVPSNLModelParams.invoke() }
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    getMLModel = nil
+    getNLModel = nil
+    getVPSMLModelParams = nil
+    getVPSNLModelParams = nil
+  }
+  
+  var mlModel: MLModel? { getMLModel?.invoke() }
+  var nlModel: MLModel? { getNLModel?.invoke() }
+  var mlParams: VPSMLModelParams? { getVPSMLModelParams?.invoke() }
+  var nlParams: VPSNLModelParams? { getVPSNLModelParams?.invoke() }
 }
 
 extension Array {

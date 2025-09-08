@@ -11,7 +11,7 @@ import VSFoundation
 import ZIPFoundation
 import vps
 
-protocol IMLRepository {
+protocol IMLRepository: Disposable {
   func compileModel(type: MLRepository.ModelTypeEnum, completion: @escaping (Error?) -> ())
   func fetchMLInterfaceVersions(completion: @escaping (Error?) -> ())
   func fetchModel(url: URL, id: String, type: MLRepository.ModelTypeEnum, completion: @escaping (Error?) -> ())
@@ -29,6 +29,7 @@ protocol IMLRepository {
 }
 
 class MLRepository {
+  private let tag = "MLRepository"
   private let api: IMLApi = MLApi()
   private var catalog: MLInterfaceVersions.MLCatalog?
   private var currentMLVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion? {
@@ -87,9 +88,23 @@ class MLRepository {
       try? FileManager.default.removeItem(at: path)
     }
   }
+
+  deinit {
+    Logger(verbosity: .info).log(tag: tag, message: "deinit")
+    dispose()
+  }
 }
 
 extension MLRepository: IMLRepository {
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    api.dispose()
+    mlModel = nil
+    mlParams = nil
+    nlModel = nil
+    nlParams = nil
+  }
+  
   func compileModel(type: ModelTypeEnum, completion: @escaping (Error?) -> ()) {
     let path: URL?
     switch type {

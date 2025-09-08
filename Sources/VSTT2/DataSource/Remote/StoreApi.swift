@@ -9,18 +9,24 @@ import Foundation
 import Combine
 import VSFoundation
 
-protocol IStoreApi {
+protocol IStoreApi: Disposable {
   func fetchStores(clientId: Int64, completion: @escaping (Result<[Store], Error>) -> Void)
   func fetchSwapLocations(storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> ())
 }
 
 class StoreApi {
+  private let tag = "StoreApi"
   private let storesService = StoresListService(with: NetworkManager())
   private let swapLocationsService = SwapLocationsService(with: NetworkManager())
   private var cancellable = Set<AnyCancellable>()
 }
 
 extension StoreApi: IStoreApi {
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    cancellable.removeAll()
+  }
+  
   func fetchStores(clientId: Int64, completion: @escaping (Result<[Store], Error>) -> Void) {
     storesService
       .call(with: StoresListParameters(clientId: clientId))

@@ -9,7 +9,7 @@ import Combine
 import Foundation
 import VSFoundation
 
-protocol IAnalyticsApi {
+protocol IAnalyticsApi: Disposable {
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String], completion: @escaping (Result<Int64, Error>) -> ())
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
   func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
@@ -22,6 +22,7 @@ protocol IAnalyticsApi {
 }
 
 class AnalyticsApi {
+  private let tag = "AnalyticsApi"
   private let createVisitService = CreateVisitService(with: NetworkManager())
   private let stopVisitService = StopVisitService(with: NetworkManager())
   private let tagsVisitService = TagsVisitService(with: NetworkManager())
@@ -35,6 +36,11 @@ class AnalyticsApi {
 }
 
 extension AnalyticsApi: IAnalyticsApi {
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    cancellable.removeAll()
+  }
+  
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String], completion: @escaping (Result<Int64, Error>) -> ()) {
     let date = DateFormatter.standardFormatter.string(from: Date())
     createVisitService

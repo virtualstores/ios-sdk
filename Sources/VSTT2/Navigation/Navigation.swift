@@ -16,7 +16,7 @@ final public class Navigation {
     @Inject var vpsPosition: VPSPositionManager
     @Inject var floorManager: VSTT2FloorManager
     @Inject var positionManager: Position
-    @Inject var modelManager: VSMLModelManager
+    @OptionalInject var modelManager: VSMLModelManager?
 
     @Inject var vpsUpdates: SubscribeToVPSUpdatesUseCase
     @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
@@ -48,6 +48,7 @@ final public class Navigation {
     var currentAccessPointPosition: CGPoint = .zero
     var inAndOutZone: InAndOutZone?
 
+    private let tag = "Navigation"
     private var startCodes: [PositionedCode] { activeFloor.scanLocations?.filter({ $0.type == .start }) ?? [] }
     private var hasStartLocationAngle: Bool = false
     private var certainAngle: Bool = false
@@ -75,10 +76,20 @@ final public class Navigation {
         floorManager.switchFloorPublisher.send((rtlsOptions: rtls, point: nil))
       }
     }
+
+    deinit {
+      Logger(verbosity: .info).log(tag: tag, message: "deinit")
+      dispose()
+    }
 }
 
 // MARK: INavigation
 extension Navigation: INavigation {
+    public func dispose() {
+      Logger(verbosity: .info).log(tag: tag, message: "dispose")
+      modelManager = nil
+    }
+  
     public var isActive: Bool {
       @Inject var isVPSRunning: GetIsVPSRunningUseCase
       return isVPSRunning.invoke()
@@ -87,7 +98,7 @@ extension Navigation: INavigation {
 
     /// Start Positioning System
     public func start(startPosition: CGPoint, startAngle: Double) throws {
-        guard modelManager.mlModel != nil, modelManager.mlParams != nil else { throw VSTT2Error.missingData }
+        guard modelManager?.mlModel != nil, modelManager?.mlParams != nil else { throw VSTT2Error.missingData }
         guard !isActive else {
 //            self.stop()
 //            var err: Error?
@@ -142,7 +153,7 @@ extension Navigation: INavigation {
 
     /// Start Positioning System with Compass angle
     public func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
-        guard modelManager.mlModel != nil, modelManager.mlParams != nil, let heading = heading else { throw VSTT2Error.missingData }
+        guard modelManager?.mlModel != nil, modelManager?.mlParams != nil, let heading = heading else { throw VSTT2Error.missingData }
         guard !isActive else {
 //            self.stop()
 //            var err: Error?
@@ -306,7 +317,7 @@ extension Navigation {
 
     func changeFloorStop() {
         guard isActive else { return }
-        vpsPosition.stop(stopSensors: false)
+        vpsPosition.stop(shouldStopSensors: false)
     }
 
     func startRecording() {

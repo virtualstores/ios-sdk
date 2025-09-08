@@ -6,8 +6,9 @@
 //
 
 import Foundation
+import VSFoundation
 
-protocol IItemsRepository {
+protocol IItemsRepository: Disposable {
   func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ())
   func getCachedItems(by barcode: String) -> Item?
   func addCachedItem(item: Item)
@@ -15,13 +16,23 @@ protocol IItemsRepository {
 }
 
 class ItemsRepository {
-  let api: IItemsApi = ItemsApi()
-
+  private let tag = "ItemsRepository"
+  private let api: IItemsApi = ItemsApi()
   private var cachedItems: [String:Item] = [:]
   private var serialDispatch = DispatchQueue(label: "TT2ItemsRepository")
+
+  deinit {
+    Logger(verbosity: .info).log(tag: tag, message: "deinit")
+    dispose()
+  }
 }
 
 extension ItemsRepository: IItemsRepository {
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    api.dispose()
+  }
+  
   func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ()) {
     api.getBy(storeId: storeId, barcode: barcode, completion: completion)
   }

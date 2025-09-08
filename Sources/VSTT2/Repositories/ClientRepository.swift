@@ -6,8 +6,9 @@
 //
 
 import Foundation
+import VSFoundation
 
-protocol IClientRepository {
+protocol IClientRepository: Disposable {
   var client: Client { get }
 
   func get() -> [Client]
@@ -17,12 +18,25 @@ protocol IClientRepository {
 }
 
 class ClientRepository {
+  private let tag = "ClientRepository"
   private let api: IClientsApi = ClientsApi()
   private var _activeClient: Client?
   private var clients: [Client] = []
+
+  deinit {
+    Logger(verbosity: .info).log(tag: tag, message: "deinit")
+    dispose()
+  }
 }
 
 extension ClientRepository: IClientRepository {
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    api.dispose()
+    _activeClient = nil
+    clients = []
+  }
+  
   var client: Client {
     guard let client = _activeClient else { fatalError("Client not set") }
     return client

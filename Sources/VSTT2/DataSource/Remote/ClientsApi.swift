@@ -9,16 +9,22 @@ import Foundation
 import Combine
 import VSFoundation
 
-protocol IClientsApi {
+protocol IClientsApi: Disposable {
   func get(completion: @escaping (Result<[Client], Error>) -> Void)
 }
 
 class ClientsApi {
-  let service = ClientsListService(with: NetworkManager())
+  private let tag = "ClientsApi"
+  private let service = ClientsListService(with: NetworkManager())
   private var cancellable = Set<AnyCancellable>()
 }
 
 extension ClientsApi: IClientsApi {
+  func dispose() {
+    Logger(verbosity: .info).log(tag: tag, message: "dispose")
+    cancellable.removeAll()
+  }
+  
   func get(completion: @escaping (Result<[Client], Error>) -> Void) {
     service
       .call(with: ClientsListParameters())
