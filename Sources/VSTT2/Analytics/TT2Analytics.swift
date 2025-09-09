@@ -26,6 +26,10 @@ public protocol TT2Analytics {
     
     /// Method for adding event from app
     func addTriggerEvent(for event: TriggerEvent)
+
+    func startTrackingWayfinding(itemPosition: ItemPosition)
+
+    func stopTrackingWayfinding(itemPosition: ItemPosition)
 }
 
 enum TT2AnalyticsError: Error {
