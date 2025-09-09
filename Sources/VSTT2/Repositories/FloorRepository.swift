@@ -119,7 +119,10 @@ extension FloorRepository: IFloorRepository {
       group.enter()
       api.getMapFence(url: url) { [weak self] (result) in
         switch result {
-        case .success(let mapFence): self?.mapFences[rtls.id] = mapFence
+        case .success(let mapFence):
+          DispatchQueue.main.async {
+            self?.mapFences[rtls.id] = mapFence
+          }
         case .failure(let err): error = err
         }
         group.leave()
@@ -144,7 +147,10 @@ extension FloorRepository: IFloorRepository {
       group.enter()
       api.getMapZones(url: url) { [weak self] (result) in
         switch result {
-        case .success(let data): self?.mapZonesData[floor.id] = data
+        case .success(let data):
+          DispatchQueue.main.async {
+            self?.mapZonesData[floor.id] = data
+          }
         case .failure(let err): error = err
         }
         group.leave()
@@ -168,8 +174,10 @@ extension FloorRepository: IFloorRepository {
       group.enter()
       api.getNavGraph(url: url) { [weak self] (result) in
         switch result {
-        case .success(let data): 
-          self?.navgraphs[floor.id] = data
+        case .success(let data):
+          DispatchQueue.main.async {
+            self?.navgraphs[floor.id] = data
+          }
         case .failure(let err): error = err
         }
         group.leave()

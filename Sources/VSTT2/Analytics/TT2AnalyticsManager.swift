@@ -39,6 +39,10 @@ final public class TT2AnalyticsManager: Disposable {
   lazy var stepEventUploader: StepEventUploader? = { .init() }()
   lazy var visitScoreManager: TT2AnalyticsScoreManager = { .init() }()
   let geopositionsManager: TT2AnalyticsGeopositionManager = .init()
+  lazy var wayfindingBusiness = {
+    let threshold = store.positionServiceSettings?.floatValues?["ios_sdk_analytics_wayfindingRangeThreshold"]?.asDouble
+    return WayFindingAnalyticsBusiness(rangeThreshold: threshold)
+  }()
   var tt2Tags: [String:String] = [:]
   var leaseExpired = false
   var visitId: Int64? { activeVisitId.invoke() }
@@ -272,6 +276,20 @@ private extension TT2AnalyticsManager {
       }
     }
   }
+
+  func invokeEndVisit() {
+    serialDispatch.async { [weak self] in
+      self?.endVisit.invoke { (error) in
+        if let error = error {
+          Logger(verbosity: .debug).log(message: "StopVisitError: \(error.localizedDescription)")
+        } else {
+          self?.positionUploadWorker.removeAllPoints()
+          self?.recordedPositionsCount = 0
+          self?.navigationManager.vpsPosition.set(sessionId: nil)
+        }
+      }
+    }
+  }
 }
 
 extension TT2AnalyticsManager {
@@ -315,6 +333,7 @@ extension TT2AnalyticsManager {
         recordPosition(rtlsOptionId: rtlsOptionId, position: position)
         zoneManager.onNewPosition(currentPosition: position.point)
         eventManager.on(new: position)
+        wayfindingBusiness.onNewPosition(position: position)
       }
     }
   }
@@ -394,18 +413,13 @@ extension TT2AnalyticsManager: TT2Analytics {
       }
       zoneSummaryBusiness.exitAllRemainingZones(timestamp: .init())
       uploadZoneSummaryEvents()
+      if let event = wayfindingBusiness.stopVisit() {
+        addTriggerEvent(for: event)
+      }
       postMLPositionsAsTriggerEvent()
       updateVisitWithStopTags()
       visitScoreManager.stopVisit()
-      endVisit.invoke { [weak self] (error) in
-        if let error = error {
-          Logger(verbosity: .debug).log(message: "StopVisitError: \(error.localizedDescription)")
-        } else {
-          self?.positionUploadWorker.removeAllPoints()
-          self?.recordedPositionsCount = 0
-          self?.navigationManager.vpsPosition.set(sessionId: nil)
-        }
-      }
+      invokeEndVisit()
     }
   }
 
@@ -428,6 +442,26 @@ extension TT2AnalyticsManager: TT2Analytics {
         description: tag,
         eventType: .coordinateTrigger(.init(point: coordinate.asPoint, radius: 0, type: .enter))
       ))
+    }
+  }
+
+  public func startTrackingWayfinding(itemPosition: ItemPosition) {
+    serialDispatch.async { [weak self] in
+      guard
+        let self = self,
+        let event = wayfindingBusiness.startTracking(itemPosition: itemPosition)
+      else { return }
+      addTriggerEvent(for: event)
+    }
+  }
+
+  public func stopTrackingWayfinding(itemPosition: ItemPosition) {
+    serialDispatch.async { [weak self] in
+      guard
+        let self = self,
+        let event = wayfindingBusiness.stopTracking(itemPosition: itemPosition)
+      else { return }
+      addTriggerEvent(for: event)
     }
   }
 }
