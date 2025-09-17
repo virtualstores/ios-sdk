@@ -21,6 +21,7 @@ final public class Navigation {
     @Inject var vpsUpdates: SubscribeToVPSUpdatesUseCase
     @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
     @Inject var setIsVPSRunning: SetIsVPSRunningUseCase
+    @Inject var resetStatusRepository: ResetStatusRepositoryUseCase
 
     var activeFloor: RtlsOptions {
         @Inject var activeFloor: GetActiveFloorUseCase
@@ -274,6 +275,7 @@ extension Navigation: INavigation {
         vpsPosition.stop()
         hasStartLocationAngle = false
         setIsVPSRunning.invoke(isVPSRunning: false, qrStart: false)
+        resetStatusRepository.invoke()
     }
 
     public func prepareAngle() { vpsPosition.prepareAngle() }

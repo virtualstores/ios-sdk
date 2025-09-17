@@ -27,6 +27,7 @@ protocol IStatusRepository {
   func gpsPositionPublisher() -> AnyPublisher<VPSOutputSignal.LatLngPosition.Location?, Never>
   func vpsPositionPublisher() -> AnyPublisher<VPSOutputSignal.Position?, Never>
   func isVPSRunningPublisher() -> AnyPublisher<(running: Bool, isReferenceAngleCertain: Bool), Never>
+  func reset()
 }
 
 class StatusRepository {
@@ -84,5 +85,10 @@ extension StatusRepository: IStatusRepository {
 
   func isVPSRunningPublisher() -> AnyPublisher<(running: Bool, isReferenceAngleCertain: Bool), Never> {
     isVPSRunningSubscriber.eraseToAnyPublisher()
+  }
+
+  func reset() {
+    currentPositionPublisher.send(nil)
+    currentGPSLocationPublisher.send(nil)
   }
 }

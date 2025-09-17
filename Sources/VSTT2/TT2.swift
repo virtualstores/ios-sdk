@@ -36,7 +36,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.11.0"
+    static let version = "2.11.1"
 
     // MARK: Private members
     private let tag: String = "TT2"

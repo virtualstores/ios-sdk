@@ -136,3 +136,11 @@ class SubscribeToIsVPSRunningUseCase {
     repository.isVPSRunningPublisher()
   }
 }
+
+class ResetStatusRepositoryUseCase {
+  @Inject var repository: IStatusRepository
+
+  func invoke() {
+    repository.reset()
+  }
+}

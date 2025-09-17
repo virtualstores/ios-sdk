@@ -177,6 +177,7 @@ class VSTT2Config: Config {
     injector.map(SubscribeToGPSUpdatesUseCase.self) { SubscribeToGPSUpdatesUseCase() }
     injector.map(SubscribeToVPSUpdatesUseCase.self) { SubscribeToVPSUpdatesUseCase() }
     injector.map(SubscribeToIsVPSRunningUseCase.self) { SubscribeToIsVPSRunningUseCase() }
+    injector.map(ResetStatusRepositoryUseCase.self) { .init() }
 
     // Store use cases
     injector.map(FetchStoreUseCase.self) { FetchStoreUseCase() }

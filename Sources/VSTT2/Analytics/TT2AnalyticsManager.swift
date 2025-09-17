@@ -70,6 +70,7 @@ final public class TT2AnalyticsManager: Disposable {
     Logger(verbosity: .info).log(tag: tag, message: "dispose")
     accuracyUploader = nil
     stepEventUploader = nil
+    zoneManager.dispose()
     cancellable.removeAll()
   }
 }

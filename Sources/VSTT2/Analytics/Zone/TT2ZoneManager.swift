@@ -18,7 +18,8 @@ public class TT2ZoneManager: TT2Zone {
     public var zoneExitedPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
     var onEnterPublisher: CurrentValueSubject<Zone?, Never> = .init(nil)
     var onExitPublisher: CurrentValueSubject<Zone?, Never> = .init(nil)
-    
+
+    private let tag = "TT2ZoneManager"
     private var rtlsOptionsId: Int64 { activeFloor.invoke().id }
     private var zones: [Zone] { getZonesTree.invoke().getZonesFor(floorLevelId: rtlsOptionsId) ?? [] }
     private var zonesPoint: [[CGPoint]] = []
@@ -28,7 +29,17 @@ public class TT2ZoneManager: TT2Zone {
     private var positionHistory: Queue<CGPoint> = Queue(maxSize: 6)
 
     init() {}
-    
+
+    deinit {
+      Logger(verbosity: .info).log(tag: tag, message: "deinit")
+      dispose()
+    }
+
+    public func dispose() {
+      Logger(verbosity: .info).log(tag: tag, message: "dispose")
+      positionHistory.clear()
+    }
+
     func setup() {
         zones.forEach({ (zone) in
             zonesPoint.append(zone.points)

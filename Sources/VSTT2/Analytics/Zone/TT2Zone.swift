@@ -8,8 +8,9 @@
 import Foundation
 import CoreGraphics
 import Combine
+import VSFoundation
 
-public protocol TT2Zone {
+public protocol TT2Zone: Disposable {
     /// Publishes the zone entered event
     var zoneEnteredPublisher: CurrentValueSubject<TriggerEvent?, Never> { get }
     
