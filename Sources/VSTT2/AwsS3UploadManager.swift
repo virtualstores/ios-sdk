@@ -43,6 +43,7 @@ public final class AWSRecordedObject: IPersistenceModel {
 
 class AWSS3UploadManager {
   @Inject var persistence: Persistence
+  @Inject var saveToFile: SaveReplayDataToJSONUseCase
 
   var getAllRecordedObjects: [AWSRecordedObject] { persistence.get(arrayOf: AWSRecordedObject.self) }
 
@@ -69,6 +70,7 @@ class AWSS3UploadManager {
 
     do {
       try persistence.save(&recording)
+      saveToFile.invoke(object: recording)
     } catch {
       Logger(verbosity: .critical).log(message: "Failed to save recordObject: \(error.localizedDescription)")
     }

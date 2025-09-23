@@ -26,7 +26,7 @@ protocol IAnalyticsRepository {
 }
 
 class AnalyticsRepository {
-  private let api: IAnalyticsApi = AnalyticsApi()
+  private var api: IAnalyticsApi = AnalyticsApi()
   private var visitId: Int64?
   private var _directoryURLS: [Int64: URL] = [:]
   private var isMocked: Bool = false
@@ -114,5 +114,14 @@ extension AnalyticsRepository: IAnalyticsRepository {
 
   func setDirectoryURL(visitId: Int64, url: URL) {
     _directoryURLS[visitId] = url
+  }
+}
+
+extension AnalyticsRepository: IStatusTT2Settings {
+  func update(with settings: TT2Settings) {
+    switch settings.offlineModeEnabled {
+    case true: api = MockAnalyticsApi()
+    case false: api = AnalyticsApi()
+    }
   }
 }

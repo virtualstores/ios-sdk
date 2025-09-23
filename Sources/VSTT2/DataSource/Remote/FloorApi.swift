@@ -12,7 +12,7 @@ import VSFoundation
 protocol IFloorApi {
   func getMapFence(url: String, completion: @escaping (Result<MapFence, Error>) -> ())
   func getMapZones(url: URL, completion: @escaping (Result<ZoneData, Error>) -> ())
-  func getNavGraph(url: URL, completion: @escaping (Result<Data, Error>) -> ())
+  func getNavGraph(url: URL, completion: @escaping (Result<Data?, Error>) -> ())
   func getShelfGroups(rtlsOptionsId: Int64, completion: @escaping (Result<[ShelfGroup], Error>) -> ())
 }
 
@@ -51,7 +51,7 @@ extension FloorApi: IFloorApi {
     }
   }
 
-  func getNavGraph(url: URL, completion: @escaping (Result<Data, Error>) -> ()) {
+  func getNavGraph(url: URL, completion: @escaping (Result<Data?, Error>) -> ()) {
     downloadManager.loadData(from: url) { result in
       switch result {
       case .success(let data):

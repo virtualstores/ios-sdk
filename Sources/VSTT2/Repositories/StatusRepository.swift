@@ -10,6 +10,10 @@ import CoreGraphics
 import Foundation
 import VSFoundation
 
+protocol IStatusTT2Settings {
+  func update(with settings: TT2Settings)
+}
+
 protocol IStatusRepository {
   var currentCompassHeading: Double? { get }
   var currentGPSLocation: VPSOutputSignal.LatLngPosition.Location? { get }

@@ -14,6 +14,7 @@ public protocol IPersistenceManager {
 
 class PersistenceManager {
   @Inject var persistence: Persistence
+  lazy var filePersistence = { FilePersistenceManager() }()
 
   var requestIdInProgress: [String] = []
 
@@ -35,6 +36,7 @@ class PersistenceManager {
     object.positions = geoposition.positions
     do {
       try persistence.save(&object)
+      filePersistence.save(geoposition: geoposition)
     } catch {
       print("GEOPOSITION SAVE ERROR: \(error)")
     }
@@ -54,5 +56,13 @@ class PersistenceManager {
 extension PersistenceManager: IPersistenceManager {
   func countGeoPositions() -> Int {
     getGeoPositions().count
+  }
+}
+
+class FilePersistenceManager {
+  @Inject var streamToFile: StreamToFileUseCase
+
+  func save(geoposition: UploadGeoPositionsParameters) {
+    streamToFile.invoke(param: geoposition)
   }
 }

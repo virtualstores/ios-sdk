@@ -121,7 +121,13 @@ extension MLRepository: IMLRepository {
         self?.catalog = versions.mlCatalog
         completion(nil)
       case .failure(let error):
-        completion(error)
+        if let mlVersion = self?.currentMLVersion {
+          self?.load(mlVersion: mlVersion) { [weak self] (error) in
+            self?.compileModel(type: .ml, completion: completion)
+          }
+        } else {
+          completion(error)
+        }
       }
     }
   }

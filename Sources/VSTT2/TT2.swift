@@ -204,7 +204,13 @@ final public class TT2: ITT2 {
     }
 
     public func set(vpsEngine: TT2Settings.TT2Engine) {
-        tt2Internal.set(tt2Settings: .init(engine: vpsEngine, params: settings.params))
+      tt2Internal.set(tt2Settings: .init(
+        engine: vpsEngine,
+        params: settings.params,
+        isAutomaticFloorChangeEnabled: settings.isAutomaticFloorChangeEnabled,
+        saveToDiskEnabled: settings.saveToDiskEnabled,
+        offlineModeEnabled: settings.offlineModeEnabled
+      ))
     }
 
     public func set(mockVisitID visitId: Int64) {
@@ -277,26 +283,27 @@ private extension TT2 {
       guard
         let mapData = mapData,
         let converter = coordinateConverter,
-        let navData = tt2Internal.floorManager.getActiveNavGraph.invoke(),
-        let stop = tt2Internal.floorManager.stopCode,
         let zones = zonesTree.getZonesFor(floorLevelId: activeFloor.id)
       else { return }
 
-      let height = converter.convertFromMetersToPixels(input: activeFloor.heightInMeters)
-      let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
+      var pathfinder: VPSPathfinderAdapter?
+      if let navData = tt2Internal.floorManager.getActiveNavGraph.invoke(), let stop = tt2Internal.floorManager.stopCode {
+        let height = converter.convertFromMetersToPixels(input: activeFloor.heightInMeters)
+        let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
 
-      let convertedAndFlippedStart = tt2Internal.floorManager.startCode?.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
-      let convertedAndFlippedStop = stop.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
+        let convertedAndFlippedStart = tt2Internal.floorManager.startCode?.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
+        let convertedAndFlippedStop = stop.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
 
-      let pathfinder = VPSPathfinderAdapter(
-        converter: converter,
-        height: activeFloor.heightInMeters,
-        width: activeFloor.widthInMeters,
-        pixelsPerMeter: Float(activeFloor.pixelsPerMeter),
-        navGraph: navGraph,
-        startPosition: convertedAndFlippedStart,
-        stopPosition: convertedAndFlippedStop
-      )
+        pathfinder = VPSPathfinderAdapter(
+          converter: converter,
+          height: activeFloor.heightInMeters,
+          width: activeFloor.widthInMeters,
+          pixelsPerMeter: Float(activeFloor.pixelsPerMeter),
+          navGraph: navGraph,
+          startPosition: convertedAndFlippedStart,
+          stopPosition: convertedAndFlippedStop
+        )
+      }
       tt2Internal.mapController?.loadMap(with: mapData)
       let sharedProperties = tt2Internal.floorManager.getActiveMapZones.invoke()?.sharedProperties
       tt2Internal.mapController?.setup(pathfinder: pathfinder, zones: zones, sharedProperties: sharedProperties, shelves: position.shelfGroups ?? [], changedFloor: changedFloor)

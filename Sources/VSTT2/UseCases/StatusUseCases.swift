@@ -99,9 +99,19 @@ class SetIsVPSRunningUseCase {
 
 class SetTT2SettingsUseCase {
   @Inject var repository: IStatusRepository
+  @Inject var analytics: IAnalyticsRepository
+  @Inject var cient: IClientRepository
+  @Inject var floor: IFloorRepository
+  @Inject var store: IStoreRepository
+  @Inject var eventManager: TT2EventManager
 
   func invoke(settings: TT2Settings) {
     repository.set(settings: settings)
+    (analytics as? IStatusTT2Settings)?.update(with: settings)
+    (cient as? IStatusTT2Settings)?.update(with: settings)
+    (floor as? IStatusTT2Settings)?.update(with: settings)
+    (store as? IStatusTT2Settings)?.update(with: settings)
+    eventManager.update(with: settings)
   }
 }
 

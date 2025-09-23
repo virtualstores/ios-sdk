@@ -34,7 +34,6 @@ struct VSTT2Config: Config {
     injector.map(ShelfGroupService.self) { ShelfGroupService(with: NetworkManager()) }
     injector.map(StoresListService.self) { StoresListService(with: NetworkManager()) }
     injector.map(SwapLocationsService.self) { SwapLocationsService(with: NetworkManager()) }
-    injector.map(TriggerEventsService.self) { TriggerEventsService(with: NetworkManager()) }
     injector.map(UploadStepEventsService.self) { UploadStepEventsService(with: NetworkManager()) }
     injector.map(UploadSyncEventsService.self) { UploadSyncEventsService(with: NetworkManager()) }
   }
@@ -54,11 +53,16 @@ struct VSTT2Config: Config {
   }
 
   private func configureUseCases(_ injector: Injector) {
+    injector.map(SaveReplayDataToJSONUseCase.self) { .init() }
     // Analytics use cases
     injector.map(CreateVisitUseCase.self) { .init() }
     injector.map(CreateNewSessionUseCase.self) { .init() }
+    injector.map(CreateOfflineVisitDirectoryUseCase.self) { .init() }
+    injector.map(DeleteEmptyDirectoryUseCase.self) { .init() }
     injector.map(GetActiveVisitIDUseCase.self) { GetActiveVisitIDUseCase() }
     injector.map(GetActiveSessionIDUseCase.self) { .init() }
+    injector.map(SaveAnalyticsGeoPositionsToJSONFileUseCase.self) { .init() }
+    injector.map(StreamToFileUseCase.self) { .init() }
     injector.map(StopVisitUseCase.self) { StopVisitUseCase() }
     injector.map(UpdateTagsForActiveVisitUseCase.self) { UpdateTagsForActiveVisitUseCase() }
     injector.map(UploadGeopositionsForActiveVisitUseCase.self) { UploadGeopositionsForActiveVisitUseCase() }

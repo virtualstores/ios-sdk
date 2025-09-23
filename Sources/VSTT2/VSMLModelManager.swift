@@ -33,6 +33,8 @@ class VSMLModelManager {
         completion(error)
       } else if let catalog = self?.getMLCatalog.invoke(), let settings = self?.getTT2Settings.invoke() {
         self?.handle(mlCatalog: catalog, params: settings.params, completion: completion)
+      } else {
+        completion(nil)
       }
     }
   }

@@ -13,7 +13,7 @@ protocol IAuthRepository {
 }
 
 class AuthRepository {
-  let api: IAuthApi = AuthApi()
+  private let api: IAuthApi = AuthApi()
   private var authSettings: AuthSettings?
 }
 

@@ -15,7 +15,6 @@ public class TT2EventManager {
   @Inject var activeFloor: GetActiveFloorUseCase
   @Inject var getZonesTree: GetZonesTreeUseCase
   @Inject var messagesService: MessagesService
-  @Inject var triggerEventsService: TriggerEventsService
   @Inject var eventDetector: EventDetector
 
   public var messageEventPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
@@ -32,6 +31,7 @@ public class TT2EventManager {
   private var zones: [Zone] { getZonesTree.invoke().getZonesFor(floorLevelId: rtlsOptionsId) ?? [] }
   private var view: UIView?
   private var inAndOut: InAndOut?
+  private var api: IEventsApi = EventsApi()
 
   private var cancellable = Set<AnyCancellable>()
 
@@ -97,18 +97,16 @@ private extension TT2EventManager {
   }
 
   func loadMessages() {
-    triggerEventsService
-      .call(with: TriggerEventsParameters(storeId: activeStoreId))
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): Logger(verbosity: .debug).log(tag: Logger.createTag(fileName: #file, functionName: #function), message: error.localizedDescription)
-        }
-      } receiveValue: { [weak self] (events) in
+    api.get(storeId: activeStoreId) { [weak self] (result) in
+      switch result {
+      case .success(let events):
         self?.triggerEvents = events.map { $0.toTriggerEvent(mapZones: self?.zones ?? []) }.flatMap { $0 }
         self?.eventDetector.set(events: self?.triggerEvents ?? [])
         self?.latestMessageLoad = .init()
-      }.store(in: &cancellable)
+      case .failure(let error):
+        Logger(verbosity: .debug).log(tag: Logger.createTag(fileName: #file, functionName: #function), message: error.localizedDescription)
+      }
+    }
   }
 }
 
@@ -129,5 +127,14 @@ extension TT2EventManager: TT2Event {
 
   public func enableAutoShow(view: UIView?) {
     self.view = view
+  }
+}
+
+extension TT2EventManager: IStatusTT2Settings {
+  func update(with settings: VSFoundation.TT2Settings) {
+    switch settings.offlineModeEnabled {
+    case true: api = MockEventsApi()
+    case false: api = EventsApi()
+    }
   }
 }
