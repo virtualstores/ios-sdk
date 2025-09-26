@@ -24,6 +24,7 @@ final public class TT2AnalyticsManager: Disposable {
   @Inject var createVisit: CreateVisitUseCase
   @Inject var endVisit: StopVisitUseCase
   @Inject var getCurrentPosition: GetCurrentVPSPositionUseCase
+  @Inject var getCurrentLeaseExpired: GetCurrentLeaseExpiredUseCase
   @Inject var getCurrentLeasePolicy: GetCurrentLeasePolicyUseCase
   @Inject var getMLVersion: GetMLVersionUseCase
   @Inject var getNLVersion: GetNLVersionUseCase
@@ -39,12 +40,9 @@ final public class TT2AnalyticsManager: Disposable {
   lazy var stepEventUploader: StepEventUploader? = { .init() }()
   lazy var visitScoreManager: TT2AnalyticsScoreManager = { .init() }()
   let geopositionsManager: TT2AnalyticsGeopositionManager = .init()
-  lazy var wayfindingBusiness = {
-    let threshold = store.positionServiceSettings?.floatValues?["ios_sdk_analytics_wayfindingRangeThreshold"]?.asDouble
-    return WayFindingAnalyticsBusiness(rangeThreshold: threshold)
-  }()
+  let wayfindingBusiness: WayfindingAnalyticsBusiness = .init()
   var tt2Tags: [String:String] = [:]
-  var leaseExpired = false
+  var leaseExpired: Bool { getCurrentLeaseExpired.invoke() }
   var visitId: Int64? { activeVisitId.invoke() }
   private let tag = "TT2AnalyticsManager"
   private var store: Store { activeStore.invoke() }
@@ -301,6 +299,7 @@ extension TT2AnalyticsManager {
 
   func addMLPositions(position: VPSOutputSignal.Position) {
     serialDispatch.async { [weak self] in
+      self?.wayfindingBusiness.onNew(mlPosition: position)
       guard let self = self, let id = visitId else { return }
       if recordedMLPositions[id] == nil { recordedMLPositions[id] = [] }
       recordedMLPositions[id]?.append(RecordedPosition(
@@ -334,7 +333,7 @@ extension TT2AnalyticsManager {
         recordPosition(rtlsOptionId: rtlsOptionId, position: position)
         zoneManager.onNewPosition(currentPosition: position.point)
         eventManager.on(new: position)
-        wayfindingBusiness.onNewPosition(position: position)
+        wayfindingBusiness.onNew(position: position)
       }
     }
   }

@@ -25,6 +25,14 @@ class GetCurrentGPSLocationUseCase {
   }
 }
 
+class GetCurrentLeaseExpiredUseCase {
+  @Inject var repository: IStatusRepository
+
+  func invoke() -> Bool {
+    repository.currentLeaseExpired
+  }
+}
+
 class GetCurrentLeasePolicyUseCase {
   @Inject var repository: IStatusRepository
 
@@ -70,6 +78,14 @@ class SetGPSPositionUseCase {
 
   func invoke(gpsPosition: VPSOutputSignal.LatLngPosition.Location) {
     repository.set(gpsPosition: gpsPosition)
+  }
+}
+
+class SetLeaseExpiredUseCase {
+  @Inject var repository: IStatusRepository
+
+  func invoke(leaseExpired: Bool) {
+    repository.set(leaseExpired: leaseExpired)
   }
 }
 

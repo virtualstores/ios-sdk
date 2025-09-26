@@ -13,12 +13,14 @@ import VSFoundation
 protocol IStatusRepository {
   var currentCompassHeading: Double? { get }
   var currentGPSLocation: VPSOutputSignal.LatLngPosition.Location? { get }
+  var currentLeaseExpired: Bool { get }
   var currentLeasePolicy: LeasePolicyEnum? { get }
   var currentPosition: VPSOutputSignal.Position? { get }
   var currentSettings: TT2Settings { get }
   var isVPSRunning: Bool { get }
   func set(compassHeading: Double)
   func set(gpsPosition: VPSOutputSignal.LatLngPosition.Location)
+  func set(leaseExpired: Bool)
   func set(policy: LeasePolicyEnum)
   func set(vpsPosition: VPSOutputSignal.Position)
   func set(isVPSRunning: Bool, qrStart: Bool)
@@ -33,6 +35,7 @@ protocol IStatusRepository {
 class StatusRepository {
   private var currentCompassHeadingPublisher: CurrentValueSubject<Double?, Never> = .init(nil)
   private var currentGPSLocationPublisher: CurrentValueSubject<VPSOutputSignal.LatLngPosition.Location?, Never> = .init(nil)
+  private var _currentLeaseExpired: Bool = false
   private var _currentLeasePolicy: LeasePolicyEnum?
   private var currentPositionPublisher: CurrentValueSubject<VPSOutputSignal.Position?, Never> = .init(nil)
   private var _currentSettings: TT2Settings = .init()
@@ -42,6 +45,7 @@ class StatusRepository {
 extension StatusRepository: IStatusRepository {
   var currentCompassHeading: Double? { currentCompassHeadingPublisher.value }
   var currentGPSLocation: VPSOutputSignal.LatLngPosition.Location? { currentGPSLocationPublisher.value }
+  var currentLeaseExpired: Bool { _currentLeaseExpired }
   var currentLeasePolicy: LeasePolicyEnum? { _currentLeasePolicy }
   var currentPosition: VPSOutputSignal.Position? { currentPositionPublisher.value }
   var currentSettings: TT2Settings { _currentSettings }
@@ -53,6 +57,10 @@ extension StatusRepository: IStatusRepository {
 
   func set(gpsPosition: VPSOutputSignal.LatLngPosition.Location) {
     currentGPSLocationPublisher.send(gpsPosition)
+  }
+
+  func set(leaseExpired: Bool) {
+    _currentLeaseExpired = leaseExpired
   }
 
   func set(policy: LeasePolicyEnum) {

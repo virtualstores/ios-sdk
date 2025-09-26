@@ -163,12 +163,14 @@ class VSTT2Config: Config {
     // Status use cases
     injector.map(GetCurrentCompassHeadingUseCase.self) { GetCurrentCompassHeadingUseCase() }
     injector.map(GetCurrentGPSLocationUseCase.self) { GetCurrentGPSLocationUseCase() }
+    injector.map(GetCurrentLeaseExpiredUseCase.self) { .init() }
     injector.map(GetCurrentLeasePolicyUseCase.self) { GetCurrentLeasePolicyUseCase() }
     injector.map(GetCurrentVPSPositionUseCase.self) { GetCurrentVPSPositionUseCase() }
     injector.map(GetCurrentTT2SettingsUseCase.self) { GetCurrentTT2SettingsUseCase() }
     injector.map(GetIsVPSRunningUseCase.self) { GetIsVPSRunningUseCase() }
     injector.map(SetCompassHeadingUseCase.self) { SetCompassHeadingUseCase() }
     injector.map(SetGPSPositionUseCase.self) { SetGPSPositionUseCase() }
+    injector.map(SetLeaseExpiredUseCase.self) { .init() }
     injector.map(SetLeasePolicyUseCase.self) { SetLeasePolicyUseCase() }
     injector.map(SetVPSPositionUseCase.self) { SetVPSPositionUseCase() }
     injector.map(SetIsVPSRunningUseCase.self) { SetIsVPSRunningUseCase() }
@@ -341,12 +343,14 @@ class VSTT2Config: Config {
     // Status use cases
     injector.unmap(GetCurrentCompassHeadingUseCase.self)
     injector.unmap(GetCurrentGPSLocationUseCase.self)
+    injector.unmap(GetCurrentLeaseExpiredUseCase.self)
     injector.unmap(GetCurrentLeasePolicyUseCase.self)
     injector.unmap(GetCurrentVPSPositionUseCase.self)
     injector.unmap(GetCurrentTT2SettingsUseCase.self)
     injector.unmap(GetIsVPSRunningUseCase.self)
     injector.unmap(SetCompassHeadingUseCase.self)
     injector.unmap(SetGPSPositionUseCase.self)
+    injector.unmap(SetLeaseExpiredUseCase.self)
     injector.unmap(SetLeasePolicyUseCase.self)
     injector.unmap(SetVPSPositionUseCase.self)
     injector.unmap(SetIsVPSRunningUseCase.self)

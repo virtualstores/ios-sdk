@@ -32,6 +32,7 @@ public enum LeasePolicyEnum: String {
 
 class LeaseManager {
   @Inject var stopTT2: StopTT2UseCase
+  @Inject var setLeaseExpired: SetLeaseExpiredUseCase
   @Inject var setLeasePolicy: SetLeasePolicyUseCase
 
   private var _onLeaseExpiredPublisher: CurrentValueSubject<Void, Never> = .init(())
@@ -48,11 +49,10 @@ private extension LeaseManager {
       guard let self = self, let lease = lease else { self?.stop(); return }
       guard lease.hasExpired else { return }
       onLeaseExpiredPublisher.send(())
+      setLeaseExpired.invoke(leaseExpired: true)
       switch lease.policy {
-      case .handleManually:
-        break
-      case .stopVisit:
-        stopTT2.invoke(leaseExpired: true)
+      case .handleManually: break
+      case .stopVisit: stopTT2.invoke()
       }
       stop()
     }
@@ -84,6 +84,7 @@ extension LeaseManager: ILeaseManager {
       expirationTime: expirationTime,
       maxLeaseTime: maxLeaseTimeInSeconds
     )
+    setLeaseExpired.invoke(leaseExpired: false)
     setLeasePolicy.invoke(policy: policy)
     startLease()
   }
@@ -98,7 +99,7 @@ extension LeaseManager: ILeaseManager {
     guard let lease = lease else { return }
     var expirationTime = lease.expirationTime + leaseTimeInSeconds
     if let maxLeaseTime = lease.maxLeaseTime, expirationTime > Date().timeIntervalSince1970 + maxLeaseTime {
-      print("Extending lease exceeds max lease time, lease set to maxLeaseTime")
+      Logger(verbosity: .info).log(message: "Extending lease exceeds max lease time, lease set to maxLeaseTime")
       expirationTime = Date().timeIntervalSince1970 + maxLeaseTime
     }
     self.lease = .init(policy: lease.policy, expirationTime: expirationTime, maxLeaseTime: lease.maxLeaseTime)

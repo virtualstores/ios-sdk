@@ -11,10 +11,9 @@ class StopTT2UseCase {
   @Inject var analytics: TT2AnalyticsManager
   @Inject var navigation: Navigation
 
-  func invoke(leaseExpired: Bool = false) {
+  func invoke() {
     navigation.stop()
     analytics.stopCollectingHeatMapData()
-    analytics.leaseExpired = leaseExpired
     analytics.stopVisit()
   }
 }
