@@ -60,7 +60,7 @@ private extension VSTT2FloorManager {
 
     dispatchGroup.notify(queue: .main) {
       self.createPathfinders.invoke()
-      if let mapFence = self.getActiveMapFence.invoke() {
+      if let mapFence = try? self.getActiveMapFence.invoke() {
         completion((mapFence: mapFence, zoneData: self.zoneData))
       }
     }
@@ -113,8 +113,8 @@ private extension VSTT2FloorManager {
 
 extension VSTT2FloorManager {
   var zoneData: [Int64: ZoneData] { getMapZones.invoke() }
-  var startCode: PositionedCode? { activeFloor.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .start }) }
-  var stopCode: PositionedCode? { activeFloor.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .stop }) ?? startCode }
+  var startCode: PositionedCode? { try? activeFloor.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .start }) }
+  var stopCode: PositionedCode? { try? activeFloor.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .stop }) ?? startCode }
 
   func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence, zoneData: [Int64: ZoneData])) -> ()) {
     guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
@@ -132,7 +132,7 @@ extension VSTT2FloorManager {
 }
 
 extension VSTT2FloorManager: VSTT2Floor {
-  public var activeFloor: RtlsOptions { getActiveFloor.invoke() }
+  public var activeFloor: RtlsOptions { get throws { try getActiveFloor.invoke() } }
   public var floors: [RtlsOptions] { getFloors.invoke() }
 
   public func setActiveFloor(with rtlsOptions: RtlsOptions) {

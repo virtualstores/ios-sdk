@@ -53,27 +53,6 @@ final class GetByBarcodeUseCaseTests: XCTestCase {
 
 class FakeStoreRepository: IStoreRepository {
   var zonesTree: VSTT2.TT2ZonesTree { TT2ZonesTree() }
-
-  func fetchStores(clientId: Int64, completion: @escaping ((any Error)?) -> ()) {
-
-  }
-  
-  func fetchSwapLocations(completion: @escaping ((any Error)?) -> ()) {
-
-  }
-  
-  func getCachedSwapLocations() -> [VSFoundation.SwapLocation] {
-    []
-  }
-  
-  func set(activeStore store: VSTT2.Store) {
-
-  }
-  
-  func set(cachedStores stores: [VSTT2.Store]) {
-
-  }
-  
   let jsonData: String
   var _activeStore: Store? {
     guard
@@ -92,6 +71,12 @@ class FakeStoreRepository: IStoreRepository {
     self.jsonData = jsonData
   }
 
+  func dispose() {}
+  func fetchStores(clientId: Int64, completion: @escaping ((any Error)?) -> ()) {}
+  func fetchSwapLocations(storeId: Int64, completion: @escaping ((any Error)?) -> ()) {}
+  func getCachedSwapLocations() -> [SwapLocation] { [] }
+  func set(activeStore store: Store) {}
+  func set(cachedStores stores: [Store]) {}
   func getStores(clientId: Int64, completion: @escaping (Result<[VSTT2.Store], Error>) -> Void) {}
   func getCachedStores() -> [VSTT2.Store] { [activeStore] }
   func setCachedStores(stores: [VSTT2.Store]) {}
@@ -105,6 +90,8 @@ class FakeItemsRepository: IItemsRepository {
   init(jsonData: String) {
     self.jsonData = jsonData
   }
+
+  func dispose() {}
 
   func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[VSTT2.BarcodePosition], Error>) -> ()) {
     guard

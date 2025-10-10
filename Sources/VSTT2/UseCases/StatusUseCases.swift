@@ -65,6 +65,14 @@ class GetIsVPSRunningUseCase {
   }
 }
 
+class GetIsReferenceAngleCertainUseCase {
+  @Inject var repository: IStatusRepository
+
+  func invoke() -> Bool {
+    repository.isReferenceAngleCertain
+  }
+}
+
 class SetCompassHeadingUseCase {
   @Inject var repository: IStatusRepository
 
@@ -108,8 +116,16 @@ class SetVPSPositionUseCase {
 class SetIsVPSRunningUseCase {
   @Inject var repository: IStatusRepository
 
-  func invoke(isVPSRunning: Bool, qrStart: Bool) {
-    repository.set(isVPSRunning: isVPSRunning, qrStart: qrStart)
+  func invoke(isVPSRunning: Bool) {
+    repository.set(isVPSRunning: isVPSRunning)
+  }
+}
+
+class SetIsReferenceAngleCertainUseCase {
+  @Inject var repository: IStatusRepository
+
+  func invoke(isReferenceAngleCertain: Bool) {
+    repository.set(isReferenceAngleCertain: isReferenceAngleCertain)
   }
 }
 
@@ -148,8 +164,16 @@ class SubscribeToVPSUpdatesUseCase {
 class SubscribeToIsVPSRunningUseCase {
   @Inject var repository: IStatusRepository
 
-  func invoke() -> AnyPublisher<(running: Bool, isReferenceAngleCertain: Bool), Never> {
+  func invoke() -> AnyPublisher<Bool, Never> {
     repository.isVPSRunningPublisher()
+  }
+}
+
+class SubscribeToIsReferenceAngleCertainUseCase {
+  @Inject var repository: IStatusRepository
+
+  func invoke() -> AnyPublisher<Bool, Never> {
+    repository.isReferenceAngleCertainPublisher()
   }
 }
 

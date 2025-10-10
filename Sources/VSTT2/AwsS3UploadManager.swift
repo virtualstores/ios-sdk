@@ -30,7 +30,8 @@ public final class AWSRecordedObject: IPersistenceModel {
   public var identifier: String?
   public var data: String?
   public var date: String?
-  public var folderName: String?
+  public var folderName: String? // Wait to remove until migration is done. Migrating in SDK version 2.12.0
+  public var folderPath: String?
   public var status: String = Status.pending.rawValue
 
   public enum Status: String {
@@ -60,11 +61,11 @@ class AWSS3UploadManager {
     sendCollectedDataToS3(objects: getAllRecordedObjects)
   }
 
-  private func insert(identifier: String, data: String, folderName: String?, date: String) {
+  private func insert(identifier: String, data: String, folderPath: String?, date: String) {
     var recording = AWSRecordedObject()
     recording.identifier = identifier
     recording.data = data
-    recording.folderName = folderName
+    recording.folderPath = folderPath
     recording.date = date
 
     do {
@@ -74,16 +75,16 @@ class AWSS3UploadManager {
     }
   }
 
-  func prepareDataToSend(identifier: String, data: String, folderName: String?, date: Date) {
+  func prepareDataToSend(identifier: String, data: String, folderPath: String?, date: Date) {
     let timeFormatter = DateFormatter()
     timeFormatter.dateFormat = "HHmmss"
     let timedIdentifier = identifier + timeFormatter.string(from: date)
-    insert(identifier: identifier, data: data, folderName: folderName, date: timedIdentifier)
+    insert(identifier: identifier, data: data, folderPath: folderPath, date: timedIdentifier)
   }
 
-  func addAditionalData(identifier: String, fileName: String, folderName: String?, data: String) {
+  func addAditionalData(identifier: String, fileName: String, folderPath: String?, data: String) {
     guard let object = getAllRecordedObjects.first(where: { $0.identifier == identifier }), let date = object.date else { return }
-    insert(identifier: fileName, data: data, folderName: folderName, date: date)
+    insert(identifier: fileName, data: data, folderPath: folderPath, date: date)
   }
 
   func sendCollectedDataToS3(status: AWSRecordedObject.Status = .pending) {
@@ -170,7 +171,6 @@ class AWSS3UploadManager {
   enum RemoveRecordedObjectOptions {
     case all
     case folderIsMissing
-    case identifier(String)
     case status(AWSRecordedObject.Status)
   }
 
@@ -178,8 +178,7 @@ class AWSS3UploadManager {
     let objects: [AWSRecordedObject]
     switch option {
     case .all: objects = getAllRecordedObjects
-    case .folderIsMissing: objects = getAllRecordedObjects.filter { $0.folderName == nil }
-    case .identifier(let identifier): objects = getAllRecordedObjects.filter { $0.identifier == identifier }
+    case .folderIsMissing: objects = getAllRecordedObjects.filter { $0.folderName == nil || $0.folderPath == nil }
     case .status(let status): objects = getAllRecordedObjects.filter { $0.status == status.rawValue }
     }
 
@@ -194,8 +193,8 @@ class AWSS3UploadManager {
   }
 
   private func sendToS3(AWSS3Key: AWSS3Keys, object: AWSRecordedObject) -> Async? {
-    guard let id = object.identifier, let folderName = object.folderName, let convertedData = object.data?.data(using: .utf8) else { return nil }
-    return sendToS3(AWSS3Key: AWSS3Key, key: folderName, identifier: id, data: convertedData)
+    guard let id = object.identifier, let folderPath = object.folderPath ?? object.folderName, let convertedData = object.data?.data(using: .utf8) else { return nil }
+    return sendToS3(AWSS3Key: AWSS3Key, key: folderPath, identifier: id, data: convertedData)
   }
 
   private func sendToS3(AWSS3Key: AWSS3Keys, key: String, identifier: String, data: Data) -> Async {

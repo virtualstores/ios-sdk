@@ -21,11 +21,12 @@ final public class Navigation {
     @Inject var vpsUpdates: SubscribeToVPSUpdatesUseCase
     @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
     @Inject var setIsVPSRunning: SetIsVPSRunningUseCase
+    @Inject var setIsReferenceAngleCertain: SetIsReferenceAngleCertainUseCase
     @Inject var resetStatusRepository: ResetStatusRepositoryUseCase
 
-    var activeFloor: RtlsOptions {
+    var activeFloor: RtlsOptions? {
         @Inject var activeFloor: GetActiveFloorUseCase
-        return activeFloor.invoke()
+        return try? activeFloor.invoke()
     }
 
     var floors: [RtlsOptions] {
@@ -42,6 +43,7 @@ final public class Navigation {
 
     @Inject var vpsPositionPublisher: SubscribeToVPSUpdatesUseCase
     public var positionPublisher: AnyPublisher<VPSOutputSignal.Position?, Never> { vpsPositionPublisher.invoke() }
+    var onForceSyncPublisher: CurrentValueSubject<Void?, Never> = .init(nil)
 
     var accuracyPublisher: CurrentValueSubject<(event: AccuracySyncEvent.Event, isFloorSwap: Bool)?,Never> = .init(nil)
     var scanEventsPublisher: CurrentValueSubject<[ScanEvent]?, Never> = .init(nil)
@@ -50,7 +52,7 @@ final public class Navigation {
     var inAndOutZone: InAndOutZone?
 
     private let tag = "Navigation"
-    private var startCodes: [PositionedCode] { activeFloor.scanLocations?.filter({ $0.type == .start }) ?? [] }
+    private var startCodes: [PositionedCode] { activeFloor?.scanLocations?.filter({ $0.type == .start }) ?? [] }
     private var hasStartLocationAngle: Bool = false
     private var certainAngle: Bool = false
     private var cancellable = Set<AnyCancellable>()
@@ -69,7 +71,7 @@ final public class Navigation {
     var onValidateFloorCompletion: (() throws -> ())?
     func validateFloorLevel(floorId: Int64?, completion: @escaping (Bool) throws -> Void) throws {
       guard let floorId = floorId else { try completion(true); return }
-      if activeFloor.id == floorId {
+      if activeFloor?.id == floorId {
         try completion(true)
       } else {
         guard let rtls = floors.first(where: { $0.id == floorId }) else { return }
@@ -99,7 +101,7 @@ extension Navigation: INavigation {
 
     /// Start Positioning System
     public func start(startPosition: CGPoint, startAngle: Double) throws {
-        guard modelManager?.mlModel != nil, modelManager?.mlParams != nil else { throw VSTT2Error.missingData }
+        guard modelManager?.mlModel != nil, modelManager?.mlParams != nil else { throw TT2Error.missingData }
         guard !isActive else {
 //            self.stop()
 //            var err: Error?
@@ -118,7 +120,8 @@ extension Navigation: INavigation {
         try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
         certainAngle = true
         vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startAngle, uncertainAngle: false)
-        setIsVPSRunning.invoke(isVPSRunning: true, qrStart: true)
+        setIsReferenceAngleCertain.invoke(isReferenceAngleCertain: true)
+        setIsVPSRunning.invoke(isVPSRunning: true)
         userStartAngle = TT2Course(fromDegrees: startAngle)
     }
 
@@ -154,7 +157,7 @@ extension Navigation: INavigation {
 
     /// Start Positioning System with Compass angle
     public func start(startPosition: CGPoint, position: ItemPosition? = nil) throws {
-        guard modelManager?.mlModel != nil, modelManager?.mlParams != nil, let heading = heading else { throw VSTT2Error.missingData }
+        guard modelManager?.mlModel != nil, modelManager?.mlParams != nil, let heading = heading else { throw TT2Error.missingData }
         guard !isActive else {
 //            self.stop()
 //            var err: Error?
@@ -176,7 +179,8 @@ extension Navigation: INavigation {
             try vpsPosition.start(withoutAltimeter: !isAutoFloorChangeEanbled)
             vpsPosition.startNavigation(positions: [startPosition], syncPosition: true, syncAngle: true, angle: startWithAngle ?? heading.degrees, uncertainAngle: startWithAngle == nil)
             prepareAccuracyUpload(position: position, startDirection: heading.degrees, isFloorSwap: !isValid)
-            setIsVPSRunning.invoke(isVPSRunning: true, qrStart: false)
+            setIsReferenceAngleCertain.invoke(isReferenceAngleCertain: false)
+            setIsVPSRunning.invoke(isVPSRunning: true)
             userStartAngle = heading
         }
     }
@@ -206,7 +210,7 @@ extension Navigation: INavigation {
         if let code = checkForScanLocation(identifier: identifier) {
             do {
                 try start(code: code)
-                let item = Item(name: code.code, externalId: "", itemPositions: [ItemPosition(point: code.point, offset: .zero, floorLevelId: activeFloor.id)])
+                let item = Item(name: code.code, externalId: "", itemPositions: [ItemPosition(point: code.point, offset: .zero, floorLevelId: activeFloor?.id)])
                 completion(.success(item))
             } catch {
                 completion(.failure(error))
@@ -227,8 +231,9 @@ extension Navigation: INavigation {
               try syncPosition(position: position, syncRotation: syncRotation, forceSync: true)
             }
         }
-        positionManager.getBy(shelfName: identifier) { (position) in
-          if let position = position {
+        positionManager.getBy(shelfName: identifier) { (result) in
+          switch result {
+          case .success(let position):
             do {
               try doSync(position: position)
               let item = Item(name: "", externalId: position.identifier, itemPositions: [position])
@@ -236,7 +241,7 @@ extension Navigation: INavigation {
             } catch {
               queue.async { completion(.failure(error)) }
             }
-          } else {
+          case .failure(let error):
             self.positionManager.getBy(barcode: identifier) { (result) in
               switch result {
               case .success(let item):
@@ -274,15 +279,17 @@ extension Navigation: INavigation {
     public func stop() {
         vpsPosition.stop()
         hasStartLocationAngle = false
-        setIsVPSRunning.invoke(isVPSRunning: false, qrStart: false)
         resetStatusRepository.invoke()
     }
 
     public func prepareAngle() { vpsPosition.prepareAngle() }
 
-  public func forceSyncPosition(position: CGPoint, angle: Double) {
-    vpsPosition.forceSyncPosition(position: position, angle: angle, forceAngle: true)
-  }
+    public func forceSyncPosition(position: CGPoint, angle: Double) {
+        guard isActive else { return }
+        vpsPosition.forceSyncPosition(position: position, angle: angle, forceAngle: true)
+        setIsReferenceAngleCertain.invoke(isReferenceAngleCertain: true)
+        onForceSyncPublisher.send(())
+    }
 }
 
 // MARK: Internal
@@ -363,35 +370,37 @@ private extension Navigation {
     }
 
     func createAnalyticsScanEventForIdentifier(identfier: String) {
+      guard let id = activeFloor?.id else { return }
       var events = [ScanEvent]()
       if let zoneIds = inAndOutZone?.activeInside.map({ $0.id }), !zoneIds.isEmpty {
-        events.append(.createZoneScanEvent(identifier: identfier, floorLevelId: activeFloor.id, userPosition: currentPosition, zones: zoneIds))
+        events.append(.createZoneScanEvent(identifier: identfier, floorLevelId: id, userPosition: currentPosition, zones: zoneIds))
       }
       
       func addShelfScanEvent(position: ItemPosition) {
-        if position.floorLevelId == activeFloor.id {
+        if position.floorLevelId == id {
           events.append(.createShelfScanEvent(itemPosition: position, userPosition: currentPosition))
         }
       }
 
       func addUnknownScanEvent() {
-        events.append(.createUnknownScanEvent(identfier: identfier, floorLevelId: activeFloor.id, userPosition: currentPosition))
+        events.append(.createUnknownScanEvent(identfier: identfier, floorLevelId: id, userPosition: currentPosition))
       }
 
       let group = DispatchGroup()
       group.enter()
-      positionManager.getBy(shelfName: identfier) { (position) in
-        if let position = position {
+      positionManager.getBy(shelfName: identfier) { (result) in
+        switch result {
+        case .success(let position):
           addShelfScanEvent(position: position)
           group.leave()
-        } else {
+        case .failure(let error):
           self.positionManager.getBy(barcode: identfier) { (result) in
             switch result {
             case .success(let item):
               if let position = item.itemPosition {
                 addShelfScanEvent(position: position)
               }
-            case .failure(_): 
+            case .failure(_):
               addUnknownScanEvent()
             }
             group.leave()

@@ -13,12 +13,18 @@ public class Item {
     public var externalId: String
     public var itemPositions: [ItemPosition]
     public var uniquePositions: [ItemPosition] { unique() }
-    public var itemPosition: ItemPosition? { checkForMaxAllowedDistinctItemPositions() ? itemPositions.first : nil }
+    public var itemPosition: ItemPosition?
     
-    public init(name: String, externalId: String, itemPositions: [ItemPosition]) {
+    public init(name: String, externalId: String, itemPositions: [ItemPosition], itemPosition: ItemPosition?) {
         self.name = name
         self.externalId = externalId
         self.itemPositions = itemPositions
+        self.itemPosition = itemPosition
+    }
+
+    /// Will use the first **itemPosition** in `itemPositions`
+    public convenience init (name: String, externalId: String, itemPositions: [ItemPosition]) {
+        self.init(name: name, externalId: externalId, itemPositions: itemPositions, itemPosition: itemPositions.first)
     }
 
     private func checkForMaxAllowedDistinctItemPositions(max: Int = 1) -> Bool {
@@ -33,4 +39,18 @@ public class Item {
         }
         return uniquePositions
     }
+}
+
+extension Array where Element: Hashable {
+  func uniqued() -> Array {
+    var buffer = Array()
+    var added = Set<Element>()
+    forEach { (elem) in
+      if !added.contains(elem) {
+        buffer.append(elem)
+        added.insert(elem)
+      }
+    }
+    return buffer
+  }
 }

@@ -11,7 +11,7 @@ import Combine
 
 public protocol VSTT2Floor {
     /// Active Floor data
-    var activeFloor: RtlsOptions { get }
+    var activeFloor: RtlsOptions { get throws }
 
     /// All available floors which user can have
     var floors: [RtlsOptions] { get }

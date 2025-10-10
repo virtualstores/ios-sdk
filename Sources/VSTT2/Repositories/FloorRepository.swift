@@ -10,13 +10,13 @@ import VSFoundation
 import VSPositionKit
 
 protocol IFloorRepository: Disposable {
-  var activeConverter: ICoordinateConverter? { get }
-  var activeFloor: RtlsOptions { get }
-  var activeMapFence: MapFence? { get }
-  var activeMapZones: ZoneData? { get }
-  var activeNavGraph: Data? { get }
-  var activeVpsPathfinder: VPSPathfinderAdapter? { get }
-  var activeShelfGroups: [ShelfGroup]? { get }
+  var activeConverter: ICoordinateConverter? { get throws }
+  var activeFloor: RtlsOptions { get throws }
+  var activeMapFence: MapFence? { get throws }
+  var activeMapZones: ZoneData? { get throws }
+  var activeNavGraph: Data? { get throws }
+  var activeVpsPathfinder: VPSPathfinderAdapter? { get throws }
+  var activeShelfGroups: [ShelfGroup]? { get throws }
 
   func createVPSPathfinders()
   func fetchMapFence(completion: @escaping (Error?) -> ())
@@ -52,7 +52,7 @@ class FloorRepository {
       converters[key] = BaseCoordinateConverter(
         heightInPixels: value.properties.height,
         widthInPixels: value.properties.width,
-        pixelPerMeter: activeFloor.pixelsPerMeter,
+        pixelPerMeter: (try? activeFloor.pixelsPerMeter) ?? 50.0,
         pixelPerLatitude: 1000.0
       )
     }
@@ -60,16 +60,18 @@ class FloorRepository {
 }
 
 extension FloorRepository: IFloorRepository {
-  var activeConverter: ICoordinateConverter? { converters[activeFloor.id] }
+  var activeConverter: ICoordinateConverter? { get throws { converters[try activeFloor.id] } }
   var activeFloor: RtlsOptions {
-    guard let floor = _activeFloor else { fatalError("Floor not set") }
-    return floor
+    get throws {
+      guard let floor = _activeFloor else { throw TT2Error.noFloorSet }
+      return floor
+    }
   }
-  var activeMapFence: MapFence? { mapFences[activeFloor.id] }
-  var activeMapZones: ZoneData? { mapZonesData[activeFloor.id] }
-  var activeNavGraph: Data? { navgraphs[activeFloor.id] }
-  var activeVpsPathfinder: VPSPathfinderAdapter? { vpsPathfinders[activeFloor.id] }
-  var activeShelfGroups: [ShelfGroup]? { shelfGroups[activeFloor.id] }
+  var activeMapFence: MapFence? { get throws { mapFences[try activeFloor.id] } }
+  var activeMapZones: ZoneData? { get throws { mapZonesData[try activeFloor.id] } }
+  var activeNavGraph: Data? { get throws { navgraphs[try activeFloor.id] } }
+  var activeVpsPathfinder: VPSPathfinderAdapter? { get throws { vpsPathfinders[try activeFloor.id] } }
+  var activeShelfGroups: [ShelfGroup]? { get throws { shelfGroups[try activeFloor.id] } }
 
   func dispose() {
     Logger(verbosity: .info).log(tag: tag, message: "dispose")
@@ -93,16 +95,16 @@ extension FloorRepository: IFloorRepository {
         let stopCode = rtls.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .stop })
       else { return }
 
-      let height = converter.convertFromMetersToPixels(input: activeFloor.heightInMeters)
+      let height = converter.convertFromMetersToPixels(input: rtls.heightInMeters)
       let navGraph = GraphDeserializer.deserialize(fromJsonData: navData, pixelHeight: height)
       let startCode = rtls.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .start })
       let convertedAndFlippedStart = startCode?.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
       let convertedAndFlippedStop = stopCode.point.fromMeterToPixel(converter: converter).flipY(converter: converter)
       vpsPathfinders[rtls.id] = VPSPathfinderAdapter(
         converter: converter,
-        height: activeFloor.heightInMeters,
-        width: activeFloor.widthInMeters,
-        pixelsPerMeter: Float(activeFloor.pixelsPerMeter),
+        height: rtls.heightInMeters,
+        width: rtls.widthInMeters,
+        pixelsPerMeter: Float(rtls.pixelsPerMeter),
         navGraph: navGraph,
         startPosition: convertedAndFlippedStart,
         stopPosition: convertedAndFlippedStop
@@ -111,7 +113,7 @@ extension FloorRepository: IFloorRepository {
   }
 
   func fetchMapFence(completion: @escaping (Error?) -> ()) {
-    guard !floors.isEmpty else { completion(VSTT2Error.missingData); return }
+    guard !floors.isEmpty else { completion(TT2Error.missingData); return }
     let group = DispatchGroup()
     var error: Error?
     floors.forEach { (rtls) in
@@ -136,7 +138,7 @@ extension FloorRepository: IFloorRepository {
   }
 
   func fetchMapZones(completion: @escaping (Error?) -> ()) {
-    guard !floors.isEmpty else { completion(VSTT2Error.missingData); return }
+    guard !floors.isEmpty else { completion(TT2Error.missingData); return }
     let group = DispatchGroup()
     var error: Error?
     floors.forEach { (floor) in
@@ -163,7 +165,7 @@ extension FloorRepository: IFloorRepository {
   }
 
   func fetchNavGraph(completion: @escaping (Error?) -> ()) {
-    guard !floors.isEmpty else { completion(VSTT2Error.missingData); return }
+    guard !floors.isEmpty else { completion(TT2Error.missingData); return }
     let group = DispatchGroup()
     var error: Error?
     floors.forEach { (floor) in
@@ -190,7 +192,7 @@ extension FloorRepository: IFloorRepository {
   }
 
   func fetchShelfGroups(completion: @escaping (Error?) -> ()) {
-    guard !floors.isEmpty else { completion(VSTT2Error.missingData); return }
+    guard !floors.isEmpty else { completion(TT2Error.missingData); return }
     let group = DispatchGroup()
     var error: Error?
     floors.forEach { (floor) in

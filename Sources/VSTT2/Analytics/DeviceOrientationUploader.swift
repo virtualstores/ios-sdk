@@ -15,8 +15,8 @@ class DeviceOrientationUploader {
   @Inject var getActiveClient: GetActiveClientUseCase
   @Inject var getActiveStore: GetActiveStoreUseCase
 
-  var client: Client { getActiveClient.invoke() }
-  var store: Store { getActiveStore.invoke() }
+  var client: Client? { try? getActiveClient.invoke() }
+  var store: Store? { try? getActiveStore.invoke() }
 
   public enum Errors: Error {
     case uploadFailure(HTTPURLResponse)
@@ -25,7 +25,7 @@ class DeviceOrientationUploader {
   func upload(id: String, visitId: Int64, deviceOrientation: String, currentLocation: CGPoint, direction: Double, errorHandler: @escaping (Error) -> Void) {
     guard
       let serverAddress = config.connection.tt2DataServer?.baseUrl,
-      let clientName = client.name,
+      let clientName = client?.name,
       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
       let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
     else { return }
@@ -56,8 +56,8 @@ class DeviceOrientationUploader {
       URLQueryItem(entry: .appVersion, value: "\(appVersion) (\(buildNumber)), \(systemName) \(systemVersion), \(modelName)"),
       URLQueryItem(entry: .positionKitVersion, value: vpsVersion),
       URLQueryItem(entry: .serverUrl, value: "\(serverAddress)"),
-      URLQueryItem(entry: .clientId, value: "\(client.clientId), \(clientName)"),
-      URLQueryItem(entry: .storeId, value: "\(store.id), \(store.name)"),
+      URLQueryItem(entry: .clientId, value: "\(client?.clientId), \(clientName)"),
+      URLQueryItem(entry: .storeId, value: "\(store?.id), \(store?.name)"),
       URLQueryItem(name: "submit", value: "Submit")
     ]
 

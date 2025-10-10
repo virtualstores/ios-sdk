@@ -9,7 +9,7 @@ import Foundation
 import VSFoundation
 
 protocol IClientRepository: Disposable {
-  var client: Client { get }
+  var client: Client { get throws }
 
   func get() -> [Client]
   func set(activeClient: Client)
@@ -38,8 +38,10 @@ extension ClientRepository: IClientRepository {
   }
   
   var client: Client {
-    guard let client = _activeClient else { fatalError("Client not set") }
-    return client
+    get throws {
+      guard let client = _activeClient else { throw TT2Error.noClientSet }
+      return client
+    }
   }
 
   func get() -> [Client] {

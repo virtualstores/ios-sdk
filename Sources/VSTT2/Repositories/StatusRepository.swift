@@ -18,17 +18,20 @@ protocol IStatusRepository {
   var currentPosition: VPSOutputSignal.Position? { get }
   var currentSettings: TT2Settings { get }
   var isVPSRunning: Bool { get }
+  var isReferenceAngleCertain: Bool { get }
   func set(compassHeading: Double)
   func set(gpsPosition: VPSOutputSignal.LatLngPosition.Location)
   func set(leaseExpired: Bool)
   func set(policy: LeasePolicyEnum)
   func set(vpsPosition: VPSOutputSignal.Position)
-  func set(isVPSRunning: Bool, qrStart: Bool)
+  func set(isVPSRunning: Bool)
+  func set(isReferenceAngleCertain: Bool)
   func set(settings: TT2Settings)
   func compassHeadingPublisher() -> AnyPublisher<Double?, Never>
   func gpsPositionPublisher() -> AnyPublisher<VPSOutputSignal.LatLngPosition.Location?, Never>
   func vpsPositionPublisher() -> AnyPublisher<VPSOutputSignal.Position?, Never>
-  func isVPSRunningPublisher() -> AnyPublisher<(running: Bool, isReferenceAngleCertain: Bool), Never>
+  func isVPSRunningPublisher() -> AnyPublisher<Bool, Never>
+  func isReferenceAngleCertainPublisher() -> AnyPublisher<Bool, Never>
   func reset()
 }
 
@@ -39,7 +42,8 @@ class StatusRepository {
   private var _currentLeasePolicy: LeasePolicyEnum?
   private var currentPositionPublisher: CurrentValueSubject<VPSOutputSignal.Position?, Never> = .init(nil)
   private var _currentSettings: TT2Settings = .init()
-  private var isVPSRunningSubscriber: CurrentValueSubject<(running: Bool, isReferenceAngleCertain: Bool), Never> = .init((running: false, isReferenceAngleCertain: false))
+  private var isVPSRunningSubscriber: CurrentValueSubject<Bool, Never> = .init(false)
+  private var isReferenceAngleCertainSubscriber: CurrentValueSubject<Bool, Never> = .init(false)
 }
 
 extension StatusRepository: IStatusRepository {
@@ -49,7 +53,8 @@ extension StatusRepository: IStatusRepository {
   var currentLeasePolicy: LeasePolicyEnum? { _currentLeasePolicy }
   var currentPosition: VPSOutputSignal.Position? { currentPositionPublisher.value }
   var currentSettings: TT2Settings { _currentSettings }
-  var isVPSRunning: Bool { isVPSRunningSubscriber.value.running }
+  var isVPSRunning: Bool { isVPSRunningSubscriber.value }
+  var isReferenceAngleCertain: Bool { isReferenceAngleCertainSubscriber.value }
 
   func set(compassHeading: Double) {
     currentCompassHeadingPublisher.send(compassHeading)
@@ -71,8 +76,12 @@ extension StatusRepository: IStatusRepository {
     currentPositionPublisher.send(vpsPosition)
   }
 
-  func set(isVPSRunning: Bool, qrStart: Bool) {
-    isVPSRunningSubscriber.send((isVPSRunning, qrStart))
+  func set(isVPSRunning: Bool) {
+    isVPSRunningSubscriber.send(isVPSRunning)
+  }
+
+  func set(isReferenceAngleCertain: Bool) {
+    isReferenceAngleCertainSubscriber.send(isReferenceAngleCertain)
   }
 
   func set(settings: TT2Settings) {
@@ -91,11 +100,17 @@ extension StatusRepository: IStatusRepository {
     currentPositionPublisher.eraseToAnyPublisher()
   }
 
-  func isVPSRunningPublisher() -> AnyPublisher<(running: Bool, isReferenceAngleCertain: Bool), Never> {
+  func isVPSRunningPublisher() -> AnyPublisher<Bool, Never> {
     isVPSRunningSubscriber.eraseToAnyPublisher()
   }
 
+  func isReferenceAngleCertainPublisher() -> AnyPublisher<Bool, Never> {
+    isReferenceAngleCertainSubscriber.eraseToAnyPublisher()
+  }
+
   func reset() {
+    isVPSRunningSubscriber.send(false)
+    isReferenceAngleCertainSubscriber.send(false)
     currentPositionPublisher.send(nil)
     currentGPSLocationPublisher.send(nil)
   }

@@ -23,13 +23,13 @@ public class TT2EventManager {
 
   var messageShownPublisher: CurrentValueSubject<TriggerEvent?, Never> = .init(nil)
 
-  private var activeStoreId: Int64 { activeStore.invoke().id }
-  private var rtlsOptionsId: Int64 { activeFloor.invoke().id }
+  private var activeStoreId: Int64 { (try? activeStore.invoke().id) ?? -1 }
+  private var rtlsOptionsId: Int64 { (try? activeFloor.invoke().id) ?? -1 }
 
   public var triggerEvents: [TriggerEvent] = []
   private var latestMessageLoad: Date?
   private let reloadMessageInterval: TimeInterval = 3600.0
-  private var zones: [Zone] { getZonesTree.invoke().getZonesFor(floorLevelId: rtlsOptionsId) ?? [] }
+  private var zones: [Zone] { (try? getZonesTree.invoke())?.getZonesFor(floorLevelId: rtlsOptionsId) ?? [] }
   private var view: UIView?
   private var inAndOut: InAndOut?
 
