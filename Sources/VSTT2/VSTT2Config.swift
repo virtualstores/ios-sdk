@@ -168,17 +168,20 @@ class VSTT2Config: Config {
     injector.map(GetCurrentVPSPositionUseCase.self) { GetCurrentVPSPositionUseCase() }
     injector.map(GetCurrentTT2SettingsUseCase.self) { GetCurrentTT2SettingsUseCase() }
     injector.map(GetIsVPSRunningUseCase.self) { GetIsVPSRunningUseCase() }
+    injector.map(GetIsReferenceAngleCertainUseCase.self) { .init() }
     injector.map(SetCompassHeadingUseCase.self) { SetCompassHeadingUseCase() }
     injector.map(SetGPSPositionUseCase.self) { SetGPSPositionUseCase() }
     injector.map(SetLeaseExpiredUseCase.self) { .init() }
     injector.map(SetLeasePolicyUseCase.self) { SetLeasePolicyUseCase() }
     injector.map(SetVPSPositionUseCase.self) { SetVPSPositionUseCase() }
     injector.map(SetIsVPSRunningUseCase.self) { SetIsVPSRunningUseCase() }
+    injector.map(SetIsReferenceAngleCertainUseCase.self) { .init() }
     injector.map(SetTT2SettingsUseCase.self) { SetTT2SettingsUseCase() }
     injector.map(SubscribeToCompassHeadingUpdatesUseCase.self) { SubscribeToCompassHeadingUpdatesUseCase() }
     injector.map(SubscribeToGPSUpdatesUseCase.self) { SubscribeToGPSUpdatesUseCase() }
     injector.map(SubscribeToVPSUpdatesUseCase.self) { SubscribeToVPSUpdatesUseCase() }
     injector.map(SubscribeToIsVPSRunningUseCase.self) { SubscribeToIsVPSRunningUseCase() }
+    injector.map(SubscribeToIsReferenceAngleCertainUseCase.self) { .init() }
     injector.map(ResetStatusRepositoryUseCase.self) { .init() }
 
     // Store use cases

@@ -27,8 +27,8 @@ class FetchClientsUseCase {
 class GetActiveClientUseCase {
   @Inject var repository: IClientRepository
 
-  func invoke() -> Client {
-    repository.client
+  func invoke() throws -> Client {
+    try repository.client
   }
 }
 
@@ -43,8 +43,8 @@ class GetCachedClientsUseCase {
 class SetActiveClientUseCase {
   @Inject var repository: IClientRepository
 
-  func invoke(clientId: Int64) {
-    guard let client = repository.get().first(where: { $0.clientId == clientId }) else { fatalError("Could not find client") }
+  func invoke(clientId: Int64) throws {
+    guard let client = repository.get().first(where: { $0.clientId == clientId }) else { throw TT2Error.missingData }
     repository.set(activeClient: client)
   }
 }

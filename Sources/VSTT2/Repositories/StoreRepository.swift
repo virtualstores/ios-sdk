@@ -9,11 +9,11 @@ import Foundation
 import VSFoundation
 
 protocol IStoreRepository: Disposable {
-  var activeStore: Store { get }
-  var zonesTree: TT2ZonesTree { get }
+  var activeStore: Store { get throws }
+  var zonesTree: TT2ZonesTree { get throws }
 
   func fetchStores(clientId: Int64, completion: @escaping (Error?) -> ())
-  func fetchSwapLocations(completion: @escaping (Error?) -> ())
+  func fetchSwapLocations(storeId: Int64, completion: @escaping (Error?) -> ())
   func getCachedStores() -> [Store]
   func getCachedSwapLocations() -> [SwapLocation]
   func set(activeStore store: Store)
@@ -37,13 +37,17 @@ class StoreRepository {
 
 extension StoreRepository: IStoreRepository {
   var activeStore: Store {
-    guard let store = _activeStore else { fatalError("Store not initialized") }
-    return store
+    get throws {
+      guard let store = _activeStore else { throw TT2Error.noStoreSet }
+      return store
+    }
   }
 
   var zonesTree: TT2ZonesTree {
-    guard let tree = _zonesTree else { fatalError("Tree not initialized") }
-    return tree
+    get throws {
+      guard let tree = _zonesTree else { throw TT2Error.missingData }
+      return tree
+    }
   }
 
   func dispose() {
@@ -67,8 +71,8 @@ extension StoreRepository: IStoreRepository {
     }
   }
 
-  func fetchSwapLocations(completion: @escaping (Error?) -> ()) {
-    api.fetchSwapLocations(storeId: activeStore.id) { [weak self] (result) in
+  func fetchSwapLocations(storeId: Int64, completion: @escaping (Error?) -> ()) {
+    api.fetchSwapLocations(storeId: storeId) { [weak self] (result) in
       switch result {
       case .success(let swapLocations):
         self?.cachedSwapLocations = swapLocations

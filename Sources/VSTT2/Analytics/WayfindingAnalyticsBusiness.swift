@@ -34,7 +34,7 @@ class WayfindingAnalyticsBusiness {
   private var distanceTraveled: Double = 0.0
   private var distanceToItem: Double?
 
-  private var positionServiceSettings: PositionServiceSettings? { activeStore.invoke().positionServiceSettings }
+  private var positionServiceSettings: PositionServiceSettings? { try? activeStore.invoke().positionServiceSettings }
   private var rangeThreshold: Double {
     positionServiceSettings?.floatValues?["ios_sdk_analytics_wayfindingRangeThreshold"]?.asDouble ?? 10
   }
@@ -58,7 +58,7 @@ class WayfindingAnalyticsBusiness {
 
 //    TT2Log.d("$TAG.startTracking: ${itemPosition.identifier}")
 
-    guard let mapFence = activeMapFence.invoke() else { return abortedTriggerEvent }
+    guard let mapFence = try? activeMapFence.invoke() else { return abortedTriggerEvent }
     inAndOut = .init(triggers: [
       InAndOut.Radius(id: itemPosition.identifier, centerPoint: itemPosition.pointWithOffset, radius: rangeThreshold)
     ])
@@ -123,7 +123,7 @@ class WayfindingAnalyticsBusiness {
     guard
       isInRange,
       !hasBeenInRightAisle,
-      let converter = activeConverter.invoke(),
+      let converter = try? activeConverter.invoke(),
       let isRightAisle = mapFenceData?.isRightAisle(
         p1: userLocation.fromMeterToPixel(converter: converter).flipY(converter: converter),
         p2: itemLocation.fromMeterToPixel(converter: converter).flipY(converter: converter)
@@ -159,13 +159,14 @@ class WayfindingAnalyticsBusiness {
   }
 
   func stopTracking(itemPosition: ItemPosition, stopType: StopType = .normal) -> TriggerEvent? {
+    guard let id = try? activeFloor.invoke().id else { return nil }
     isTracking = false
 
 //    TT2Log.d("$TAG.stopTracking: ${itemPosition.identifier}: HasBeenRightAisle=$hasBeenInRightAisle, HasBeenInRange=$hasBeenInRange")
     var triggerEvent: TriggerEvent?
     if let position = trackedItemPosition, position.identifier == itemPosition.identifier, let timestamp = startTimestamp {
       triggerEvent = TriggerEvent(
-        rtlsOptionsId: activeFloor.invoke().id,
+        rtlsOptionsId: id,
         name: "single-item-wayfinding",
         description: "",
         eventType: .appTrigger(.init(event: "single-item-wayfinding")),

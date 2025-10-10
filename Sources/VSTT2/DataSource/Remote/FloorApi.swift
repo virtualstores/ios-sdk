@@ -49,7 +49,7 @@ extension FloorApi: IFloorApi {
       case .success(let data):
         guard
           let mapData = MapZoneParser.getMapZonesData(fromJsonData: data)
-        else { completion(.failure(VSTT2Error.missingData)); return }
+        else { completion(.failure(TT2Error.missingData)); return }
         completion(.success(mapData))
       case .failure(let error):
         completion(.failure(error))

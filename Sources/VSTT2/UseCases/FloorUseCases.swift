@@ -57,56 +57,56 @@ class FetchShelfGroupsUseCase {
 class GetActiveCoordinateConverterUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke() -> ICoordinateConverter? {
-    repository.activeConverter
+  func invoke() throws -> ICoordinateConverter? {
+    try repository.activeConverter
   }
 }
 
 class GetActiveFloorUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke() -> RtlsOptions {
-    repository.activeFloor
+  func invoke() throws -> RtlsOptions {
+    try repository.activeFloor
   }
 }
 
 class GetActiveMapFenceUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke() -> MapFence? {
-    repository.activeMapFence
+  func invoke() throws -> MapFence? {
+    try repository.activeMapFence
   }
 }
 
 class GetActiveMapZonesUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke() -> ZoneData? {
-    repository.activeMapZones
+  func invoke() throws -> ZoneData? {
+    try repository.activeMapZones
   }
 }
 
 class GetActiveNavGraphUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke() -> Data? {
-    repository.activeNavGraph
+  func invoke() throws -> Data? {
+    try repository.activeNavGraph
   }
 }
 
 class GetActivePathfinderUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke() -> VPSPathfinderAdapter? {
-    repository.activeVpsPathfinder
+  func invoke() throws -> VPSPathfinderAdapter? {
+    try repository.activeVpsPathfinder
   }
 }
 
 class GetActiveShelfGroupsUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke() -> [ShelfGroup]? {
-    repository.activeShelfGroups
+  func invoke() throws -> [ShelfGroup]? {
+    try repository.activeShelfGroups
   }
 }
 

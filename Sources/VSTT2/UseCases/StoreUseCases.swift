@@ -19,16 +19,16 @@ class FetchStoreUseCase {
 class FetchSwapLocationsUseCase {
   @Inject var repository: IStoreRepository
 
-  func invoke(completion: @escaping (Error?) -> ()) {
-    repository.fetchSwapLocations(completion: completion)
+  func invoke(storeId: Int64, completion: @escaping (Error?) -> ()) {
+    repository.fetchSwapLocations(storeId: storeId, completion: completion)
   }
 }
 
 class GetActiveStoreUseCase {
   @Inject var repository: IStoreRepository
 
-  func invoke() -> Store {
-    repository.activeStore
+  func invoke() throws -> Store {
+    try repository.activeStore
   }
 }
 
@@ -51,8 +51,8 @@ class GetCachedSwapLocationsUseCase {
 class GetZonesTreeUseCase {
   @Inject var repository: IStoreRepository
 
-  func invoke() -> TT2ZonesTree {
-    repository.zonesTree
+  func invoke() throws -> TT2ZonesTree {
+    try repository.zonesTree
   }
 }
 
@@ -60,8 +60,8 @@ class SetActiveStoreUseCase {
   @Inject var floorRepository: IFloorRepository
   @Inject var storeRepository: IStoreRepository
 
-  func invoke(storeId: Int64) {
-    guard let store = storeRepository.getCachedStores().first(where: { $0.id == storeId }) else { fatalError("Could not find store") }
+  func invoke(storeId: Int64) throws {
+    guard let store = storeRepository.getCachedStores().first(where: { $0.id == storeId }) else { throw TT2Error.missingData }
     storeRepository.set(activeStore: store)
     floorRepository.set(cachedFloors: store.rtlsOptions)
   }
@@ -71,7 +71,7 @@ class ValidateVisitScoreUseCase {
   @Inject var repository: IStoreRepository
 
   func invoke(score: Int, timestamp: Date) -> VisitScore? {
-    guard let threshold = repository.activeStore.acceptedScoreLimit else { return nil }
+    guard let threshold = try? repository.activeStore.acceptedScoreLimit else { return nil }
     return .init(score: score, isAccepted: score>=threshold, timestamp: timestamp)
   }
 }

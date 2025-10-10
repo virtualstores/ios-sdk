@@ -16,11 +16,14 @@ public class TT2ZonesTree: Disposable {
 
     private let tag = "TT2ZonesTree"
     private lazy var _root: Zone? = {
-      guard let converter = converter else { return nil }
-      let name = activeStore.invoke().name
+      guard
+        let id = currentFloorLevelId,
+        let converter = converter
+      else { return nil }
+      let name = (try? activeStore.invoke())?.name ?? "Undefined"
       return Zone(
         id: UUID().uuidString,
-        floorLevelId: activeFloor.invoke().id,
+        floorLevelId: id,
         properties: ZoneProperties(id: name, name: name, names: [name]),
         converter: converter
       )
@@ -30,8 +33,8 @@ public class TT2ZonesTree: Disposable {
         return root
     }
     public private(set) var activeZones: [Zone] = []
-    private var currentFloorLevelId: Int64 { activeFloor.invoke().id }
-    private var converter: ICoordinateConverter? { activeCoordinateConverter.invoke() }
+    private var currentFloorLevelId: Int64? { try? activeFloor.invoke().id }
+    private var converter: ICoordinateConverter? { try? activeCoordinateConverter.invoke() }
 
     deinit {
       Logger(verbosity: .info).log(tag: tag, message: "deinit")
@@ -127,7 +130,8 @@ public class TT2ZonesTree: Disposable {
     }
 
     public func getZonesForCurrentFloorLevel() -> [Zone]? {
-        getZonesFor(floorLevelId: currentFloorLevelId)
+        guard let id = currentFloorLevelId else { return nil }
+        return getZonesFor(floorLevelId: id)
     }
 
     private func zoneDelimiter(string: String) -> [String] {

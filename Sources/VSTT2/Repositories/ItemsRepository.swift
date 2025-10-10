@@ -10,15 +10,15 @@ import VSFoundation
 
 protocol IItemsRepository: Disposable {
   func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ())
-  func getCachedItems(by barcode: String) -> Item?
-  func addCachedItem(item: Item)
+  func getCachedItems(by identfier: String) -> [BarcodePosition]?
+  func addCachedItem(identfier: String, positons: [BarcodePosition])
   func reset()
 }
 
 class ItemsRepository {
   private let tag = "ItemsRepository"
   private let api: IItemsApi = ItemsApi()
-  private var cachedItems: [String:Item] = [:]
+  private var cachedItems: [String:[BarcodePosition]] = [:]
   private var serialDispatch = DispatchQueue(label: "TT2ItemsRepository")
 
   deinit {
@@ -34,17 +34,25 @@ extension ItemsRepository: IItemsRepository {
   }
   
   func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ()) {
-    api.getBy(storeId: storeId, barcode: barcode, completion: completion)
-  }
-
-  func getCachedItems(by barcode: String) -> Item? {
-    serialDispatch.sync {
-      cachedItems[barcode]
+    if let cached = getCachedItems(by: barcode) {
+      completion(.success(cached))
+    } else {
+      api.getBy(storeId: storeId, barcode: barcode, completion: completion)
     }
   }
 
-  func addCachedItem(item: Item) {
-    serialDispatch.sync { cachedItems[item.externalId] = item }
+  private func getRemoteBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ()) {
+    getBy(storeId: storeId, barcode: barcode, completion: completion)
+  }
+
+  func getCachedItems(by identfier: String) -> [BarcodePosition]? {
+    serialDispatch.sync {
+      cachedItems[identfier]
+    }
+  }
+
+  func addCachedItem(identfier: String, positons: [BarcodePosition]) {
+    serialDispatch.sync { cachedItems[identfier] = positons }
   }
 
   func reset() {

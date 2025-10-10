@@ -71,13 +71,8 @@ extension Routing {
     var headers: [String: String]? { nil }
 
     var urlRequest: URLRequest? {
-        @Inject var logger: Logger
-
         guard var url = URL(string: baseURL) else {
-            #if DEV
-            logger.log(message: "cannot create URL")
-            #endif
-
+            Logger(verbosity: .debug).log(message: "cannot create URL")
             return nil
         }
 
@@ -86,9 +81,7 @@ extension Routing {
         }
 
         guard var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
-            #if DEV
-            logger.log(message: "cannot create URLComponents")
-            #endif
+            Logger(verbosity: .debug).log(message: "cannot create URLComponents")
             return nil
         }
 
@@ -114,17 +107,13 @@ extension Routing {
             do {
                 urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
             } catch {
-                #if DEV
-                logger.log(message: "parameters encoding issue")
-                #endif
+                Logger(verbosity: .debug).log(message: "parameters encoding issue")
             }
         } else if let parameters = parameters {
           do {
               urlRequest = try encoding.encode(request: urlRequest, parameters: parameters)
           } catch {
-              #if DEV
-              logger.log(message: "parameters encoding issue")
-              #endif
+              Logger(verbosity: .debug).log(message: "parameters encoding issue")
           }
         }
         return urlRequest

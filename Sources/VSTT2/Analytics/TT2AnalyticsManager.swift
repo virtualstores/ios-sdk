@@ -45,9 +45,9 @@ final public class TT2AnalyticsManager: Disposable {
   var leaseExpired: Bool { getCurrentLeaseExpired.invoke() }
   var visitId: Int64? { activeVisitId.invoke() }
   private let tag = "TT2AnalyticsManager"
-  private var store: Store { activeStore.invoke() }
+  private var store: Store? { try? activeStore.invoke() }
   private var uploadThreshold = 100
-  private var rtlsOptionId: Int64 { activeFloor.invoke().id }
+  private var rtlsOptionId: Int64? { try? activeFloor.invoke().id }
   private var cancellable = Set<AnyCancellable>()
   private var isRecording: Bool = false
   private var latestRecordedPosition = Date()
@@ -100,7 +100,7 @@ private extension TT2AnalyticsManager {
   }
 
   var tt2VPSSettingsTags: [String:String]? {
-    guard let settings = store.positionServiceSettings else { return nil }
+    guard let settings = store?.positionServiceSettings else { return nil }
     return [
       "tt2SdkVpsSettingUseML" : settings.useML.description,
       "tt2SdkVpsSettingUseCoefficientOptimizer" : settings.useCoefficientOptimizer.description,
@@ -246,21 +246,23 @@ private extension TT2AnalyticsManager {
   func mlPositionsToTriggerEvent() -> TriggerEvent? {
     defer { recordedMLPositions.removeAll() }
     guard
+      let id = rtlsOptionId,
       recordedMLPositions.count > 0,
       let json = try? JSONEncoder().encode(recordedMLPositions.flatMap({ $0.value })),
       let string = String(data: json, encoding: .utf8)
     else { return nil }
-    return TriggerEvent(id: "", rtlsOptionsId: rtlsOptionId, name: "MLPositions", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsTrigger")), tags: ["mlPositions" : string])
+    return TriggerEvent(id: "", rtlsOptionsId: id, name: "MLPositions", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsTrigger")), tags: ["mlPositions" : string])
   }
 
   func mlPositionsLngLatToTriggerEvent() -> TriggerEvent? {
     defer { recordedMLPositionsLngLat.removeAll() }
     guard
+      let id = rtlsOptionId,
       recordedMLPositionsLngLat.count > 0,
       let json = try? JSONEncoder().encode(recordedMLPositionsLngLat.flatMap({ $0.value })),
       let string = String(data: json, encoding: .utf8)
     else { return nil }
-    return TriggerEvent(id: "", rtlsOptionsId: rtlsOptionId, name: "MLPositionsLngLat", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsLatLngTrigger")), tags: ["mlPositionsLatLng" : string])
+    return TriggerEvent(id: "", rtlsOptionsId: id, name: "MLPositionsLngLat", description: "", eventType: .appTrigger(TriggerEvent.AppTrigger(event: "MLPositionsLatLngTrigger")), tags: ["mlPositionsLatLng" : string])
   }
 
   func updateVisitWithStopTags() {
@@ -326,11 +328,12 @@ extension TT2AnalyticsManager {
     serialDispatch.async { [weak self] in
       guard
         let self = self,
+        let id = rtlsOptionId,
         Date().timeIntervalSince(latestRecordedPosition) > 0.2
       else { return }
       latestRecordedPosition = Date()
       if isRecording {
-        recordPosition(rtlsOptionId: rtlsOptionId, position: position)
+        recordPosition(rtlsOptionId: id, position: position)
         zoneManager.onNewPosition(currentPosition: position.point)
         eventManager.on(new: position)
         wayfindingBusiness.onNew(position: position)
@@ -362,8 +365,9 @@ extension TT2AnalyticsManager {
   }
 
   func rescueMode() {
+    guard let id = rtlsOptionId else { return }
     accuracyUploader?.numberOfRescueModes += 1
-    uploadTriggerEvents(request: postTriggerEvent(for: TriggerEvent(rtlsOptionsId: rtlsOptionId, name: "RescueModeTriggerEvent", description: "", eventType: .appTrigger(.init(event: "RescueModeTriggerEvent")), userPosition: currentPosition)))
+    uploadTriggerEvents(request: postTriggerEvent(for: TriggerEvent(rtlsOptionsId: id, name: "RescueModeTriggerEvent", description: "", eventType: .appTrigger(.init(event: "RescueModeTriggerEvent")), userPosition: currentPosition)))
   }
 
   func report(visitScore: Int) {
@@ -375,7 +379,7 @@ extension TT2AnalyticsManager: TT2Analytics {
   public var hasVisit: Bool { visitId != nil }
 
   public func startVisit(deviceInformation: DeviceInformation, tags: [String:String] = [:], metaData: [String:String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
-    guard getMLVersion.invoke() != nil else { completion(.failure(VSTT2Error.missingData)); return }
+    guard getMLVersion.invoke() != nil else { completion(.failure(TT2Error.missingData)); return }
     guard visitId == nil else { completion(.failure(TT2AnalyticsError.visitAlreadyStarted)); return }
 
     var editedTags = tags
@@ -433,11 +437,14 @@ extension TT2AnalyticsManager: TT2Analytics {
 
   public func addGeopositions(coordinate: CLLocationCoordinate2D, for tag: String) {
     serialDispatch.async { [weak self] in
-      guard let self = self else { return }
+      guard
+        let self = self,
+        let id = rtlsOptionId
+      else { return }
       geopositionsManager.record(coordinate: coordinate, for: tag)
       addTriggerEvent(for: TriggerEvent(
         id: tag,
-        rtlsOptionsId: rtlsOptionId,
+        rtlsOptionsId: id,
         name: tag,
         description: tag,
         eventType: .coordinateTrigger(.init(point: coordinate.asPoint, radius: 0, type: .enter))

@@ -9,11 +9,8 @@ import Foundation
 import VSFoundation
 
 public class Position {
-    @Inject var activeStore: GetActiveStoreUseCase
     @Inject var activeShelfGroups: GetActiveShelfGroupsUseCase
     @Inject var getPositionByBarcodeUseCase: GetPositionByBarcodeUseCase
-
-    private var store: Store { activeStore.invoke() }
     
     func setup() {
         getPositionByBarcodeUseCase.itemsRepository.reset()
@@ -21,17 +18,23 @@ public class Position {
 }
 
 extension Position: IPosition {
-  var shelfGroups: [ShelfGroup]? { activeShelfGroups.invoke() }
+  var shelfGroups: [ShelfGroup]? { get throws { try activeShelfGroups.invoke() } }
 
-  public func getBy(shelfName: String, completion: @escaping (ItemPosition?) -> ()) {
+  public func getBy(shelfName: String, completion: @escaping (Result<ItemPosition, Error>) -> ()) {
     var position: ItemPosition?
-    shelfGroups?.forEach { shelfGroup in
-      if let shelf = shelfGroup.shelves.first(where: { $0.name == shelfName }) {
-        position = shelf.itemPosition
+    do {
+      try shelfGroups?.forEach { (shelfGroup) in
+        guard position == nil else { return }
+        position = shelfGroup.shelves.first(where: { $0.name == shelfName })?.itemPosition
       }
+    } catch {
+      DispatchQueue.main.async { completion(.failure(error)) }
     }
 
-    DispatchQueue.main.async { completion(position) }
+    DispatchQueue.main.async {
+      guard let position = position else { completion(.failure(TT2Error.noShelfFound)); return }
+      completion(.success(position))
+    }
   }
 
   public func getBy(barcode: String, completion: @escaping (Result<Item, Error>) -> ()) {

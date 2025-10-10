@@ -6,10 +6,11 @@
 // Copyright Virtual Stores - 2022
 
 import Foundation
-import VSFoundation
 import Combine
-import UIKit
 import CoreLocation
+import UIKit
+import VSFoundation
+import VSPositionKit
 
 internal class TT2Internal: Disposable {
     /// Managers for helping VSTT2 to work with separate small modules
@@ -37,6 +38,7 @@ internal class TT2Internal: Disposable {
     /// Usecases - Status
     @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
     @Inject var isVPSRunning: SubscribeToIsVPSRunningUseCase
+    @Inject var isReferenceAngleCertain: SubscribeToIsReferenceAngleCertainUseCase
     @Inject var setGPSPosition: SetGPSPositionUseCase
     @Inject var setVPSPosition: SetVPSPositionUseCase
     @Inject var setTT2Settings: SetTT2SettingsUseCase
@@ -62,12 +64,12 @@ internal class TT2Internal: Disposable {
     private var offset: Double
     
     var internalClients: [Client] { getCachedClients.invoke() }
-    var activeClient: Client { getActiveClient.invoke() }
+    var activeClient: Client? { try? getActiveClient.invoke() }
     var internalStores: [Store] { getCachedStore.invoke(filterOnlyActive: false) }
     var internalStoresActive: [Store] { getCachedStore.invoke() }
-    var activeStore: Store { getActiveStore.invoke() }
+    var activeStore: Store? { try? getActiveStore.invoke() }
     var automaticActivationOfUserMark: Bool = true
-    var automaticSensorRecording: Bool { activeStore.hasSensorRecordingActive }
+    var automaticSensorRecording: Bool { activeStore?.hasSensorRecordingActive ?? false }
 
     init(connectionSettings: EnvironmentConfig.Settings, authSettings: AuthSettings, settings: TT2Settings) {
       offset = 0.0
@@ -104,8 +106,8 @@ internal class TT2Internal: Disposable {
         fetchStore.invoke(clientId: clientId, completion: completion)
     }
 
-    func getSwapLocations(completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
-        fetchSwapLocations.invoke { (error) in
+    func getSwapLocations(storeId: Int64,completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
+        fetchSwapLocations.invoke(storeId: storeId) { (error) in
             switch error {
             case .none: completion(.success(self.getCachedSwapLocations.invoke()))
             case .some(let error): completion(.failure(error))
@@ -113,8 +115,8 @@ internal class TT2Internal: Disposable {
         }
     }
 
-    func setActiveStore(storeId: Int64) {
-        setActiveStore.invoke(storeId: storeId)
+    func setActiveStore(storeId: Int64) throws {
+        try setActiveStore.invoke(storeId: storeId)
     }
 
     func set(tt2Settings: TT2Settings) {
@@ -123,9 +125,8 @@ internal class TT2Internal: Disposable {
 
     private func bindPublishers() {
         isVPSRunning.invoke()
-          .sink { [weak self] (isActive, isReferenceAngleCertain) in
+          .sink { [weak self] (isActive) in
               self?.mapManager?.set(isPositionActive: isActive)
-              self?.mapManager?.set(isReferenceAngleCertain: isReferenceAngleCertain)
               if isActive {
                   self?.mapController?.reset()
                   if self?.automaticActivationOfUserMark ?? true {
@@ -136,13 +137,33 @@ internal class TT2Internal: Disposable {
               }
           }.store(in: &cancellable)
 
-        navigation.vpsPosition.recordingPublisher
+        isReferenceAngleCertain.invoke()
+            .sink { [weak self] (isReferenceAngleCertain) in
+                self?.mapManager?.set(isReferenceAngleCertain: isReferenceAngleCertain)
+            }.store(in: &cancellable)
+
+        navigation.onForceSyncPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (_) in
+              self?.mapController?.onForceSync()
+            }.store(in: &cancellable)
+
+        navigation.vpsPosition.recordingInputPublisher
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] (identifier, data, sessionId, lastFile) in
                 let sessionId = self?.analytics.visitId?.description ?? sessionId
-                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderName: self?.generateAWSFolderPath(sessionId: sessionId, additionalData: lastFile), date: Date())
+                self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderPath: self?.generateAWSFolderPath(sessionId: sessionId, additionalData: lastFile), date: Date())
                 self?.awsS3UploadManager.sendCollectedDataToS3()
             }).store(in: &cancellable)
+
+        navigation.vpsPosition.recordingOutputPublisher
+            .compactMap { $0 }
+            .sink { [weak self] (identifier, data, sessionId, lastFile) in
+              guard let storeId = self?.activeStore?.id else { return }
+              let sessionId = self?.analytics.visitId?.description ?? sessionId
+              let folderPath = self?.generateAWSFolderPathForMagData(storeId: storeId.description, sessionId: sessionId)
+              self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderPath: folderPath, date: .init())
+            }.store(in: &cancellable)
 
         navigation.vpsPosition.outputSignalPublisher
             .compactMap { $0 }
@@ -184,6 +205,10 @@ internal class TT2Internal: Disposable {
               case .consistencyScoreSignal(let score):
                 analytics.report(visitScore: score)
                 mapController?.visitScore(score)
+              case .userInfoVPSError(let error):
+                createCrashReport(error: error)
+                navigation.stop()
+                mapController?.stop()
               }
             }.store(in: &cancellable)
         
@@ -219,12 +244,12 @@ internal class TT2Internal: Disposable {
 
     func generateAWSFolderPath(sessionId: String, additionalData: Bool = false) -> String {
         let serverAddress = config.connection.tt2CentralServer.baseUrl.trimServerAddress
-        let dataServerAddress = (activeStore.statServerConnection.serverAddress ?? config.connection.tt2DataServer?.baseUrl ?? "undefined").trimServerAddress
-        let folderName: String = "\(serverAddress)/\(dataServerAddress)/\(sessionId)/"
+        let dataServerAddress = (config.connection.tt2DataServer?.baseUrl ?? activeStore?.statServerConnection.serverAddress ?? "undefined").trimServerAddress
+        let folderPath: String = "\(serverAddress)/\(dataServerAddress)/\(sessionId)/"
         if additionalData, let tags = createTT2Tags(serverAddress: serverAddress, dataServerAddress: dataServerAddress, sessionId: sessionId) {
-            awsS3UploadManager.prepareDataToSend(identifier: "tags.json", data: tags, folderName: folderName, date: Date())
+            awsS3UploadManager.prepareDataToSend(identifier: "tags.json", data: tags, folderPath: folderPath, date: Date())
         }
-        return folderName
+        return folderPath
     }
 
     func createTT2Tags(serverAddress: String, dataServerAddress: String, sessionId: String) -> String? {
@@ -233,13 +258,63 @@ internal class TT2Internal: Disposable {
         }
         analytics.tt2Tags["tt2CentralServerURL"] = serverAddress
         analytics.tt2Tags["tt2DataServerURL"] = dataServerAddress
-        analytics.tt2Tags["tt2RtlsOptionsId"] = floorManager.activeFloor.id.description
-        analytics.tt2Tags["tt2StoreId"] = activeStore.id.description
+        analytics.tt2Tags["tt2RtlsOptionsId"] = try? floorManager.activeFloor.id.description
+        analytics.tt2Tags["tt2StoreId"] = activeStore?.id.description
         analytics.tt2Tags["tt2VisitId"] = sessionId
-        analytics.tt2Tags["tt2ClientId"] = activeClient.clientId.description
+        analytics.tt2Tags["tt2ClientId"] = activeClient?.clientId.description
         let tags = TT2Tags(tags: analytics.tt2Tags)
         guard let data = try? JSONEncoder().encode(tags) else { return nil }
         return String(data: data, encoding: .utf8)
+    }
+
+    func generateAWSFolderPathForMagData(storeId: String, sessionId: String) -> String {
+      let serverAddress = config.connection.tt2CentralServer.baseUrl.trimServerAddress
+      return "mag-mapping/\(serverAddress)/\(storeId)/\(sessionId)/"
+    }
+
+    func createCrashReport(error: VPSOutputSignal.UserInfoVPSError) {
+      let date = Date()
+      let report = TT2CrashReport(
+        systemTimestamp: date.currentTimeMillis.description,
+        os: UIDevice.current.systemName,
+        deviceModel: UIDevice.current.modelName,
+        sdkVersion: TT2.version,
+        vpsVersion: vpsVersion,
+        centralServerAddress: config.connection.tt2CentralServer.baseUrl.trimServerAddress,
+        stackTrace: error.stacktrace
+      )
+
+      do {
+        let data = try JSONEncoder().encode(report)
+        guard let stringData = String(data: data, encoding: .utf8) else { return }
+        let identifier: String
+        let folderPath: String
+        if let id =  analytics.visitId {
+          identifier = "crashReport.json"
+          folderPath = generateAWSFolderPath(sessionId: id.description)
+        } else {
+          let storeId = activeStore?.id.description ?? "undefined"
+          let formatter = DateFormatter()
+          formatter.dateFormat = "yyyyMMdd-HHmmss"
+          identifier = "\(formatter.string(from: date))-\(UUID().uuidString.uppercased())-crashReport.json"
+          folderPath = generateFolderPathForRogueCrashReport(storeId: storeId)
+        }
+        awsS3UploadManager.prepareDataToSend(
+          identifier: identifier,
+          data: stringData,
+          folderPath: folderPath,
+          date: date
+        )
+        awsS3UploadManager.sendCollectedDataToS3()
+      } catch {
+        print(#function, error)
+        Logger(verbosity: .error).log(tag: tag, message: "Trouble encoding crash report: \(error)")
+      }
+    }
+
+    func generateFolderPathForRogueCrashReport(storeId: String) -> String {
+      let serverAddress = config.connection.tt2CentralServer.baseUrl.trimServerAddress
+      return "rouge-crash-reports/\(serverAddress)/\(storeId)/\(UIDevice.current.systemName)"
     }
 
     private func vpsToMapboxAngle(angle: Double) -> Double {
@@ -278,4 +353,14 @@ private extension String {
     if hasSuffix("/api/v1") || hasSuffix("/api/v2") { modified.removeLast(7) }
     return modified.components(separatedBy: "/").first ?? modified
   }
+}
+
+struct TT2CrashReport: Codable {
+  var systemTimestamp: String
+  var os: String
+  var deviceModel: String
+  var sdkVersion: String
+  var vpsVersion: String
+  var centralServerAddress: String
+  var stackTrace: String?
 }

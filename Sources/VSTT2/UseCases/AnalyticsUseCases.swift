@@ -13,7 +13,7 @@ class CreateVisitUseCase {
   @Inject var storeRepository: IStoreRepository
 
   func invoke(deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ()) {
-    guard let storeId = storeRepository.activeStore.statServerConnection.storeId else { completion(.failure(VSTT2Error.missingData)); return }
+    guard let storeId = try? storeRepository.activeStore.statServerConnection.storeId else { completion(.failure(TT2Error.missingData)); return }
     repository.createVisit(
       storeId: storeId,
       deviceInformation: deviceInformation,

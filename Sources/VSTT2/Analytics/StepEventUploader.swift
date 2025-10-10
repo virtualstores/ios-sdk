@@ -27,10 +27,11 @@ class StepEventUploader {
 
   func upload() {
     guard
+      let id = try? activeFloor.invoke().id,
       let visitId = analytics.visitId,
       !events.isEmpty
     else { return }
-    let events: [StepEvent] = events.map { $0.asStepEvent(rtlsOptionsId: activeFloor.invoke().id) }
+    let events: [StepEvent] = events.map { $0.asStepEvent(rtlsOptionsId: id) }
     let parameters = UploadStepEventsParameters(
       visitId: visitId,
       requestId: UUID().uuidString.uppercased(),

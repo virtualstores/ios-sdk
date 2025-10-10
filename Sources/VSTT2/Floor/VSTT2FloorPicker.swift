@@ -16,7 +16,7 @@ class FloorPicker {
     @Inject var activeFloor: GetActiveFloorUseCase
 
     var swapLocations: [SwapLocation] { cachedSwapLocations.invoke() }
-    var filteredSwapLocations: [SwapLocation] { swapLocations.filter({ $0.rtlsOptionsId == activeFloor.invoke().id })}
+    var filteredSwapLocations: [SwapLocation] { swapLocations.filter({ $0.rtlsOptionsId == (try? activeFloor.invoke())?.id })}
 
     var switchFloorPublisher: CurrentValueSubject<(rtlsOptionsId: Int64, point: CGPoint)?, Never> = .init(nil)
 

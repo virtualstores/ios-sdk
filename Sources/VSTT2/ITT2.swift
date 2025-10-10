@@ -16,7 +16,6 @@ import CoreLocation
 ///  1- To get the SDK ready to work first Call initialize method. This will prepare the SDK for  all other purposes.
 ///  2- To initialize your store, call initStore
 public protocol ITT2: Disposable {
-    var initialized: Bool { get }
     /// Navigation manager
     var navigation: Navigation { get }
     
@@ -42,17 +41,17 @@ public protocol ITT2: Disposable {
     var lease: ILeaseManager { get }
 
     /// Active store
-    var activeStore: TT2Store { get }
+    var activeStore: TT2Store { get throws }
     
     /// List of active stores
     var activeStores: [TT2Store] { get }
 
-    var activeFloor: RtlsOptions { get }
+    var activeFloor: RtlsOptions { get throws }
     
     /// List of available stores
     var stores: [TT2Store] { get }
 
-    var zonesTree: TT2ZonesTree { get }
+    var zonesTree: TT2ZonesTree { get throws }
 
     /// Method for initialize TT2 for specific client
     func initialize(clientId: Int64, positionKitParams: ParameterPackage, returnOn queue: DispatchQueue, completion: @escaping (Error?) -> ())
@@ -92,9 +91,13 @@ public extension ITT2 {
   }
 }
 
-public enum VSTT2Error: Error {
+public enum TT2Error: Error {
     case noAvailableStores
     case noAvailableMapData
+    case noClientSet
+    case noFloorSet
+    case noStoreSet
+    case noShelfFound
     case missingData
     case timeout
 }

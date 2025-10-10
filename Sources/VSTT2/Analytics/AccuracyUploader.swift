@@ -26,8 +26,8 @@ class AccuracyUploader {
 
   @Inject var getVPSPosition: GetCurrentVPSPositionUseCase
 
-  var client: Client { getActiveClient.invoke() }
-  var store: Store { getActiveStore.invoke() }
+  var client: Client? { try? getActiveClient.invoke() }
+  var store: Store? { try? getActiveStore.invoke() }
   var stepEventUploader: StepEventUploader? { analytics.stepEventUploader }
 
   var numberOfRescueModes: Int64 = 0
@@ -45,7 +45,7 @@ class AccuracyUploader {
   private func upload(id: String, preScanLocation: CGPoint, position: ItemPosition, errorHandler: @escaping (Error) -> Void) {
     guard
       let serverAddress = config.connection.tt2DataServer?.baseUrl,
-      let clientName = client.name,
+      let clientName = client?.name,
       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
       let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
     else { return }
@@ -80,8 +80,8 @@ class AccuracyUploader {
       URLQueryItem(entry: .appVersion, value: "\(appVersion) (\(buildNumber)), \(systemName) \(systemVersion), \(modelName)"),
       URLQueryItem(entry: .positionKitVersion, value: vpsVersion),
       URLQueryItem(entry: .serverUrl, value: "\(serverAddress)"),
-      URLQueryItem(entry: .clientId, value: "\(client.clientId), \(clientName)"),
-      URLQueryItem(entry: .storeId, value: "\(store.id), \(store.name)"),
+      URLQueryItem(entry: .clientId, value: "\(client?.clientId), \(clientName)"),
+      URLQueryItem(entry: .storeId, value: "\(store?.id), \(store?.name)"),
       URLQueryItem(name: "submit", value: "Submit")
     ]
 
@@ -113,9 +113,10 @@ class AccuracyUploader {
 
   func upload(syncEvent: AccuracySyncEvent.Event, isFloorSwap: Bool) {
     guard
+      let rtlsOptionsId = try? activeFloor.invoke().id,
       let visitId = analytics.visitId,
-      let mapFence = getActiveMapFence.invoke(),
-      let converter = converter.invoke(),
+      let mapFence = try? getActiveMapFence.invoke(),
+      let converter = try? converter.invoke(),
       let stepEventUploader = stepEventUploader
     else { return }
     let mapFenceData = MapFenceFactory.getMapFenceData(fromMapFence: mapFence)
@@ -198,7 +199,7 @@ class AccuracyUploader {
     //}
     let distance = stepEventUploader.events.map { $0.distance }.sum()
     let event = SyncEvent(
-      rtlsOptionsId: activeFloor.invoke().id,
+      rtlsOptionsId: rtlsOptionsId,
       identifier: identifier,
       isRightAisle: !isFloorSwap ? isRightAisle : false,
       isFloorSwap: isFloorSwap,
