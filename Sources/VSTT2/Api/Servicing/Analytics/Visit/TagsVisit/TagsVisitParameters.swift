@@ -17,7 +17,7 @@ struct TagsVisitParameters {
 
 extension TagsVisitParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .PUT }
   var path: String { "/visits/tags" }
   var queryItems: [String : String]? {

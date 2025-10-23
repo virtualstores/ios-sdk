@@ -87,7 +87,7 @@ class AccuracyUploader {
 
     guard let url = urlComponents.url else { return }
 
-//    print(url)
+    //Logger(verbosity: .info).log(message: "AccuracyUploader: \(url)")
     URLSession.shared.dataTask(with: url) {(data, response, error) in
       DispatchQueue.main.async {
         if let response = response as? HTTPURLResponse {
@@ -100,15 +100,6 @@ class AccuracyUploader {
         }
       }
     }.resume()
-//    URLSession.shared.dataTaskPublisher(for: url)
-//      .tryMap { element in
-//        if let response = element.response as? HTTPURLResponse {
-//          switch response.statusCode {
-//          case 200...299: break
-//          default: errorHandler(Errors.uploadFailure(response))
-//          }
-//        }
-//      }//.mapError { errorHandler($0 as Error) }
   }
 
   func upload(syncEvent: AccuracySyncEvent.Event, isFloorSwap: Bool) {

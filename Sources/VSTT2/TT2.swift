@@ -35,7 +35,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.12.0"
+    static let version = "2.13.0"
 
     // MARK: Private members
     private let tag: String = "TT2"
@@ -55,6 +55,7 @@ final public class TT2: ITT2 {
       context = Context(VSTT2Config(environment: .init()))
       tt2Internal = TT2Internal(connectionSettings: connectionSettings, authSettings: authSettings, settings: settings)
       Logger.debugModeEnabled = settings.debugModeEnabled
+      Logger.extendedDebugModeEnabled = settings.extendedDebugModeEnabled
     }
 
     @available(*, deprecated, message: "Please use init(connectionSettings:authSettings:settings:)")

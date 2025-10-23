@@ -52,14 +52,11 @@ extension AnalyticsApi: IAnalyticsApi {
         deviceInformation: deviceInformation,
         tags: tags,
         metaData: metaData
-      )).sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(.failure(error))
-        }
-      } receiveValue: { (data) in
-        completion(.success(data.visitId))
-      }.store(in: &cancellable)
+      ))
+      .map { $0.visitId }
+      .asResult()
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ()) {
@@ -68,14 +65,10 @@ extension AnalyticsApi: IAnalyticsApi {
         requestId: UUID().uuidString.uppercased(),
         visitId: visitId,
         stopTimestamp: DateFormatter.standardFormatter.string(from: Date())
-      )).sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(error)
-        }
-      } receiveValue: { (_) in
-        completion(nil)
-      }.store(in: &cancellable)
+      ))
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 
   func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ()) {
@@ -84,14 +77,10 @@ extension AnalyticsApi: IAnalyticsApi {
         requestId: UUID().uuidString.uppercased(),
         visitId: visitId,
         tags: tags
-      )).sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(error)
-        }
-      } receiveValue: { (_) in
-        completion(nil)
-      }.store(in: &cancellable)
+      ))
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ()) {
@@ -100,27 +89,18 @@ extension AnalyticsApi: IAnalyticsApi {
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
         positions: geopositions
-      )).sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(error)
-        }
-      } receiveValue: { (_) in
-        completion(nil)
-      }.store(in: &cancellable)
+      ))
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ()) {
     uploadPositionsService
       .call(with: parameters)
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(error)
-        }
-      } receiveValue: { (_) in
-        completion(nil)
-      }.store(in: &cancellable)
+      .asFailure()
+      .sink { completion($0) }
+      .store(in: &cancellable)
   }
 
   func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ()) {
@@ -129,14 +109,10 @@ extension AnalyticsApi: IAnalyticsApi {
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
         scanEvent: scanEvent
-      )).sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(error)
-        }
-      } receiveValue: { (_) in
-        completion(nil)
-      }.store(in: &cancellable)
+      ))
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 
   func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ()) {
@@ -145,14 +121,10 @@ extension AnalyticsApi: IAnalyticsApi {
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
         request: triggerEvent
-      )).sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(error)
-        }
-      } receiveValue: { (_) in
-        completion(nil)
-      }.store(in: &cancellable)
+      ))
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 
   func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ()) {
@@ -161,14 +133,10 @@ extension AnalyticsApi: IAnalyticsApi {
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
         visitScore: visitScore
-      )).sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(error)
-        }
-      } receiveValue: { (_) in
-        completion(nil)
-      }.store(in: &cancellable)
+      ))
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 
   func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ()) {
@@ -178,13 +146,8 @@ extension AnalyticsApi: IAnalyticsApi {
         requestId: UUID().uuidString.uppercased(),
         summary: summary
       ))
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(error)
-        }
-      } receiveValue: { (_) in
-        completion(nil)
-      }.store(in: &cancellable)
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 }

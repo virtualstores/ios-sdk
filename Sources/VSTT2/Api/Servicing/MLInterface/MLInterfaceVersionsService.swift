@@ -16,60 +16,43 @@ final class MLInterfaceVersionsService: DataFetchingManager {
 }
 
 struct MLInterfaceVersions: Codable {
-  let interfaces: [String: Interface]
   let mlCatalog: MLCatalog
 
-  func printInterfaces() {
-    interfaces.sorted(by: { $0.key < $1.key }).forEach { (key, value) in
-      print("Interface", key)
-      print("    MLInterfaceVersion", value.mlInterfaceVersion)
-      print("    iOS")
-      print("        LatestVersion", value.iOS.latestVersion)
-      print("        Versions")
-      value.iOS.versions.forEach { (key, value) in
-        print("            Key", key)
-        print("                ModelVerion         ", value.modelVersion)
-        print("                ID                  ", value.id)
-        print("                ModelURL            ", value.modelUrl)
-        print("                Name                ", value.name)
-        print("                Deprecated          ", value.deprecated)
-        print("                FrameSize           ", value.frameSize)
-        print("                Smoothing           ", value.smoothing)
-        print("                FeatureSequence     ", value.featureSequence)
-      }
+  func logMLCatalog() {
+    log(padding: 0, tag: "MLCatalog", description: "")
+    mlCatalog.targets.sorted(by: { $0.key < $1.key }).forEach { (key, value) in
+      log(padding: 1, tag: "Target", description: key)
+      log(padding: 2, tag: "LatestMLVersion", description: value.ios.latestMLVersion.description)
+      log(padding: 2, tag: "MLVersionFilter", description: value.ios.mlVersionFilter.description)
+      log(padding: 2, tag: "LatestNLVersion", description: value.ios.latestNLVersion.description)
+      log(padding: 2, tag: "NLVersionFilter", description: value.ios.nlVersionFilter.description)
+    }
+    log(padding: 1, tag: "iOS", description: "")
+    mlCatalog.ios.mlModels.sorted(by: { $0.key < $1.key }).forEach { (key, value) in
+      log(padding: 2, tag: "MLModel", description: key)
+      log(padding: 3, tag: "Version", description:  value.version.description)
+      log(padding: 3, tag: "IsDeprecated", description: value.isDeprecated.description)
+      log(padding: 3, tag: "ID", description: value.id)
+      log(padding: 3, tag: "ModelUrl", description: value.modelUrl)
+      log(padding: 3, tag: "Name", description: value.name)
+      log(padding: 3, tag: "FrameSize", description: value.frameSize.description)
+      log(padding: 3, tag: "Smoothing", description: value.smoothing.description)
+      log(padding: 3, tag: "FeatureSequence", description: value.featureSequence.description)
+    }
+    mlCatalog.ios.nlModels.sorted(by: { $0.key < $1.key }).forEach { (key, value) in
+      log(padding: 2, tag: "NLModel", description: key)
+      log(padding: 3, tag: "Version", description: value.version.description)
+      log(padding: 3, tag: "IsDeprecated", description: value.isDeprecated.description)
+      log(padding: 3, tag: "ID", description: value.id)
+      log(padding: 3, tag: "ModelUrl", description: value.modelUrl)
+      log(padding: 3, tag: "Name", description: value.name)
     }
   }
 
-  func printMLCatalog() {
-    let padding = "  "
-    print("MLCatalog")
-    mlCatalog.targets.sorted(by: { $0.key < $1.key }).forEach { (key, value) in
-      print(padding, "Target", key)
-      print(padding, padding, "LatestMLVersion", value.ios.latestMLVersion)
-      print(padding, padding, "MLVersionFilter", value.ios.mlVersionFilter)
-      print(padding, padding, "LatestNLVersion", value.ios.latestNLVersion)
-      print(padding, padding, "NLVersionFilter", value.ios.nlVersionFilter)
-    }
-    print(padding, "iOS")
-    mlCatalog.ios.mlModels.sorted(by: { $0.key < $1.key }).forEach { (key, value) in
-      print(padding, padding, "MLModel",  key)
-      print(padding, padding, padding, "Version",  value.version)
-      print(padding, padding, padding, "IsDeprecated", value.isDeprecated)
-      print(padding, padding, padding, "ID", value.id)
-      print(padding, padding, padding, "ModelUrl", value.modelUrl)
-      print(padding, padding, padding, "Name", value.name)
-      print(padding, padding, padding, "FrameSize", value.frameSize)
-      print(padding, padding, padding, "Smoothing", value.smoothing)
-      print(padding, padding, padding, "FeatureSequence", value.featureSequence)
-    }
-    mlCatalog.ios.nlModels.sorted(by: { $0.key < $1.key }).forEach { (key, value) in
-      print(padding, padding, "NLModel",  key)
-      print(padding, padding, padding, "Version",  value.version)
-      print(padding, padding, padding, "IsDeprecated", value.isDeprecated)
-      print(padding, padding, padding, "ID", value.id)
-      print(padding, padding, padding, "ModelUrl", value.modelUrl)
-      print(padding, padding, padding, "Name", value.name)
-    }
+  private func log(padding amountOfPadding: Int, tag: String, description: String) {
+    var padding = ""
+    (0..<amountOfPadding).forEach { (_) in padding = padding + "    " }
+    print(padding, tag, description)
   }
 
   struct Interface: Codable {
@@ -101,6 +84,9 @@ struct MLInterfaceVersions: Codable {
       let ios: Device
 
       struct Device: Codable {
+        let useML: Bool
+        let useNL: Bool
+        let useMC: Bool
         let latestMLVersion: Int
         let mlVersionFilter: [Int]
         let latestNLVersion: Int
@@ -142,7 +128,7 @@ struct MLInterfaceVersions: Codable {
 
 extension MLInterfaceVersions.MLCatalog {
   func getLatestSupportedVelocityModel(params: TT2Settings.TT2ModelParams, sdkVersion: String, vpsVersion: String) -> MLInterfaceVersions.MLCatalog.Device.MLVersion? {
-    guard let target = targets[params.target.description]?.ios else { return nil }
+    guard let target = targets[params.target.description]?.ios, target.useML else { return nil }
     let requestVersion = params.targetMLModelVersion ?? target.latestMLVersion
     let supportedMLVersions = ios.mlModels
       .filterAvailableModels(filter: target.mlVersionFilter)
@@ -155,7 +141,7 @@ extension MLInterfaceVersions.MLCatalog {
   }
 
   func getLatestSupportedNLModel(params: TT2Settings.TT2ModelParams, sdkVersion: String, vpsVersion: String) -> MLInterfaceVersions.MLCatalog.Device.NLVersion? {
-    guard let target = targets[params.target.description]?.ios else { return nil }
+    guard let target = targets[params.target.description]?.ios, target.useNL else { return nil }
     let requestVersion = params.targetNLModelVersion ?? target.latestNLVersion
     let supportedNLVersions = ios.nlModels
       .filterAvailableModels(filter: target.nlVersionFilter)

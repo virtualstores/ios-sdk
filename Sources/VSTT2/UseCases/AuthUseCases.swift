@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2025-02-03.
 //
 
+import Combine
 import VSFoundation
 
 class GetApiKeyUseCase {
@@ -66,31 +67,25 @@ class LoginUseCase {
 }
 
 class RefreshUseCase {
-  @Inject var repository: IAuthRepository
+  @Inject var authRepository: IAuthRepository
   @Inject var jwtRepository: IJWTTokenRepository
 
-  func invoke(completion: @escaping (Error?) -> ()) {
+  func invoke() -> AnyPublisher<Void, Error> {
     guard
       let authToken = jwtRepository.getAuthJWT(),
       let refreshToken = jwtRepository.getRefreshJWT()
-    else { return }
-    repository.refresh(authToken: authToken, refreshToken: refreshToken) { [weak self] (result) in
-      switch result {
-      case .success(let dto):
-        self?.jwtRepository.save(accessJWT: dto.authToken)
-        completion(nil)
-      case .failure(let error):
-        completion(error)
-      }
+    else {
+      return Fail(error: NetworkError.invalidTokens)
+        .eraseToAnyPublisher()
     }
-  }
-}
 
-class TemporaryRefreshUseCase {
-  @Inject var repository: IAuthRepository
-
-  func invoke(authToken: String, refreshToken: String, completion: @escaping (Result<RefreshDto, Error>) -> ()) {
-    repository.refresh(authToken: authToken, refreshToken: refreshToken, completion: completion)
+    return authRepository
+      .refresh(authToken: authToken, refreshToken: refreshToken)
+      .map { [weak self] (dto) in
+        self?.jwtRepository.save(accessJWT: dto.authToken)
+        return ()
+      }
+      .eraseToAnyPublisher()
   }
 }
 

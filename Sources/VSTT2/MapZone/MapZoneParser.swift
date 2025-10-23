@@ -136,7 +136,7 @@ public class MapZoneParser: NSObject {
                 output.append(MapZone(id: String(id), zone: points, properties: ZoneProperties(description: description, id: String(id), name: name, parentId: parentId)))
             }
         } catch {
-            print(error.localizedDescription)
+            Logger(verbosity: .warning).log(message: "\(#function) \(error.localizedDescription)")
         }
         
         return output

@@ -29,7 +29,7 @@ struct UploadScanEventsParameters {
 
 extension UploadScanEventsParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-    var type: RoutingType { .analytics }
+    var type: RoutingType? { .analytics }
     var method: RequestType { .POST }
     var path: String { "/scanevents" }
     var queryItems: [String: String]? { ["visitId": String(visitId), "requestId": requestId] }

@@ -21,7 +21,7 @@ extension ItemPositionParameters: Routing {
 
     var path: String { "/shelfgroups/barcodes" }
 
-    var type: RoutingType { .central }
+    var type: RoutingType? { .central }
 
     var queryItems: [String: String]? {
         [

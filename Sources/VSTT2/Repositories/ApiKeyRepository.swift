@@ -31,7 +31,6 @@ extension ApiKeyRepository: IApiKeyRepository {
     case .analytics: return dataServerApiKey
     case .central: return centralServerApiKey
     case .ml: return mlModelServerApiKey
-    case .unknown: return nil
     }
   }
 
@@ -40,7 +39,6 @@ extension ApiKeyRepository: IApiKeyRepository {
     case .analytics: dataServerApiKey = value
     case .central: centralServerApiKey = value
     case .ml: mlModelServerApiKey = value
-    case .unknown: break
     }
   }
 }

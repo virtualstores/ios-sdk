@@ -18,7 +18,7 @@ struct UploadSyncEventsParameters {
 
 extension UploadSyncEventsParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .POST }
   var path: String { "/syncevents" }
   var queryItems: [String: String]? {

@@ -5,6 +5,9 @@
 //  Created by Théodore Roos on 2025-09-25.
 //
 
+import Combine
+import Foundation
+
 extension Comparable {
   /// Returns this value clamped to the given closed range.
   ///
@@ -55,5 +58,61 @@ extension Comparable {
   /// Equivalent to Kotlin’s `coerceAtMost(max)`.
   func coerceAtMost(_ maxValue: Self) -> Self {
     min(self, maxValue)
+  }
+}
+
+extension Array where Element: Equatable {
+  mutating func removeFirst(of element: Element) {
+    guard let index = firstIndex(of: element) else { return }
+    remove(at: index)
+  }
+}
+
+extension Double {
+  var asAnalyticsDuration: String {
+    let days = Int(self) / 86400
+    let hours = (Int(self) / 3600 % 24).formatNumber(decimals: 2)
+    let minutes = (Int(self) / 60 % 60).formatNumber(decimals: 2)
+    let seconds = (Int(self) % 60).formatNumber(decimals: 2)
+    let microseconds = Int(self.truncatingRemainder(dividingBy: 1) * 1000).formatNumber(decimals: 3)
+
+    return "\(days).\(hours):\(minutes):\(seconds).\(microseconds)"
+  }
+}
+
+extension Int {
+  func formatNumber(decimals: Int) -> String {
+    String(format: "%0\(decimals)d", self)
+  }
+}
+
+extension URL {
+  init?(string url: String?) {
+    guard let urlString = url, let url = URL(string: urlString) else {
+      return nil
+    }
+    self = url
+  }
+}
+
+extension Publisher {
+  func asResult() -> AnyPublisher<Result<Output, Error>, Never> {
+    map { .success($0) }
+      .catch { Just(.failure($0)) }
+      .eraseToAnyPublisher()
+  }
+
+  func asFailure() -> AnyPublisher<Error?, Never> {
+    map { (_) in .none }
+      .catch { Just($0) }
+      .eraseToAnyPublisher()
+  }
+
+  func ensure(_ condition: @escaping (Output) -> Bool, elseThrow error: @autoclosure @escaping () -> Error) -> AnyPublisher<Output, Error> {
+    tryMap {
+      guard condition($0) else { throw error() }
+      return $0
+    }
+    .eraseToAnyPublisher()
   }
 }

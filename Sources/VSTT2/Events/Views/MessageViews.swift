@@ -8,6 +8,7 @@
 import Foundation
 import UIKit
 import AVFoundation
+import VSFoundation
 
 class CloseButton: UIView, NibLoadable {
   var onClose = {}
@@ -38,7 +39,7 @@ class MessageViews {
   private init() {}
 
   //@objc func handleTap(_ gesture: UITapGestureRecognizer?) {
-  //  print("Pressing background", gesture?.view)
+  //  Logger(verbosity: .info).log(message: "Pressing background \(gesture?.view)")
   //  gesture?.view?.removeFromSuperview()
   //}
 
@@ -47,7 +48,7 @@ class MessageViews {
     self.type = type
     imageView.load(url: imageUrl) { (error) in
       if let error = error {
-        print("Load image error", error)
+        Logger(verbosity: .warning).log(message: "Load image error: \(error)")
         completion(error)
       } else {
         completion(nil)
@@ -108,7 +109,6 @@ extension UIImageView {
           }
         }
       } catch {
-        print(#function, error.localizedDescription)
         //DispatchQueue.main.async {
         //  self?.image = .noImage
         //}
@@ -136,7 +136,7 @@ extension NibLoadable {
 
 extension NibLoadable where Self: UIView {
   func loadFromNib() {
-    guard let view = nib.instantiate(withOwner: self).first as? UIView else { print("Error loading \(Self.nibName) from nib"); return }
+    guard let view = nib.instantiate(withOwner: self).first as? UIView else { Logger(verbosity: .warning).log(message: "Error loading \(Self.nibName) from nib"); return }
     addSubview(view)
     view.translatesAutoresizingMaskIntoConstraints = false
     addConstraints(item: view, attributes: [.top, .bottom, .left, .right])

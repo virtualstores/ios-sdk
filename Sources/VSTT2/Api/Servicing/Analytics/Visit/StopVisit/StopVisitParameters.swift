@@ -17,7 +17,7 @@ struct StopVisitParameters {
 
 extension StopVisitParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .PUT }
   var path: String { "/visits/stop" }
   var queryItems: [String : String]? {

@@ -24,7 +24,7 @@ struct UploadVisitScoreParameters {
 
 extension UploadVisitScoreParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .PUT }
   var path: String { "/visits/score" }
   var queryItems: [String: String]? {

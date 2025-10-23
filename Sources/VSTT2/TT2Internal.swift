@@ -307,7 +307,6 @@ internal class TT2Internal: Disposable {
         )
         awsS3UploadManager.sendCollectedDataToS3()
       } catch {
-        print(#function, error)
         Logger(verbosity: .error).log(tag: tag, message: "Trouble encoding crash report: \(error)")
       }
     }

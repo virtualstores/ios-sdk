@@ -99,5 +99,6 @@ public enum TT2Error: Error {
     case noStoreSet
     case noShelfFound
     case missingData
+    case failedToCreateUrlRequest
     case timeout
 }

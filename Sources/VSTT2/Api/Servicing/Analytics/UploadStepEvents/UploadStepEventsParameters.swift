@@ -17,7 +17,7 @@ struct UploadStepEventsParameters {
 
 extension UploadStepEventsParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .POST }
   var path: String { "/stepevents" }
   var queryItems: [String : String]? { ["visitId": String(visitId), "requestId": requestId] }

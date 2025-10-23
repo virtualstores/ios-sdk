@@ -19,7 +19,7 @@ protocol DataHandler {
 enum NetworkError: Error {
   case invalidURL
   case decodingFailed
-  case sessionExpired
+  case sessionExpired, invalidTokens
 }
 
 final class NetworkManager: DataHandler {
@@ -29,32 +29,31 @@ final class NetworkManager: DataHandler {
   func fetch<T: Decodable, R: Routing>(_ routing: R) -> AnyPublisher<T, Error> {
     let urlSession = URLSession(configuration: .default)
 
-    guard let url = routing.urlRequest else { fatalError("Could not create url") }
+    guard let url = routing.urlRequest else {
+      return Fail<T, Error>(error: URLError(.badURL))
+        .eraseToAnyPublisher()
+    }
 
     let date = Date()
-    print("<--", routing.method, url)
+    Logger(verbosity: .network).log(message: "<-- \(routing.method) \(url)")
     return urlSession
       .dataTaskPublisher(for: url)
       .mapError { $0 as Error }
       .tryMap { (result) in
         guard let response = result.response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         let timeInterval = Date().timeIntervalSince(date)
-        print("-->", response.statusCode, response.url?.absoluteString ?? "", "[\(result.data.count) b]", String(format: "[%.03f s]", timeInterval))
+        Logger(verbosity: .network).log(message: "--> \(response.statusCode) \(response.url?.absoluteString ?? "") [\(result.data.count) b] \(String(format: "[%.03f s]", timeInterval))")
         guard response.statusCode == 401 else { return result.data }
         throw NetworkError.sessionExpired
       }
-      .tryCatch { (error) -> AnyPublisher<Data, Error> in
+      .catch { (error) -> AnyPublisher<Data, Error> in
         if (error as? NetworkError) == .sessionExpired {
           @Inject var refresh: RefreshUseCase
-          let group = DispatchGroup()
-          group.enter()
-          refresh.invoke { (error) in
-            group.leave()
-          }
-          group.wait()
-          return self.fetch(routing)
+          return refresh.invoke()
+            .flatMap { (_) in self.fetch(routing) }
+            .eraseToAnyPublisher()
         } else {
-          throw error
+          return Fail(error: error).eraseToAnyPublisher()
         }
       }
       .decode(type: T.self, decoder: JSONDecoder())
@@ -64,35 +63,32 @@ final class NetworkManager: DataHandler {
   func fetchEmptyBody<R: Routing>(_ routing: R) -> AnyPublisher<Void, Error> {
     let urlSession = URLSession(configuration: .default)
 
-    guard let url = routing.urlRequest else { fatalError("Could not create url") }
+    guard let url = routing.urlRequest else {
+      return Fail<Void, Error>(error: URLError(.badURL))
+        .eraseToAnyPublisher()
+    }
 
     let date = Date()
-    print("<--", routing.method, url)
+    Logger(verbosity: .network).log(message: "<-- \(routing.method) \(url)")
     return urlSession.dataTaskPublisher(for: url)
       .tryMap { element -> Void in
-        let timeInterval = Date().timeIntervalSince(date)
         guard let response = element.response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-        print("-->", response.statusCode, response.url?.absoluteString ?? "", "[\(0) b]", String(format: "[%.03f s]", timeInterval))
-        guard 200..<300 ~= response.statusCode else {
-          if response.statusCode == 401 {
-            throw NetworkError.sessionExpired
-          }
-          throw URLError(.badServerResponse)
+        let timeInterval = Date().timeIntervalSince(date)
+        Logger(verbosity: .network).log(message: "--> \(response.statusCode) \(response.url?.absoluteString ?? "") [\(0) b] \(String(format: "[%.03f s]", timeInterval))")
+        switch response.statusCode {
+        case 200..<300: return ()
+        case 401: throw NetworkError.sessionExpired
+        default: throw URLError(.badServerResponse)
         }
-        return Void()
       }
-      .tryCatch { (error) -> AnyPublisher<Void, Error> in
+      .catch { (error) -> AnyPublisher<Void, Error> in
         if (error as? NetworkError) == .sessionExpired {
           @Inject var refresh: RefreshUseCase
-          let group = DispatchGroup()
-          group.enter()
-          refresh.invoke { (error) in
-            group.leave()
-          }
-          group.wait()
-          return self.fetchEmptyBody(routing)
+          return refresh.invoke()
+            .flatMap { (_) in self.fetchEmptyBody(routing) }
+            .eraseToAnyPublisher()
         } else {
-          throw error
+          return Fail(error: error).eraseToAnyPublisher()
         }
       }
       .mapError { $0 as Error }

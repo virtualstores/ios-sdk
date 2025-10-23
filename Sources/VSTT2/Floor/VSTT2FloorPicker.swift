@@ -127,7 +127,7 @@ class FloorPicker {
     }
 
     func changeOfFloor(floor: Int) {
-        //print("Change floor to: \(floor)")
+        //Logger(verbosity: .info).log(message: "Change floor to: \(floor)")
         //self.changeFloorTo = floor
         //
         //if changeFloorTo != 0 {

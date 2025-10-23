@@ -18,7 +18,7 @@ struct UploadTriggersParameters {
 
 extension UploadTriggersParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-    var type: RoutingType { .analytics }
+    var type: RoutingType? { .analytics }
     var method: RequestType { .POST }
     var queryItems: [String: String]? { ["requestId": requestId, "visitId": String(visitId)] }
     var path: String { "/triggerevents" }

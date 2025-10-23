@@ -22,7 +22,7 @@ struct LoginParameters {
 
 extension LoginParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .central }
+  var type: RoutingType? { .central }
   var method: RequestType { .POST }
   var path: String { "/auth/login" }
   var parameters: Any? {
