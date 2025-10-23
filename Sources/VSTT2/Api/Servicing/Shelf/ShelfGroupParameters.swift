@@ -15,7 +15,7 @@ struct ShelfGroupParameters {
 
 extension ShelfGroupParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-    var type: RoutingType { .central }
+    var type: RoutingType? { .central }
     var method: RequestType { .GET }
     var path: String { "/shelfgroups" }
     var queryItems: [String: String]? {

@@ -28,28 +28,9 @@ extension ClientsApi: IClientsApi {
   func get(completion: @escaping (Result<[Client], Error>) -> Void) {
     service
       .call(with: ClientsListParameters())
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error):
-          if let error = error as? URLError {
-            print("ErrorCode", error.errorCode)
-            print("Code", error.code)
-            print("UserInfo", error.userInfo)
-            print("ErrorUserInfo", error.errorUserInfo)
-            if error.errorCode == 401 {
-              @Inject var refresh: RefreshUseCase
-              refresh.invoke { (error) in
-                self.get(completion: completion)
-              }
-            } else {
-              completion(.failure(error))
-            }
-          }
-          completion(.failure(error))
-        }
-      } receiveValue: { (data) in
-        completion(.success(data.clients))
-      }.store(in: &cancellable)
+      .map { $0.clients }
+      .asResult()
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 }

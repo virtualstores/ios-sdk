@@ -17,7 +17,7 @@ struct OrdersParameters {
 
 extension OrdersParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-    var type: RoutingType { .central }
+    var type: RoutingType? { .central }
     var method: RequestType { .POST }
     var path: String { "/orders" }
     var parametersDictionary: [String: Any]? {

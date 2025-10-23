@@ -111,18 +111,14 @@ private extension TT2AnalyticsManager {
   func bindPublishers() {
     zoneManager.zoneEnteredPublisher
       .compactMap { $0 }
-      .sink { _ in
-        Logger().log(message: "zoneEnteredPublisher error")
-      } receiveValue: { [weak self] (data) in
+      .sink { [weak self] (data) in
         self?.zoneSummaryBusiness.onEnter(event: data)
       }
       .store(in: &cancellable)
 
     zoneManager.zoneExitedPublisher
       .compactMap { $0 }
-      .sink { _ in
-        Logger().log(message: "zoneExitedPublisher error")
-      } receiveValue: { [weak self] (data) in
+      .sink { [weak self] (data) in
         self?.zoneSummaryBusiness.onExit(event: data)
       }
       .store(in: &cancellable)

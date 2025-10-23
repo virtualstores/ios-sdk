@@ -5,30 +5,28 @@
 // Created by Hripsime on 2022-01-22
 // Copyright Virtual Stores - 2022
 
-import Foundation
 import Combine
-import SwiftUI
+import Foundation
 import VSFoundation
 
 final class DownloadManager {
-    func loadData(from url: URL, completion: @escaping (Result<Data, Error>) -> Void) {
-        let date = Date()
-        print("<--", "GET", url)
-        let task = URLSession.shared.dataTask(with: url) { (data, response, error) in
-            if let data = data {
+    func loadData(from url: URL) -> AnyPublisher<Data, Error> {
+        let start = Date()
+        Logger(verbosity: .network).log(message: "<-- GET \(url)")
+        return URLSession.shared.dataTaskPublisher(for: url)
+            .tryMap { (data, response) in
                 if let response = response as? HTTPURLResponse {
-                    let timeInterval = Date().timeIntervalSince(date)
-                    print("-->", response.statusCode, response.url?.absoluteString ?? "", "[\(data.count) b]", String(format: "[%.03f s]", timeInterval))
+                    let duration = Date().timeIntervalSince(start)
+                    Logger(verbosity: .network).log(message: "--> \(response.statusCode) \(response.url?.absoluteString ?? "") [\(data.count) b] \(String(format: "[%.03f s]", duration))")
                 }
-                completion(.success(data))
-            } else if let error = error {
-                completion(.failure(error))
-            } else {
-                Logger.init().log(message: "loadData error")
+
+                if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                    throw URLError(.badServerResponse)
+                }
+
+                return data
             }
-        }
-        
-        task.resume()
+            .eraseToAnyPublisher()
     }
 
     @available(iOS 15.0.0, *)

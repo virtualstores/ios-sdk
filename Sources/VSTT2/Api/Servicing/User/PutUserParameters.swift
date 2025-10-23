@@ -18,7 +18,7 @@ struct PutUserParameters {
 
 extension PutUserParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .PUT }
   var path: String { "/users/ml" }
   var queryItems: [String : String]? {

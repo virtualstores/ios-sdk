@@ -49,8 +49,8 @@ public class TT2ZonesTree: Disposable {
       _root = nil
     }
 
-    public func print() {
-        root.recursivePrint("")
+    public func log() {
+        root.recursiveLog("")
     }
 
     var zonesToAdd: [Zone] = []

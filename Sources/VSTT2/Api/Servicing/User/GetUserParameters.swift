@@ -16,7 +16,7 @@ struct GetUserParameters {
 
 extension GetUserParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .GET }
   var path: String { "/users/ml" }
   var queryItems: [String : String]? {

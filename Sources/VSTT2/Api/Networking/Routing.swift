@@ -11,12 +11,12 @@ import VSFoundation
 protocol Routing {
     /// Environment config data
     var environmentConfig: EnvironmentConfig? { get }
-    var type: RoutingType { get }
+    var type: RoutingType? { get }
     var authType: AuthTypeEnum { get }
     /// Request type
     var method: RequestType { get }
     /// Base url
-    var baseURL: String { get }
+    var baseURL: String? { get }
     /// Path for request
     var path: String { get }
     /// Needed parameters for request
@@ -40,7 +40,7 @@ public enum AuthTypeEnum: String {
 }
 
 enum RoutingType {
-  case central, analytics, ml, unknown
+  case central, analytics, ml
 }
 
 extension Routing {
@@ -49,16 +49,13 @@ extension Routing {
       case .central: return environmentConfig?.connection.tt2CentralServer
       case .analytics: return environmentConfig?.connection.tt2DataServer
       case .ml: return environmentConfig?.connection.tt2MLModelServer
-      case .unknown: return nil
+      case .none: return nil
       }
     }
 
     var authType: AuthTypeEnum { getConnection?.authType ?? .apiKey }
 
-    var baseURL: String {
-        guard let url = getConnection?.baseUrl else { fatalError("baseURL is not exist") }
-        return url
-    }
+    var baseURL: String? { getConnection?.baseUrl }
 
     var parametersDictionary: [String: Any]? { nil }
 
@@ -72,7 +69,7 @@ extension Routing {
 
     var urlRequest: URLRequest? {
         guard var url = URL(string: baseURL) else {
-            Logger(verbosity: .debug).log(message: "cannot create URL")
+            Logger(verbosity: .debug).log(message: "cannot create URL: \(path)")
             return nil
         }
 
@@ -124,9 +121,9 @@ private extension URLRequest {
   static let HEADER_AUTHORIZATION: String = "Authorization"
   static let TOKEN_TYPE: String = "Bearer"
 
-  func apiKeyInterceptor(routing: RoutingType) -> URLRequest? {
+  func apiKeyInterceptor(routing: RoutingType?) -> URLRequest? {
     @Inject var repositoy: IApiKeyRepository
-    guard let apiKey = repositoy.get(for: routing) else { return nil }
+    guard let routing = routing, let apiKey = repositoy.get(for: routing) else { return nil }
     var request = self
     request.addValue(apiKey, forHTTPHeaderField: "apiKey")
     return request

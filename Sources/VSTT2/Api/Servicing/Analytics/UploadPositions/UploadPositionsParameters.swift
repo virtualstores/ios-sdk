@@ -17,7 +17,7 @@ struct UploadPositionsParameters {
 
 extension UploadPositionsParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .POST }
   var path: String { "/positions" }
   var queryItems: [String: String]? {

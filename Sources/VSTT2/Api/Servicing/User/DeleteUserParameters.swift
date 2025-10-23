@@ -17,7 +17,7 @@ struct DeleteUserParameters {
 
 extension DeleteUserParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .DELETE }
   var path: String { "/users" }
   var queryItems: [String : String]? {

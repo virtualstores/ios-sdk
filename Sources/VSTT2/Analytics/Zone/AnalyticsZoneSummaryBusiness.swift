@@ -111,28 +111,3 @@ class AnalyticsZoneSummaryBusiness {
     }
   }
 }
-
-extension Array where Element: Equatable {
-  mutating func removeFirst(of element: Element) {
-    guard let index = firstIndex(of: element) else { return }
-    remove(at: index)
-  }
-}
-
-extension Double {
-  var asAnalyticsDuration: String {
-    let days = Int(self) / 86400
-    let hours = (Int(self) / 3600 % 24).formatNumber(decimals: 2)
-    let minutes = (Int(self) / 60 % 60).formatNumber(decimals: 2)
-    let seconds = (Int(self) % 60).formatNumber(decimals: 2)
-    let microseconds = Int(self.truncatingRemainder(dividingBy: 1) * 1000).formatNumber(decimals: 3)
-
-    return "\(days).\(hours):\(minutes):\(seconds).\(microseconds)"
-  }
-}
-
-extension Int {
-  func formatNumber(decimals: Int) -> String {
-    String(format: "%0\(decimals)d", self)
-  }
-}

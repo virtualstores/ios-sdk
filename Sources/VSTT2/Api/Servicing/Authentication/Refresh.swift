@@ -22,7 +22,7 @@ struct RefreshParameters {
 
 extension RefreshParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .central }
+  var type: RoutingType? { .central }
   var method: RequestType { .POST }
   var path: String { "/auth/refresh" }
   var parameters: Any? {

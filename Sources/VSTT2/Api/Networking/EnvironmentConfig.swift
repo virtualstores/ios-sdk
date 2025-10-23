@@ -64,8 +64,6 @@ public extension EnvironmentConfig {
           authType: authType
         )
       }
-
-      tt2MLModelServer = .init(baseUrl: "https://lmz7vrr223.execute-api.eu-north-1.amazonaws.com", authType: .apiKey)
     }
   }
 
@@ -77,7 +75,12 @@ public extension EnvironmentConfig {
     public var tt2ResourceUrl: String?
     public var tt2MLResourceUrl: String?
 
-    public init(baseUrl: String, authType: AuthTypeEnum) {
+    /// Will use gateway for network traffic
+    /// - Parameters:
+    ///   - baseUrl: Gateway base  url
+    ///   - authType: Authentication type - Token or API key
+    ///   - enforceAllTrafficThroughGateway: Whether or not all traffic needs to go through gateway
+    public init(baseUrl: String, authType: AuthTypeEnum, enforceAllTrafficThroughGateway: Bool = false) {
       self.authType = authType
       let url = baseUrl.trimmingCharacters(in: .init(charactersIn: "/"))
       tt2CentralServer = ServerSettings(
@@ -88,12 +91,14 @@ public extension EnvironmentConfig {
         baseUrl: url.appending("/data/").appending(EndPoints.v2.rawValue),
         authType: authType
       )
-      tt2MLModelServer = ServerSettings(
-        baseUrl: url.appending("/lambda"),
-        authType: .apiKey
-      )
-      tt2ResourceUrl = url.appending("/s3")
-      tt2MLResourceUrl = url.appending("/ml")
+      if enforceAllTrafficThroughGateway {
+        tt2MLModelServer = ServerSettings(
+          baseUrl: url.appending("/lambda"),
+          authType: .apiKey
+        )
+        tt2ResourceUrl = url.appending("/s3")
+        tt2MLResourceUrl = url.appending("/ml")
+      }
     }
   }
 

@@ -31,7 +31,7 @@ class VSMLModelManager {
   func fetchInterface(completion: @escaping (Error?) -> Void) {
     fetchMLInterfaceVersions.invoke { [weak self] (error) in
       if let error = error {
-        print("File", "Error getting Version", error)
+        Logger(verbosity: .warning).log(message: "Error getting InterfceVersions: \(error)")
         completion(error)
       } else if let catalog = self?.getMLCatalog.invoke(), let settings = self?.getTT2Settings.invoke() {
         self?.handle(mlCatalog: catalog, params: settings.params, completion: completion)
@@ -41,31 +41,32 @@ class VSMLModelManager {
 
   func handle(mlCatalog: MLInterfaceVersions.MLCatalog, params: TT2Settings.TT2ModelParams, completion: @escaping (Error?) -> ()) {
     if let version = mlCatalog.getLatestSupportedVelocityModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
-      //print("MLVersion", mlVersion)
       loadMLVersion.invoke(version: version) { [weak self] (error) in
         if let error = error {
-          print("Error loading MLVersion", error)
+          Logger(verbosity: .warning).log(message: "Error loading MLVersion: \(error)")
           return
         }
         self?.setMLVersion.invoke(version: version)
         self?.compileModel.invoke(type: .ml) { (error) in
           if let error = error {
-            print("Error compiling MLVersion", error)
+            Logger(verbosity: .warning).log(message: "Error compiling MLVersion: \(error)")
           }
           completion(error)
         }
       }
+    } else {
+      completion(TT2Error.missingData)
     }
     if let version = mlCatalog.getLatestSupportedNLModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
       loadNLVersion.invoke(version: version) { [weak self] (error) in
         if let error = error {
-          print("Error loading NLVersion", error)
+          Logger(verbosity: .warning).log(message: "Error loading NLVersion: \(error)")
           return
         }
         self?.setNLVersion.invoke(version: version)
         self?.compileModel.invoke(type: .nl) { (error) in
           if let error = error {
-            print("Error compiling NLVersion", error)
+            Logger(verbosity: .warning).log(message: "Error compiling NLVersion: \(error)")
           }
         }
       }

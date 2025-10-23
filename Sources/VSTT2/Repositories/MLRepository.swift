@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2024-05-30.
 //
 
+import Combine
 import CoreML
 import Foundation
 import VSFoundation
@@ -14,7 +15,7 @@ import vps
 protocol IMLRepository: Disposable {
   func compileModel(type: MLRepository.ModelTypeEnum, completion: @escaping (Error?) -> ())
   func fetchMLInterfaceVersions(completion: @escaping (Error?) -> ())
-  func fetchModel(url: URL, id: String, type: MLRepository.ModelTypeEnum, completion: @escaping (Error?) -> ())
+  func fetchModel(url: URL, id: String, type: MLRepository.ModelTypeEnum) -> AnyPublisher<Void, Error>
   func getMLCatalog() -> MLInterfaceVersions.MLCatalog?
   func getMLModel() -> MLModel?
   func getMLVersion() -> MLInterfaceVersions.MLCatalog.Device.MLVersion?
@@ -79,6 +80,7 @@ class MLRepository {
   }
   private var pathEncryptedML: URL? { pathDirectory?.appendingPathExtension("ml.encrypted") }
   private var pathEncryptedNL: URL? { pathDirectory?.appendingPathExtension("nl.encrypted") }
+  private var cancellables = Set<AnyCancellable>()
   enum ModelTypeEnum {
     case ml, nl
   }
@@ -98,7 +100,7 @@ class MLRepository {
 extension MLRepository: IMLRepository {
   func dispose() {
     Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    api.dispose()
+    cancellables.removeAll()
     mlModel = nil
     mlParams = nil
     nlModel = nil
@@ -106,50 +108,46 @@ extension MLRepository: IMLRepository {
   }
   
   func compileModel(type: ModelTypeEnum, completion: @escaping (Error?) -> ()) {
+    compileModel(type: type)
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellables)
+  }
+
+  func compileModel(type: ModelTypeEnum) -> AnyPublisher<Void, Error> {
     let path: URL?
     switch type {
     case .ml: path = pathMLModel
     case .nl: path = pathNLModel
     }
-    guard let path = path else { return }
-    compileModel(path: path) { [weak self] (result) in
-      switch result {
-      case .success(let url):
-        guard let model = self?.buildModel(path: url) else { completion(NSError(domain: "Can't build model", code: 500)); return } // TODO: Better error
+    guard let path = path else {
+      return Fail(error: TT2Error.missingData).eraseToAnyPublisher()
+    }
+    return compileModel(path: path)
+      .tryMap { [weak self] in
+        guard let model = self?.buildModel(path: $0) else { throw NSError(domain: "Can't build model", code: 500) } // TODO: Better error
         switch type {
         case .ml: self?.mlModel = model
         case .nl: self?.nlModel = model
         }
         try? FileManager.default.removeItem(at: path)
-        try? FileManager.default.removeItem(at: url)
-        completion(nil)
-      case .failure(let error):
-        completion(error)
+        try? FileManager.default.removeItem(at: $0)
       }
-    }
+      .eraseToAnyPublisher()
   }
 
   func fetchMLInterfaceVersions(completion: @escaping (Error?) -> ()) {
-    api.fetchMLInterfaceVersions { [weak self] (result) in
-      switch result {
-      case .success(let versions):
-        self?.catalog = versions.mlCatalog
-        completion(nil)
-      case .failure(let error):
-        completion(error)
-      }
-    }
+    api.fetchMLInterfaceVersions()
+      .map { [weak self] in self?.catalog = $0.mlCatalog }
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellables)
   }
 
-  func fetchModel(url: URL, id: String, type: ModelTypeEnum, completion: @escaping (Error?) -> ()) {
-    api.fetchModel(url: url) { [weak self] (result) in
-      switch result {
-      case .success(let model):
-        self?.handleModel(id: id, type: type, data: model, completion: completion)
-      case .failure(let error):
-        completion(error)
-      }
-    }
+  func fetchModel(url: URL, id: String, type: ModelTypeEnum) -> AnyPublisher<Void, Error> {
+    api.fetchModel(url: url)
+      .tryMap { [weak self] in try self?.handleModel(id: id, type: type, data: $0) }
+      .eraseToAnyPublisher()
   }
 
   func getMLCatalog() -> MLInterfaceVersions.MLCatalog? {
@@ -181,21 +179,47 @@ extension MLRepository: IMLRepository {
   }
 
   func load(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion, completion: @escaping (Error?) -> ()) {
-    if let version = currentMLVersion, version.version == mlVersion.version {
-      handleModel(id: mlVersion.id, type: .ml, completion: completion)
-    } else if let url = URL(string: mlVersion.modelUrl) {
-      currentMLVersion = nil
-      fetchModel(url: url, id: mlVersion.id, type: .ml, completion: completion)
+    load(mlVersion: mlVersion)
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellables)
+  }
+
+  func load(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion) -> AnyPublisher<Void, Error> {
+    if currentMLVersion?.version == mlVersion.version {
+      return Result { try handleModel(id: mlVersion.id, type: .ml) }
+        .publisher
+        .eraseToAnyPublisher()
     }
+
+    guard let url = URL(string: mlVersion.modelUrl) else {
+      return Fail(error: TT2Error.missingData).eraseToAnyPublisher()
+    }
+
+    currentMLVersion = nil
+    return fetchModel(url: url, id: mlVersion.id, type: .ml)
   }
 
   func load(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion, completion: @escaping (Error?) -> ()) {
-    if let version = currentNLVersion, version.version == nlVersion.version {
-      handleModel(id: nlVersion.id, type: .nl, completion: completion)
-    } else if let url = URL(string: nlVersion.modelUrl) {
-      currentNLVersion = nil
-      fetchModel(url: url, id: nlVersion.id, type: .nl, completion: completion)
+    load(nlVersion: nlVersion)
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellables)
+  }
+
+  func load(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion) -> AnyPublisher<Void, Error> {
+    if currentNLVersion?.version == nlVersion.version {
+      return Result { try  handleModel(id: nlVersion.id, type: .nl)}
+        .publisher
+        .eraseToAnyPublisher()
     }
+
+    guard let url = URL(string: nlVersion.modelUrl) else {
+      return Fail(error: TT2Error.missingData).eraseToAnyPublisher()
+    }
+
+    currentNLVersion = nil
+    return fetchModel(url: url, id: nlVersion.id, type: .nl)
   }
 
   func set(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion) {
@@ -208,16 +232,15 @@ extension MLRepository: IMLRepository {
 }
 
 private extension MLRepository {
-  func compileModel(path: URL, completion: @escaping (Result<URL, Error>) -> Void) {
-    if #available(iOS 16.0, *) {
-      MLModel.compileModel(at: path, completionHandler: completion)
-    } else {
-      do {
-        completion(.success(try MLModel.compileModel(at: path)))
-      } catch {
-        completion(.failure(error))
+  func compileModel(path: URL) -> AnyPublisher<URL, Error> {
+    Future { (promise) in
+      if #available(iOS 16.0, *) {
+        MLModel.compileModel(at: path, completionHandler: promise)
+      } else {
+        promise(Result { try MLModel.compileModel(at: path) })
       }
     }
+    .eraseToAnyPublisher()
   }
 
   func buildModel(path: URL) -> MLModel? {
@@ -226,18 +249,13 @@ private extension MLRepository {
     return try? MLModel(contentsOf: path, configuration: config)
   }
 
-  func handleModel(id: String, type: ModelTypeEnum, data: Data? = nil, completion: @escaping (Error?) -> ()) {
-    do {
-      guard let path = pathDirectory, let pathEncrypted = type == .ml ? pathEncryptedML : pathEncryptedNL else { return }
-      if let data = data {
-        try data.write(to: pathEncrypted, options: .atomic)
-      }
-      guard let decrypted = try decrypt(id: id, at: pathEncrypted) else { throw NSError(domain: "Can't decrypt", code: 500) }
-      try unzipInMemory(type: type, data: decrypted, to: path)
-      completion(nil)
-    } catch {
-      completion(error)
+  func handleModel(id: String, type: ModelTypeEnum, data: Data? = nil) throws {
+    guard let path = pathDirectory, let pathEncrypted = type == .ml ? pathEncryptedML : pathEncryptedNL else { return }
+    if let data = data {
+      try data.write(to: pathEncrypted, options: .atomic)
     }
+    guard let decrypted = try decrypt(id: id, at: pathEncrypted) else { throw NSError(domain: "Can't decrypt", code: 500) }
+    try unzipInMemory(type: type, data: decrypted, to: path)
   }
 
   func decrypt(id: String, at sourceURL: URL) throws -> Data? {
@@ -248,11 +266,11 @@ private extension MLRepository {
   func unzipInMemory(type: ModelTypeEnum, data: Data, to destinationURL: URL) throws {
     guard let archive = Archive(data: data, accessMode: .read) else { throw NSError(domain: "Can't create archive", code: 500) } // TODO: Better error
     try archive.filter({ !$0.path.contains("__MACOSX/") }).forEach { [weak self] (entry) in
-      //print("PATH", entry.path)
+      //Logger(verbosity: .debug).log(tag: tag, message: "PATH \(entry.path)")
       if entry.path.hasSuffix(".mlpackage/") {
         var modelName = entry.path
         modelName.removeLast(".mlpackage/".count)
-        //print("SAVE PATH COMPONENT", modelName)
+        //Logger(verbosity: .debug).log(tag: tag, message: "SAVE PATH COMPONENT \(modelName)")
         switch type {
         case .ml: self?.mlModelName = modelName
         case .nl: self?.nlModelName = modelName

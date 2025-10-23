@@ -63,7 +63,7 @@ class DeviceOrientationUploader {
 
     guard let url = urlComponents.url else { return }
 
-    //print(url)
+    //Logger(verbosity: .info).log(message: "DeviceOrientationUploader: \(url)")
     URLSession.shared.dataTask(with: url) {(data, response, error) in
       DispatchQueue.main.async {
         if let response = response as? HTTPURLResponse {

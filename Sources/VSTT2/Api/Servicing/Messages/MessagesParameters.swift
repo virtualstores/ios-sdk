@@ -15,7 +15,7 @@ struct MessagesParameters {
 
 extension MessagesParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-    var type: RoutingType { .central }
+    var type: RoutingType? { .central }
     var method: RequestType { .GET }
     var path: String { "/messages" }
     var queryItems: [String: String]? {

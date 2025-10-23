@@ -23,7 +23,7 @@ struct UploadZoneSummaryParameters {
 
 extension UploadZoneSummaryParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .PATCH }
   var path: String { "/zones" }
   var queryItems: [String: String]? {

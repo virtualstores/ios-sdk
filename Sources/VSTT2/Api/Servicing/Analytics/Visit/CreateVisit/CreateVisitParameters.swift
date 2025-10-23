@@ -21,7 +21,7 @@ struct CreateVisitParameters {
 
 extension CreateVisitParameters: Routing {
     var environmentConfig: EnvironmentConfig? { config }
-    var type: RoutingType { .analytics }
+    var type: RoutingType? { .analytics }
     var method: RequestType { .POST }
     var path: String { "/visits" }
     var queryItems: [String: String]? { ["requestId": requestId] as [String: String] }

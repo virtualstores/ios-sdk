@@ -31,7 +31,7 @@ struct UploadGeoPositionsParameters {
 
 extension UploadGeoPositionsParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
-  var type: RoutingType { .analytics }
+  var type: RoutingType? { .analytics }
   var method: RequestType { .POST }
   var path: String { "/geopositions" }
   var queryItems: [String: String]? {

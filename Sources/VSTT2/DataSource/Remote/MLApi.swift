@@ -9,37 +9,23 @@ import Foundation
 import Combine
 import VSFoundation
 
-protocol IMLApi: Disposable {
-  func fetchMLInterfaceVersions(completion: @escaping (Result<MLInterfaceVersions, Error>) -> ())
-  func fetchModel(url: URL, completion: @escaping (Result<Data, Error>) -> ())
+protocol IMLApi {
+  func fetchMLInterfaceVersions() -> AnyPublisher<MLInterfaceVersions, Error>
+  func fetchModel(url: URL) -> AnyPublisher<Data, Error>
 }
 
 class MLApi {
   private let tag = "MLApi"
   private let downloadManager = DownloadManager()
   private let mlInterfaceVersionService = MLInterfaceVersionsService(with: NetworkManager())
-  private var cancellable = Set<AnyCancellable>()
 }
 
 extension MLApi: IMLApi {
-  func dispose() {
-    Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    cancellable.removeAll()
-  }
-  
-  func fetchMLInterfaceVersions(completion: @escaping (Result<MLInterfaceVersions, Error>) -> ()) {
-    mlInterfaceVersionService
-      .call(with: MLInterfaceVersionsParameters())
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error): completion(.failure(error))
-        }
-      } receiveValue: { completion(.success($0)) }
-      .store(in: &cancellable)
+  func fetchMLInterfaceVersions() -> AnyPublisher<MLInterfaceVersions, Error> {
+    mlInterfaceVersionService.call(with: .init())
   }
 
-  func fetchModel(url: URL, completion: @escaping (Result<Data, Error>) -> ()) {
-    downloadManager.loadData(from: url, completion: completion)
+  func fetchModel(url: URL) -> AnyPublisher<Data, Error> {
+    downloadManager.loadData(from: url)
   }
 }
