@@ -20,7 +20,7 @@ public protocol ITT2: Disposable {
     var navigation: Navigation { get }
     
     /// Analytics manager
-    var analytics: TT2AnalyticsManager { get }
+    var analytics: TT2Analytics { get }
     
     /// Floor manager
     var floor: VSTT2Floor { get }

@@ -27,9 +27,21 @@ public protocol TT2Analytics {
     /// Method for adding event from app
     func addTriggerEvent(for event: TriggerEvent)
 
+    func addGeopositions(coordinate: CLLocationCoordinate2D, for tag: String)
+
     func startTrackingWayfinding(itemPosition: ItemPosition)
 
     func stopTrackingWayfinding(itemPosition: ItemPosition)
+  
+    func startTrackingWayfinding(zonePosition: ZonePosition)
+
+    func stopTrackingWayfinding(zonePosition: ZonePosition)
+}
+
+public extension TT2Analytics {
+  func startVisit(deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
+    startVisit(deviceInformation: deviceInformation, tags: tags, metaData: metaData, completion: completion)
+  }
 }
 
 enum TT2AnalyticsError: Error {

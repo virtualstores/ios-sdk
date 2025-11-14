@@ -10,17 +10,32 @@ import CoreGraphics
 import VSFoundation
 import VSPositionKit
 
+protocol TrackedItem {
+  var identifier: String { get }
+}
+
+struct WayfindingItem: TrackedItem {
+  let identifier: String
+  let position: ItemPosition
+}
+
+struct WayfindingZone: TrackedItem {
+  let identifier: String
+  let position: ZonePosition
+}
+
 class WayfindingAnalyticsBusiness {
   @Inject var activeConverter: GetActiveCoordinateConverterUseCase
   @Inject var activeFloor: GetActiveFloorUseCase
   @Inject var activeMapFence: GetActiveMapFenceUseCase
   @Inject var activeStore: GetActiveStoreUseCase
+  @Inject var zonesTree: GetZonesTreeUseCase
   private let TAG = "WayfindingAnalyticsBusiness"
 
   private var isTracking: Bool = false
   private var latestPosition = CGPoint()
   private var latestMLPosition: CGPoint?
-  private var trackedItemPosition: ItemPosition?
+  private var trackedItem: TrackedItem?
   private var startTimestamp: Date?
   private var hasBeenInRange: Bool = false
   private var isInRange: Bool = false
@@ -49,24 +64,32 @@ class WayfindingAnalyticsBusiness {
     case stopVisit = "STOP_VISIT"
   }
 
-  func startTracking(itemPosition: ItemPosition) -> TriggerEvent? {
+  func startTracking(item: TrackedItem) -> TriggerEvent? {
     var abortedTriggerEvent: TriggerEvent?
-    if let event = trackedItemPosition {
+    if let event = trackedItem {
 //      TT2Log.d("$TAG.startTracking: already tracking, stopping and tracking new one")
-      abortedTriggerEvent = stopTracking(itemPosition: event, stopType: .abort)
+      abortedTriggerEvent = stopTracking(identifier: event.identifier, stopType: .abort)
     }
 
 //    TT2Log.d("$TAG.startTracking: ${itemPosition.identifier}")
 
     guard let mapFence = try? activeMapFence.invoke() else { return abortedTriggerEvent }
-    inAndOut = .init(triggers: [
-      InAndOut.Radius(id: itemPosition.identifier, centerPoint: itemPosition.pointWithOffset, radius: rangeThreshold)
-    ])
+    if let item = item as? WayfindingItem {
+      inAndOut = .init(triggers: [
+        InAndOut.Radius(id: item.position.identifier, centerPoint: item.position.pointWithOffset, radius: rangeThreshold)
+      ])
+    } else if let item = item as? WayfindingZone {
+      guard let zone = try? zonesTree.invoke().getZonesForCurrentFloorLevel()?.first(where: { $0.id == item.position.id }) else { return abortedTriggerEvent}
+      inAndOut = .init(triggers: [
+        InAndOut.Zone(id: item.position.id, zoneId: item.position.id, polygon: zone.points)
+      ])
+    }
+
     inAndOut?.delegate = self
 
     latestPosition = CGPoint()
     latestMLPosition = nil
-    trackedItemPosition = itemPosition
+    trackedItem = item
     startTimestamp = .init()
     hasBeenInRange = false
     hasBeenInRightAisle = false
@@ -91,9 +114,11 @@ class WayfindingAnalyticsBusiness {
           latestPosition = position.point
 
           inAndOut?.on(new: position.point)
-          if let itemPosition = trackedItemPosition {
-            checkIsRightAisle(userLocation: position.point, itemLocation: itemPosition.pointWithOffset)
-            checkDistanceToItem(userLocation: position.point, itemLocation: itemPosition.pointWithOffset)
+          if let item = trackedItem as? WayfindingItem {
+            checkIsRightAisle(userLocation: position.point, itemLocation: item.position.pointWithOffset)
+            checkDistanceToItem(userLocation: position.point, itemLocation: item.position.pointWithOffset)
+          } else if let item = trackedItem as? WayfindingZone {
+            checkDistanceToItem(userLocation: position.point, itemLocation: item.position.point)
           }
         }
       }
@@ -111,8 +136,10 @@ class WayfindingAnalyticsBusiness {
 
           if let distance = distanceToItem {
             checkDistanceTraveled(distanceTraveled: distanceTraveled, distanceToItem: distance)
-          } else if let itemPosition = trackedItemPosition {
-            distanceToItem = itemPosition.pointWithOffset.distance(to: mlPosition.point)
+          } else if let item = trackedItem as? WayfindingItem {
+            distanceToItem = item.position.pointWithOffset.distance(to: mlPosition.point)
+          } else if let item = trackedItem as? WayfindingZone {
+            distanceToItem = item.position.point.distance(to: mlPosition.point)
           }
         }
       }
@@ -158,25 +185,29 @@ class WayfindingAnalyticsBusiness {
     a >= b * threshold
   }
 
-  func stopTracking(itemPosition: ItemPosition, stopType: StopType = .normal) -> TriggerEvent? {
+  func stopTracking(identifier: String, stopType: StopType = .normal) -> TriggerEvent? {
     guard let id = try? activeFloor.invoke().id else { return nil }
     isTracking = false
 
 //    TT2Log.d("$TAG.stopTracking: ${itemPosition.identifier}: HasBeenRightAisle=$hasBeenInRightAisle, HasBeenInRange=$hasBeenInRange")
     var triggerEvent: TriggerEvent?
-    if let position = trackedItemPosition, position.identifier == itemPosition.identifier, let timestamp = startTimestamp {
+    if let trackedItem = trackedItem, trackedItem.identifier == identifier, let timestamp = startTimestamp {
+      var zoneId: String?
+      if let item = trackedItem as? WayfindingZone {
+        zoneId = item.position.name
+      }
       triggerEvent = TriggerEvent(
         rtlsOptionsId: id,
         name: "single-item-wayfinding",
         description: "",
         eventType: .appTrigger(.init(event: "single-item-wayfinding")),
-        tags: createStopEventTags(startTimestamp: timestamp, position: position, stopType: stopType)
+        tags: createStopEventTags(startTimestamp: timestamp, identifier: identifier, stopType: stopType, zoneId: zoneId)
       )
     }
 
     latestPosition = CGPoint()
     latestMLPosition = nil
-    trackedItemPosition = nil
+    trackedItem = nil
     startTimestamp = nil
     hasBeenInRange = false
     hasBeenInRightAisle = false
@@ -195,11 +226,11 @@ class WayfindingAnalyticsBusiness {
     return triggerEvent
   }
 
-  private func createStopEventTags(startTimestamp: Date, position: ItemPosition, stopType: StopType) -> [String: String] {
+  private func createStopEventTags(startTimestamp: Date, identifier: String, stopType: StopType, zoneId: String?) -> [String: String] {
     var tags = [
       "startTimestamp": DateFormatter.standardFormatter.string(from: startTimestamp),
       "stopTimestamp": DateFormatter.standardFormatter.string(from: .init()),
-      "identifier": position.identifier,
+      "identifier": identifier,
       "hasBeenInRange": hasBeenInRange.description,
       "hasBeenInRightAisle": hasBeenInRightAisle.description,
       "stopType": stopType.rawValue,
@@ -211,28 +242,37 @@ class WayfindingAnalyticsBusiness {
       tags["shortestDistance"] = distance.description
     }
 
+    if let id = zoneId {
+      tags["zoneId"] = id
+    }
+
     return tags
   }
 
   func stopVisit() -> TriggerEvent? {
-    guard let trackedItemPosition = trackedItemPosition else { return nil }
-    return stopTracking(itemPosition: trackedItemPosition, stopType: .stopVisit)
+    guard let item = trackedItem else { return nil }
+    return stopTracking(identifier: item.identifier, stopType: .stopVisit)
   }
 }
 
 extension WayfindingAnalyticsBusiness: IInAndOutDelegate {
   func onEnter(trigger: IInAndOutTrigger, position: CGPoint) {
     guard
-      let item = trackedItemPosition,
+      let item = trackedItem,
       item.identifier == trigger.id
     else { return }
-    hasBeenInRange = true
+    if item is WayfindingItem {
+      hasBeenInRange = true
+    } else if item is WayfindingZone {
+      hasBeenInRange = true
+      hasBeenInRightAisle = true
+    }
     isInRange = true
   }
   
   func onExit(trigger: IInAndOutTrigger, position: CGPoint) {
     guard
-      let item = trackedItemPosition,
+      let item = trackedItem,
       item.identifier == trigger.id
     else { return }
     isInRange = false
