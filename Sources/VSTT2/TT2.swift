@@ -16,7 +16,7 @@ final public class TT2: ITT2 {
     public var stores: [TT2Store] { tt2Internal.internalStores.map({ $0.toTT2Store() }) }
     public var activeStores: [TT2Store] { tt2Internal.internalStoresActive.map({ $0.toTT2Store() }) }
     public var navigation: Navigation { tt2Internal.navigation }
-    public var analytics: TT2AnalyticsManager { tt2Internal.analytics }
+    public var analytics: TT2Analytics { tt2Internal.analytics }
     public var floor: VSTT2Floor { tt2Internal.floorManager }
     public var position: Position { tt2Internal.position }
     public var events: TT2EventManager { tt2Internal.analytics.eventManager }
@@ -35,7 +35,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.13.0"
+    static let version = "2.14.0"
 
     // MARK: Private members
     private let tag: String = "TT2"
@@ -278,9 +278,9 @@ private extension TT2 {
       guard
         let id = try? activeFloor.id,
         let mapData = mapData,
-        let zones = try? zonesTree.getZonesFor(floorLevelId: id)
+        let zones = try? zonesTree.getZonesFor(floorLevelId: id)?.filter({ $0.properties.zoneType != "EXPOSURE_POINT" })
       else { return }
-      
+
       tt2Internal.mapController?.loadMap(with: mapData)
       tt2Internal.mapController?.setup(
         pathfinder: try? tt2Internal.floorManager.getActivePathfinder.invoke(),

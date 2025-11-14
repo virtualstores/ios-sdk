@@ -17,6 +17,7 @@ protocol IFloorRepository: Disposable {
   var activeNavGraph: Data? { get throws }
   var activeVpsPathfinder: VPSPathfinderAdapter? { get throws }
   var activeShelfGroups: [ShelfGroup]? { get throws }
+  var activeZoneShelves: [Shelf]? { get throws }
 
   func createVPSPathfinders()
   func fetchMapFence(completion: @escaping (Error?) -> ())
@@ -41,6 +42,7 @@ class FloorRepository {
   private var navgraphs: [Int64: Data] = [:]
   private var vpsPathfinders: [Int64: VPSPathfinderAdapter] = [:]
   private var shelfGroups: [Int64: [ShelfGroup]] = [:]
+  private var zoneShelves: [Int64: [Shelf]] = [:]
 
   deinit {
     Logger(verbosity: .info).log(tag: tag, message: "deinit")
@@ -72,6 +74,7 @@ extension FloorRepository: IFloorRepository {
   var activeNavGraph: Data? { get throws { navgraphs[try activeFloor.id] } }
   var activeVpsPathfinder: VPSPathfinderAdapter? { get throws { vpsPathfinders[try activeFloor.id] } }
   var activeShelfGroups: [ShelfGroup]? { get throws { shelfGroups[try activeFloor.id] } }
+  var activeZoneShelves: [Shelf]? { get throws { zoneShelves[try activeFloor.id] } }
 
   func dispose() {
     Logger(verbosity: .info).log(tag: tag, message: "dispose")
@@ -203,6 +206,10 @@ extension FloorRepository: IFloorRepository {
           if shelfGroups.count > 0 {
             DispatchQueue.main.async {
               self?.shelfGroups[floor.id] = shelfGroups
+              self?.zoneShelves[floor.id] = shelfGroups
+                .map { $0.shelves }
+                .flatMap { $0 }
+                .filter { $0.name?.contains("@zone") ?? false }
             }
           }
         case .failure(let err): error = err

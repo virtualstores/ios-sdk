@@ -12,6 +12,7 @@ class GetPositionByBarcodeUseCase {
   @Inject var itemsRepository: IItemsRepository
   @Inject var storeRepository: IStoreRepository
   @Inject var statusRepository: IStatusRepository
+  @Inject var floorRepository: IFloorRepository
 
   func invoke(barcode: String, completion: @escaping (Result<Item, Error>) -> Void) {
     guard let id = try? storeRepository.activeStore.id else { return }
@@ -25,8 +26,20 @@ class GetPositionByBarcodeUseCase {
           closestItemPosition = itemPositions.getNearest(to: userPosition.point)
         }
 
-        let item = Item(name: "", externalId: barcode, itemPositions: itemPositions, itemPosition: closestItemPosition)
-        DispatchQueue.main.async { completion(.success(item)) }
+        let zonePosition = closestItemPosition?.getZonePosition(
+          for: (try? self?.floorRepository.activeZoneShelves) ?? [],
+          zones: (try? self?.storeRepository.zonesTree.getZonesForCurrentFloorLevel()) ?? []
+        )?.asZonePosition
+
+        DispatchQueue.main.async { completion(.success(
+          Item(
+            name: barcode,
+            externalId: barcode,
+            itemPositions: itemPositions,
+            itemPosition: zonePosition == nil ? closestItemPosition : nil,
+            zonePosition: zonePosition
+          )
+        ))}
       case .failure(let error): DispatchQueue.main.async { completion(.failure(error)) }
       }
     }
@@ -37,6 +50,22 @@ private  extension BarcodePosition {
   var toItemPosition: ItemPosition? {
     guard let point = itemPosition, let offset = itemPositionOffset else { return nil }
     return ItemPosition(point: point, offset: offset, floorLevelId: rtlsOptionsId, shelfId: shelfId, shelfTierId: shelfTierId, shelfTierPosition: shelfTierPosition, identifier: barcode, isDisabled: isDisabled)
+  }
+}
+
+private extension ItemPosition {
+  func getZonePosition(for zoneShelves: [Shelf], zones: [Zone]) -> Zone? {
+    guard let shelf = zoneShelves.first(where: { $0.id == shelfId }) else { return nil }
+    return zones
+      .filter({ $0.properties.zoneType != "EXPOSURE_POINT" })
+      .first(where: { $0.contains(point: shelf.itemPosition.pointWithOffset) })
+  }
+}
+
+private extension Zone {
+  var asZonePosition: ZonePosition? {
+    guard let point = navigationPoint else { return nil }
+    return .init(floorLevelId: floorLevelId, id: id, name: name, names: names, point: point)
   }
 }
 

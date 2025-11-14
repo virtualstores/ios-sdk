@@ -71,6 +71,16 @@ final public class TT2AnalyticsManager: Disposable {
     zoneManager.dispose()
     cancellable.removeAll()
   }
+
+  public func stopTrackingWayfinding(identifier: String) {
+    serialDispatch.async { [weak self] in
+      guard
+        let self = self,
+        let event = wayfindingBusiness.stopTracking(identifier: identifier)
+      else { return }
+      addTriggerEvent(for: event)
+    }
+  }
 }
 
 private extension TT2AnalyticsManager {
@@ -452,7 +462,7 @@ extension TT2AnalyticsManager: TT2Analytics {
     serialDispatch.async { [weak self] in
       guard
         let self = self,
-        let event = wayfindingBusiness.startTracking(itemPosition: itemPosition)
+        let event = wayfindingBusiness.startTracking(item: WayfindingItem(identifier: itemPosition.identifier, position: itemPosition))
       else { return }
       addTriggerEvent(for: event)
     }
@@ -462,7 +472,27 @@ extension TT2AnalyticsManager: TT2Analytics {
     serialDispatch.async { [weak self] in
       guard
         let self = self,
-        let event = wayfindingBusiness.stopTracking(itemPosition: itemPosition)
+        let event = wayfindingBusiness.stopTracking(identifier: itemPosition.identifier)
+      else { return }
+      addTriggerEvent(for: event)
+    }
+  }
+
+  public func startTrackingWayfinding(zonePosition: ZonePosition) {
+    serialDispatch.async { [weak self] in
+      guard
+        let self = self,
+        let event = wayfindingBusiness.startTracking(item: WayfindingZone(identifier: zonePosition.id, position: zonePosition))
+      else { return }
+      addTriggerEvent(for: event)
+    }
+  }
+
+  public func stopTrackingWayfinding(zonePosition: ZonePosition) {
+    serialDispatch.async { [weak self] in
+      guard
+        let self = self,
+        let event = wayfindingBusiness.stopTracking(identifier: zonePosition.id)
       else { return }
       addTriggerEvent(for: event)
     }

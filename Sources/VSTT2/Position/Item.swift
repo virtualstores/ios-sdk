@@ -14,17 +14,19 @@ public class Item {
     public var itemPositions: [ItemPosition]
     public var uniquePositions: [ItemPosition] { unique() }
     public var itemPosition: ItemPosition?
-    
-    public init(name: String, externalId: String, itemPositions: [ItemPosition], itemPosition: ItemPosition?) {
+    public var zonePosition: ZonePosition?
+
+    public init(name: String, externalId: String, itemPositions: [ItemPosition], itemPosition: ItemPosition?, zonePosition: ZonePosition?) {
         self.name = name
         self.externalId = externalId
         self.itemPositions = itemPositions
         self.itemPosition = itemPosition
+        self.zonePosition = zonePosition
     }
 
     /// Will use the first **itemPosition** in `itemPositions`
     public convenience init (name: String, externalId: String, itemPositions: [ItemPosition]) {
-        self.init(name: name, externalId: externalId, itemPositions: itemPositions, itemPosition: itemPositions.first)
+        self.init(name: name, externalId: externalId, itemPositions: itemPositions, itemPosition: itemPositions.first, zonePosition: nil)
     }
 
     private func checkForMaxAllowedDistinctItemPositions(max: Int = 1) -> Bool {
