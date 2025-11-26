@@ -10,8 +10,8 @@ import Combine
 import VSFoundation
 
 protocol IStoreApi: Disposable {
-  func fetchStores(clientId: Int64, completion: @escaping (Result<[Store], Error>) -> Void)
-  func fetchSwapLocations(storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> ())
+  func fetchStores(clientId: Int64) -> AnyPublisher<[Store], Error>
+  func fetchSwapLocations(storeId: Int64) -> AnyPublisher<[SwapLocation], Error>
 }
 
 class StoreApi {
@@ -27,21 +27,15 @@ extension StoreApi: IStoreApi {
     cancellable.removeAll()
   }
   
-  func fetchStores(clientId: Int64, completion: @escaping (Result<[Store], Error>) -> Void) {
+  func fetchStores(clientId: Int64) -> AnyPublisher<[Store], Error> {
     storesService
       .call(with: .init(clientId: clientId))
       .ensure({ !$0.stores.isEmpty }, elseThrow: TT2Error.noAvailableStores)
       .map { $0.stores }
-      .asResult()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
+      .eraseToAnyPublisher()
   }
 
-  func fetchSwapLocations(storeId: Int64, completion: @escaping (Result<[SwapLocation], Error>) -> ()) {
-    swapLocationsService
-      .call(with: SwapLocationsParameters(storeId: storeId))
-      .asResult()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
+  func fetchSwapLocations(storeId: Int64) -> AnyPublisher<[SwapLocation], Error> {
+    swapLocationsService.call(with: .init(storeId: storeId))
   }
 }

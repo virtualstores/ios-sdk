@@ -30,7 +30,6 @@ class VSTT2FloorManager {
   var switchFloorPublisher: CurrentValueSubject<(rtlsOptions: RtlsOptions, point: CGPoint?)?, Never> = .init(nil)
 
   private var cancellable = Set<AnyCancellable>()
-  private let dispatchGroup = DispatchGroup()
   private let floorPicker = FloorPicker()
 
   init() {
@@ -51,76 +50,12 @@ private extension VSTT2FloorManager {
         self?.switchFloorPublisher.send((rtlsOptions: rtlsOptions, point: data.point))
       }).store(in: &cancellable)
   }
-
-  func getFloorData(completion: @escaping ((mapFence: MapFence, zoneData: [Int64: ZoneData])) -> ()) {
-    getMapFenceData()
-    getMapZonesData()
-    getNavGraph()
-    getShelfGroups()
-
-    dispatchGroup.notify(queue: .main) {
-      self.createPathfinders.invoke()
-      if let mapFence = try? self.getActiveMapFence.invoke() {
-        completion((mapFence: mapFence, zoneData: self.zoneData))
-      }
-    }
-  }
-
-  func getMapFenceData() {
-    dispatchGroup.enter()
-    fetchMapFence.invoke { (error) in
-      if error == nil {
-        DispatchQueue.main.async {
-          self.dispatchGroup.leave()
-        }
-      }
-    }
-  }
-
-  func getMapZonesData() {
-    dispatchGroup.enter()
-    fetchMapZones.invoke { (error) in
-      if error == nil {
-        DispatchQueue.main.async {
-          self.dispatchGroup.leave()
-        }
-      }
-    }
-  }
-
-  func getNavGraph() {
-    dispatchGroup.enter()
-    fetchNavGraph.invoke { (error) in
-      if error == nil {
-        DispatchQueue.main.async {
-          self.dispatchGroup.leave()
-        }
-      }
-    }
-  }
-
-  func getShelfGroups() {
-    dispatchGroup.enter()
-    fetchShelfGroups.invoke() { (error) in
-      if error == nil {
-        DispatchQueue.main.async {
-          self.dispatchGroup.leave()
-        }
-      }
-    }
-  }
 }
 
 extension VSTT2FloorManager {
   var zoneData: [Int64: ZoneData] { getMapZones.invoke() }
   var startCode: PositionedCode? { try? activeFloor.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .start }) }
   var stopCode: PositionedCode? { try? activeFloor.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .stop }) ?? startCode }
-
-  func setActiveFloor(with rtlsOptions: RtlsOptions, completion: @escaping ((mapFence: MapFence, zoneData: [Int64: ZoneData])) -> ()) {
-    guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
-    setActiveFloor.invoke(rtlsOptionsId: rtlsOptions.id)
-    getFloorData(completion: completion)
-  }
 
   func onNewPostion(location: CGPoint) {
     floorPicker.onNewPosition(location: location)
@@ -135,8 +70,30 @@ extension VSTT2FloorManager: VSTT2Floor {
   public var activeFloor: RtlsOptions { get throws { try getActiveFloor.invoke() } }
   public var floors: [RtlsOptions] { getFloors.invoke() }
 
-  public func setActiveFloor(with rtlsOptions: RtlsOptions) {
-    setActiveFloor(with: rtlsOptions) { (mapFence, zoneData) in }
+  func fetchFloorData() -> AnyPublisher<(mapFence: MapFence, zoneData: [Int64: ZoneData]), Error> {
+    Publishers.MergeMany(
+      fetchMapFence.invoke(),
+      fetchMapZones.invoke(),
+      fetchNavGraph.invoke(),
+      fetchShelfGroups.invoke()
+    )
+    .collect()
+    .handleEvents(receiveOutput: { [weak self] _ in
+      self?.createPathfinders.invoke()
+    })
+    .tryMap { [weak self] _ in
+      guard
+        let mapFence = try self?.getActiveMapFence.invoke(),
+        let zoneData = self?.zoneData
+      else { throw TT2Error.missingData }
+      return (mapFence, zoneData)
+    }
+    .eraseToAnyPublisher()
+  }
+
+  func setActiveFloor(with rtlsOptions: RtlsOptions) {
+    guard floors.contains(where: { $0.id == rtlsOptions.id }) else { return }
+    setActiveFloor.invoke(rtlsOptionsId: rtlsOptions.id)
   }
 
   public func setActiveFloor(with floorLevel: Int) { }

@@ -96,6 +96,20 @@ extension URL {
 }
 
 extension Publisher {
+  static func justOrFail<Output>(_ work: () throws -> Output) -> AnyPublisher<Output, Error> {
+    do {
+      return Just(try work())
+        .setFailureType(to: Error.self)
+        .eraseToAnyPublisher()
+    } catch {
+      return .fail(with: error)
+    }
+  }
+
+  static func fail<T>(with error: Error) -> AnyPublisher<T, Error> {
+    Fail(error: error).eraseToAnyPublisher()
+  }
+
   func asResult() -> AnyPublisher<Result<Output, Error>, Never> {
     map { .success($0) }
       .catch { Just(.failure($0)) }

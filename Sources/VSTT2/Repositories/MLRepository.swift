@@ -14,7 +14,9 @@ import vps
 
 protocol IMLRepository: Disposable {
   func compileModel(type: MLRepository.ModelTypeEnum, completion: @escaping (Error?) -> ())
+  func compileModel(type: MLRepository.ModelTypeEnum) -> AnyPublisher<Void, Error>
   func fetchMLInterfaceVersions(completion: @escaping (Error?) -> ())
+  func fetchMLInterfaceVersions() -> AnyPublisher<Void, Error>
   func fetchModel(url: URL, id: String, type: MLRepository.ModelTypeEnum) -> AnyPublisher<Void, Error>
   func getMLCatalog() -> MLInterfaceVersions.MLCatalog?
   func getMLModel() -> MLModel?
@@ -24,7 +26,9 @@ protocol IMLRepository: Disposable {
   func getVPSMLModelParams() -> VPSMLModelParams?
   func getVPSNLModelParams() -> VPSNLModelParams?
   func load(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion, completion: @escaping (Error?) -> ())
+  func load(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion) -> AnyPublisher<Void, Error>
   func load(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion, completion: @escaping (Error?) -> ())
+  func load(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion) -> AnyPublisher<Void, Error>
   func set(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion)
   func set(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion)
 }
@@ -120,9 +124,7 @@ extension MLRepository: IMLRepository {
     case .ml: path = pathMLModel
     case .nl: path = pathNLModel
     }
-    guard let path = path else {
-      return Fail(error: TT2Error.missingData).eraseToAnyPublisher()
-    }
+    guard let path = path else { return .fail(with: TT2Error.missingData) }
     return compileModel(path: path)
       .tryMap { [weak self] in
         guard let model = self?.buildModel(path: $0) else { throw NSError(domain: "Can't build model", code: 500) } // TODO: Better error
@@ -137,11 +139,16 @@ extension MLRepository: IMLRepository {
   }
 
   func fetchMLInterfaceVersions(completion: @escaping (Error?) -> ()) {
-    api.fetchMLInterfaceVersions()
-      .map { [weak self] in self?.catalog = $0.mlCatalog }
+    fetchMLInterfaceVersions()
       .asFailure()
       .sink(receiveValue: completion)
       .store(in: &cancellables)
+  }
+
+  func fetchMLInterfaceVersions() -> AnyPublisher<Void, Error> {
+    api.fetchMLInterfaceVersions()
+      .map { [weak self] in self?.catalog = $0.mlCatalog }
+      .eraseToAnyPublisher()
   }
 
   func fetchModel(url: URL, id: String, type: ModelTypeEnum) -> AnyPublisher<Void, Error> {
@@ -192,9 +199,7 @@ extension MLRepository: IMLRepository {
         .eraseToAnyPublisher()
     }
 
-    guard let url = URL(string: mlVersion.modelUrl) else {
-      return Fail(error: TT2Error.missingData).eraseToAnyPublisher()
-    }
+    guard let url = URL(string: mlVersion.modelUrl) else { return .fail(with: TT2Error.missingData) }
 
     currentMLVersion = nil
     return fetchModel(url: url, id: mlVersion.id, type: .ml)
@@ -209,14 +214,12 @@ extension MLRepository: IMLRepository {
 
   func load(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion) -> AnyPublisher<Void, Error> {
     if currentNLVersion?.version == nlVersion.version {
-      return Result { try  handleModel(id: nlVersion.id, type: .nl)}
+      return Result { try handleModel(id: nlVersion.id, type: .nl)}
         .publisher
         .eraseToAnyPublisher()
     }
 
-    guard let url = URL(string: nlVersion.modelUrl) else {
-      return Fail(error: TT2Error.missingData).eraseToAnyPublisher()
-    }
+    guard let url = URL(string: nlVersion.modelUrl) else { return .fail(with: TT2Error.missingData) }
 
     currentNLVersion = nil
     return fetchModel(url: url, id: nlVersion.id, type: .nl)

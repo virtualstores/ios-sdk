@@ -5,22 +5,20 @@
 //  Created by Théodore Roos on 2024-05-02.
 //
 
+import Combine
 import Foundation
 import VSFoundation
 
 class FetchClientsUseCase {
   @Inject var repository: IClientRepository
 
-  func invoke(completion: @escaping (Result<[Client], Error>) -> ()) {
-    repository.fetch { (result) in
-      switch result {
-      case .success(let clients):
-        self.repository.set(cachedClients: clients)
-        completion(.success(clients))
-      case .failure(let error):
-        completion(.failure(error))
-      }
-    }
+  func invoke() -> AnyPublisher<Void, Error> {
+    repository.fetch()
+      .handleEvents(receiveOutput: { [weak self] in
+        self?.repository.set(cachedClients: $0)
+      })
+      .map { _ in () }
+      .eraseToAnyPublisher()
   }
 }
 

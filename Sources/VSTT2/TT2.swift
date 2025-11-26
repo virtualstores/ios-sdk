@@ -85,85 +85,62 @@ final public class TT2: ITT2 {
 
     // MARK: Initialize
     public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, returnOn queue: DispatchQueue = .main, completion: @escaping (Error?) -> ()) {
-      DispatchQueue.global(qos: .background).async { [weak self] in
-        guard let self = self else { return }
-        let group = DispatchGroup()
-        group.enter()
-        tt2Internal.login.invoke { (error) in
-          group.leave()
-        }
-        group.wait()
-        group.enter()
-        tt2Internal.getClients() { [weak self] (result) in
-          switch result {
-          case .success(_):
-            guard let self = self else { queue.async { completion(TT2Error.missingData) }; return }
-            do {
-              try tt2Internal.setActiveClient.invoke(clientId: clientId)
-              self.positionKitParams = positionKitParams
-              tt2Internal.getStores(with: clientId) { (error) in
-                if let error = error {
-                  queue.async { completion(error) }
-                } else {
-                  group.leave()
-                }
-              }
-            } catch {
-              queue.async { completion(error) }
-            }
-          case .failure(let error):
-            queue.async { completion(error) }
-          }
-        }
-
-        group.enter()
-        tt2Internal.mlModelManager.fetchInterface { (error) in
-          if let error = error {
-            queue.async { completion(error) }
-          } else {
-            group.leave()
-          }
-        }
-
-        switch group.wait(timeout: .now() + 120) {
-        case .success:
-          queue.async { completion(nil) }
-        case .timedOut:
-          queue.async { completion(TT2Error.timeout) }
-        }
-      }
+      initialize(clientId: clientId, returnOn: queue)
+        .timeout(120, scheduler: queue)
+        .asFailure()
+        .sink(receiveValue: completion)
+        .store(in: &cancellable)
     }
-    
+
+    public func initialize(clientId: Int64, returnOn queue: DispatchQueue = .main) -> AnyPublisher<Void, Error> {
+      tt2Internal.login.invoke()
+        .flatMap { [weak self] _ -> AnyPublisher<Void, Error> in
+          guard let self = self else { return .fail(with: TT2Error.missingData)}
+          return Publishers.MergeMany(
+            tt2Internal.fetchClient.invoke(),
+            tt2Internal.mlModelManager.fetchInterface()
+          )
+          .collect()
+          .tryMap { _ in
+            try self.tt2Internal.setActiveClient.invoke(clientId: clientId)
+          }
+          .map { _ in () }
+          .eraseToAnyPublisher()
+        }
+        .receive(on: queue)
+        .flatMap { [weak self] _ -> AnyPublisher<Void, Error> in
+          guard let self = self else { return .fail(with: TT2Error.missingData) }
+          return tt2Internal.fetchStore.invoke(clientId: clientId)
+        }
+        .map { _ in () }
+        .eraseToAnyPublisher()
+    }
+
     public func initiate(store: TT2Store, completion: @escaping (Error?) -> ()) {
-      guard let currentStore = tt2Internal.internalStores.first(where: { $0.id == store.id }) else { return }
+      initiate(store: store)
+        .asFailure()
+        .sink(receiveValue: completion)
+        .store(in: &cancellable)
+    }
 
-      do {
-        try tt2Internal.setActiveStore(storeId: currentStore.id)
-
-        tt2Internal.getSwapLocations(storeId: currentStore.id) { [weak self] (result) in
-          guard let self = self else { return }
-          switch result {
-          case .success(let swapLocations):
-            floorHeightDiff = getHighestHeightDiff(swapLocations: swapLocations)
-
-            let group = DispatchGroup()
-            group.enter()
-            if let rtls = currentStore.rtlsOptions.first(where: { $0.isDefault }) {
-              setActiveFloor(rtls: rtls) {
-                self.mapData?.swapLocations = swapLocations
-                group.leave()
-              }
-            } else {
-              guard let rtls = currentStore.rtlsOptions.first else { return }
-              setActiveFloor(rtls: rtls) {
-                self.mapData?.swapLocations = swapLocations
-                group.leave()
-              }
-            }
-
-            bindPublishers()
-
-            group.notify(queue: .main) {
+    public func initiate(store: TT2Store) -> AnyPublisher<Void, Error> {
+      guard let currentStore = tt2Internal.internalStores.first(where: { $0.id == store.id }) else { return .fail(with: TT2Error.missingData) }
+      return .justOrFail{ try tt2Internal.setActiveStore(storeId: currentStore.id) }
+        .flatMap { [weak self] _ -> AnyPublisher<[SwapLocation], Error> in
+          guard let self = self else { return .fail(with: TT2Error.missingData) }
+          return tt2Internal.getSwapLocations(storeId: currentStore.id)
+        }
+        .flatMap { [weak self] (swapLocations) -> AnyPublisher<Void, Error> in
+          guard
+            let self = self,
+            let rtls = currentStore.rtlsOptions.first(where: { $0.isDefault }) ?? currentStore.rtlsOptions.first
+          else { return .fail(with: TT2Error.missingData) }
+          floorHeightDiff = getHighestHeightDiff(swapLocations: swapLocations)
+          return setActiveFloor(rtls: rtls)
+            .receive(on: DispatchQueue.main)
+            .handleEvents(receiveOutput: { _ in
+              self.bindPublishers()
+              self.mapData?.swapLocations = swapLocations
               self.tt2Internal.position.setup()
               if let zones = try? self.zonesTree.getZonesForCurrentFloorLevel() {
                 self.tt2Internal.navigation.setup(
@@ -172,15 +149,11 @@ final public class TT2: ITT2 {
               }
               self.setupMap()
               self.setupAnalytics(for: currentStore)
-              completion(nil)
-            }
-          case .failure(let error):
-            DispatchQueue.main.async { completion(error) }
-          }
+            })
+            .eraseToAnyPublisher()
         }
-      } catch {
-        completion(error)
-      }
+        .map { _ in () }
+        .eraseToAnyPublisher()
     }
 
     public func initiate(storeId: Int64, completion: @escaping (Error?) -> Void) {
@@ -300,17 +273,32 @@ private extension TT2 {
     }
 
     func setActiveFloor(rtls: RtlsOptions, completion: @escaping () -> ()) {
-        guard
-          let storeId = try? activeStore.id,
-          let floorHeightDiff = floorHeightDiff
-        else { return }
-        tt2Internal.floorManager.setActiveFloor(with: rtls) { [weak self] (mapFence, zoneData) in
-            guard let self = self else { return }
-            setupMapfence(with: mapFence, storeId: storeId, rtlsOptions: rtls, floorHeightDiff: floorHeightDiff)
-            mapData = tt2Internal.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: coordinateConverter)
-            setupAnalytics(with: zoneData)
-            completion()
-        }
+      setActiveFloor(rtls: rtls)
+        .asFailure()
+        .sink { _ in
+          completion()
+        }.store(in: &cancellable)
+    }
+
+    func setActiveFloor(rtls: RtlsOptions) -> AnyPublisher<Void, Error> {
+      guard
+        let storeId = try? activeStore.id,
+        let floorHeightDiff = floorHeightDiff
+      else { return .fail(with: TT2Error.missingData) }
+      tt2Internal.floorManager.setActiveFloor(with: rtls)
+      return fetchFloorData(rtls: rtls, storeId: storeId, floorHeightDiff: floorHeightDiff)
+    }
+
+    func fetchFloorData(rtls: RtlsOptions, storeId: Int64, floorHeightDiff: Double) -> AnyPublisher<Void, Error> {
+      tt2Internal.floorManager.fetchFloorData()
+        .handleEvents(receiveOutput: { [weak self] (mapFence, zoneData) in
+          guard let self = self else { return }
+          setupMapfence(with: mapFence, storeId: storeId, rtlsOptions: rtls, floorHeightDiff: floorHeightDiff)
+          mapData = tt2Internal.createMapData(rtlsOptions: rtls, mapFence: mapFence, coordinateConverter: coordinateConverter)
+          setupAnalytics(with: zoneData)
+        })
+        .map { _ in () }
+        .eraseToAnyPublisher()
     }
 
     func setupMapfence(with data: MapFence, storeId: Int64, rtlsOptions: RtlsOptions, floorHeightDiff: Double) {

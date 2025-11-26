@@ -45,23 +45,20 @@ class LoginUseCase {
   @Inject var apiKeyRepository: IApiKeyRepository
   @Inject var jwtRepository: IJWTTokenRepository
 
-  func invoke(completion: @escaping (Error?) -> ()) {
-    guard let settings = repository.getAuthSettings() else { return }
+  func invoke() -> AnyPublisher<Void, Error> {
+    guard let settings = repository.getAuthSettings() else { return .fail(with: TT2Error.missingData) }
     switch settings {
     case .apiKey(let key):
       apiKeyRepository.set(for: .central, value: key)
-      completion(nil)
+      return Empty(completeImmediately: true).eraseToAnyPublisher()
     case .tokenBased(let login):
-      repository.login(username: login.username, password: login.password) { [weak self] (result) in
-        switch result {
-        case .success(let dto):
-          self?.jwtRepository.save(accessJWT: dto.authToken)
-          self?.jwtRepository.save(refreshJWT: dto.refreshToken)
-          completion(nil)
-        case .failure(let error):
-          completion(error)
-        }
-      }
+      return repository.login(username: login.username, password: login.password)
+        .handleEvents(receiveOutput: { [weak self] in
+          self?.jwtRepository.save(accessJWT: $0.authToken)
+          self?.jwtRepository.save(refreshJWT: $0.refreshToken)
+        })
+        .map { _ in () }
+        .eraseToAnyPublisher()
     }
   }
 }
@@ -74,10 +71,7 @@ class RefreshUseCase {
     guard
       let authToken = jwtRepository.getAuthJWT(),
       let refreshToken = jwtRepository.getRefreshJWT()
-    else {
-      return Fail(error: NetworkError.invalidTokens)
-        .eraseToAnyPublisher()
-    }
+    else { return .fail(with: NetworkError.invalidTokens) }
 
     return authRepository
       .refresh(authToken: authToken, refreshToken: refreshToken)

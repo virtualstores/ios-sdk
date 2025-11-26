@@ -97,22 +97,11 @@ internal class TT2Internal: Disposable {
         guard let converter = coordinateConverter else { return nil }
         return MapData(rtlsOptions: rtlsOptions, converter: converter)
     }
-    
-    func getClients(completion: @escaping (Result<[Client], Error>) -> Void) {
-        fetchClient.invoke(completion: completion)
-    }
-    
-    func getStores(with clientId: Int64, completion: @escaping (Error?) -> ()) {
-        fetchStore.invoke(clientId: clientId, completion: completion)
-    }
 
-    func getSwapLocations(storeId: Int64,completion: @escaping (Result<[SwapLocation], Error>) -> Void) {
-        fetchSwapLocations.invoke(storeId: storeId) { (error) in
-            switch error {
-            case .none: completion(.success(self.getCachedSwapLocations.invoke()))
-            case .some(let error): completion(.failure(error))
-            }
-        }
+    func getSwapLocations(storeId: Int64) -> AnyPublisher<[SwapLocation], Error> {
+        fetchSwapLocations.invoke(storeId: storeId)
+            .compactMap { [weak self] in self?.getCachedSwapLocations.invoke() }
+            .eraseToAnyPublisher()
     }
 
     func setActiveStore(storeId: Int64) throws {

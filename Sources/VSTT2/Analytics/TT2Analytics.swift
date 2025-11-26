@@ -39,7 +39,7 @@ public protocol TT2Analytics {
 }
 
 public extension TT2Analytics {
-  func startVisit(deviceInformation: DeviceInformation, tags: [String: String], metaData: [String: String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
+  func startVisit(deviceInformation: DeviceInformation, tags: [String: String] = [:], metaData: [String: String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
     startVisit(deviceInformation: deviceInformation, tags: tags, metaData: metaData, completion: completion)
   }
 }

@@ -10,7 +10,7 @@ import VSFoundation
 
 protocol IAuthRepository: Disposable {
   func getAuthSettings() -> AuthSettings?
-  func login(username: String, password: String, completion: @escaping (Result<LoginDto, Error>) -> Void)
+  func login(username: String, password: String) -> AnyPublisher<LoginDto, Error>
   func refresh(authToken: String, refreshToken: String) -> AnyPublisher<RefreshDto, Error>
   func set(authSettings: AuthSettings?)
 }
@@ -36,8 +36,8 @@ extension AuthRepository: IAuthRepository {
     authSettings
   }
 
-  func login(username: String, password: String, completion: @escaping (Result<LoginDto, Error>) -> Void) {
-    api.login(username: username, password: password, completion: completion)
+  func login(username: String, password: String) -> AnyPublisher<LoginDto, Error> {
+    api.login(username: username, password: password)
   }
 
   func refresh(authToken: String, refreshToken: String) -> AnyPublisher<RefreshDto, Error> {

@@ -5,22 +5,23 @@
 //  Created by Théodore Roos on 2022-12-15.
 //
 
+import Combine
 import Foundation
 import VSFoundation
 
 class FetchStoreUseCase {
   @Inject var repository: IStoreRepository
 
-  func invoke(clientId: Int64, completion: @escaping (Error?) -> Void) {
-    repository.fetchStores(clientId: clientId, completion: completion)
+  func invoke(clientId: Int64) -> AnyPublisher<Void, Error> {
+    repository.fetchStores(clientId: clientId)
   }
 }
 
 class FetchSwapLocationsUseCase {
   @Inject var repository: IStoreRepository
 
-  func invoke(storeId: Int64, completion: @escaping (Error?) -> ()) {
-    repository.fetchSwapLocations(storeId: storeId, completion: completion)
+  func invoke(storeId: Int64) -> AnyPublisher<Void, Error> {
+    repository.fetchSwapLocations(storeId: storeId)
   }
 }
 

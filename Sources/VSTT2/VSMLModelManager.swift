@@ -5,8 +5,9 @@
 //  Created by Théodore Roos on 2023-03-07.
 //
 
-import Foundation
+import Combine
 import CoreML
+import Foundation
 import VSFoundation
 import VSPositionKit
 
@@ -71,6 +72,49 @@ class VSMLModelManager {
         }
       }
     }
+  }
+
+  func fetchInterface() -> AnyPublisher<Void, Error> {
+    fetchMLInterfaceVersions.invoke()
+      .flatMap { [weak self] _ -> AnyPublisher<Void, Error> in
+        guard
+          let self = self,
+          let catalog = getMLCatalog.invoke()
+        else { return .fail(with: TT2Error.missingData) }
+        return handle(mlCatalog: catalog, params: getTT2Settings.invoke().params)
+      }
+      .eraseToAnyPublisher()
+  }
+
+  func handle(mlCatalog: MLInterfaceVersions.MLCatalog, params: TT2Settings.TT2ModelParams) -> AnyPublisher<Void, Error> {
+    var publishers = [AnyPublisher<Void, Error>]()
+    if let version = mlCatalog.getLatestSupportedVelocityModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
+      publishers.append(handle(version: version))
+    }
+    if let version = mlCatalog.getLatestSupportedNLModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
+      publishers.append(handle(version: version))
+    }
+    return Publishers.MergeMany(publishers).eraseToAnyPublisher()
+  }
+
+  func handle(version: MLInterfaceVersions.MLCatalog.Device.MLVersion) -> AnyPublisher<Void, Error> {
+    loadMLVersion.invoke(version: version)
+      .flatMap { [weak self] _ -> AnyPublisher<Void, Error> in
+        guard let self = self else { return .fail(with: TT2Error.missingData) }
+        setMLVersion.invoke(version: version)
+        return compileModel.invoke(type: .ml).eraseToAnyPublisher()
+      }
+      .eraseToAnyPublisher()
+  }
+
+  func handle(version: MLInterfaceVersions.MLCatalog.Device.NLVersion) -> AnyPublisher<Void, Error> {
+    loadNLVersion.invoke(version: version)
+      .flatMap { [weak self] _ -> AnyPublisher<Void, Error> in
+        guard let self = self else { return .fail(with: TT2Error.missingData) }
+        setNLVersion.invoke(version: version)
+        return compileModel.invoke(type: .nl).eraseToAnyPublisher()
+      }
+      .eraseToAnyPublisher()
   }
 
   deinit {

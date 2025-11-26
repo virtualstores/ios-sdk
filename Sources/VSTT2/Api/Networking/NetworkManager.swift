@@ -29,10 +29,7 @@ final class NetworkManager: DataHandler {
   func fetch<T: Decodable, R: Routing>(_ routing: R) -> AnyPublisher<T, Error> {
     let urlSession = URLSession(configuration: .default)
 
-    guard let url = routing.urlRequest else {
-      return Fail<T, Error>(error: URLError(.badURL))
-        .eraseToAnyPublisher()
-    }
+    guard let url = routing.urlRequest else { return .fail(with: URLError(.badURL)) }
 
     let date = Date()
     Logger(verbosity: .network).log(message: "<-- \(routing.method) \(url)")
@@ -53,7 +50,7 @@ final class NetworkManager: DataHandler {
             .flatMap { (_) in self.fetch(routing) }
             .eraseToAnyPublisher()
         } else {
-          return Fail(error: error).eraseToAnyPublisher()
+          return .fail(with: error)
         }
       }
       .decode(type: T.self, decoder: JSONDecoder())
@@ -88,7 +85,7 @@ final class NetworkManager: DataHandler {
             .flatMap { (_) in self.fetchEmptyBody(routing) }
             .eraseToAnyPublisher()
         } else {
-          return Fail(error: error).eraseToAnyPublisher()
+          return .fail(with: error)
         }
       }
       .mapError { $0 as Error }

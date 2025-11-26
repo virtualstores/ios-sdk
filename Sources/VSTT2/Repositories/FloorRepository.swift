@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2024-05-02.
 //
 
+import Combine
 import Foundation
 import VSFoundation
 import VSPositionKit
@@ -20,10 +21,10 @@ protocol IFloorRepository: Disposable {
   var activeZoneShelves: [Shelf]? { get throws }
 
   func createVPSPathfinders()
-  func fetchMapFence(completion: @escaping (Error?) -> ())
-  func fetchMapZones(completion: @escaping (Error?) -> ())
-  func fetchNavGraph(completion: @escaping (Error?) -> ())
-  func fetchShelfGroups(completion: @escaping (Error?) -> ())
+  func fetchMapFence() -> AnyPublisher<Void, Error>
+  func fetchMapZones() -> AnyPublisher<Void, Error>
+  func fetchNavGraph() -> AnyPublisher<Void, Error>
+  func fetchShelfGroups() -> AnyPublisher<Void, Error>
   func getRtlsOptions() -> [RtlsOptions]
   func getMapZones() -> [Int64: ZoneData]
   func set(activeFloor: RtlsOptions)
@@ -39,7 +40,7 @@ class FloorRepository {
   private var floors: [RtlsOptions] = []
   private var mapFences: [Int64: MapFence] = [:]
   private var mapZonesData: [Int64: ZoneData] = [:]
-  private var navgraphs: [Int64: Data] = [:]
+  private var navGraphs: [Int64: Data] = [:]
   private var vpsPathfinders: [Int64: VPSPathfinderAdapter] = [:]
   private var shelfGroups: [Int64: [ShelfGroup]] = [:]
   private var zoneShelves: [Int64: [Shelf]] = [:]
@@ -71,7 +72,7 @@ extension FloorRepository: IFloorRepository {
   }
   var activeMapFence: MapFence? { get throws { mapFences[try activeFloor.id] } }
   var activeMapZones: ZoneData? { get throws { mapZonesData[try activeFloor.id] } }
-  var activeNavGraph: Data? { get throws { navgraphs[try activeFloor.id] } }
+  var activeNavGraph: Data? { get throws { navGraphs[try activeFloor.id] } }
   var activeVpsPathfinder: VPSPathfinderAdapter? { get throws { vpsPathfinders[try activeFloor.id] } }
   var activeShelfGroups: [ShelfGroup]? { get throws { shelfGroups[try activeFloor.id] } }
   var activeZoneShelves: [Shelf]? { get throws { zoneShelves[try activeFloor.id] } }
@@ -84,7 +85,7 @@ extension FloorRepository: IFloorRepository {
     floors = []
     mapFences = [:]
     mapZonesData = [:]
-    navgraphs = [:]
+    navGraphs = [:]
     vpsPathfinders.forEach { $0.value.dispose() }
     vpsPathfinders = [:]
     shelfGroups = [:]
@@ -94,7 +95,7 @@ extension FloorRepository: IFloorRepository {
     floors.forEach { (rtls) in
       guard
         let converter = converters[rtls.id],
-        let navData = navgraphs[rtls.id],
+        let navData = navGraphs[rtls.id],
         let stopCode = rtls.scanLocations?.filter({ $0.isRouteLocation }).first(where: { $0.type == .stop })
       else { return }
 
@@ -115,112 +116,85 @@ extension FloorRepository: IFloorRepository {
     }
   }
 
-  func fetchMapFence(completion: @escaping (Error?) -> ()) {
-    guard !floors.isEmpty else { completion(TT2Error.missingData); return }
-    let group = DispatchGroup()
-    var error: Error?
-    floors.forEach { (rtls) in
-      guard let url = rtls.mapFenceUrl?.checkUrl(config: config) else { return }
-      group.enter()
-      api.getMapFence(url: url) { [weak self] (result) in
-        switch result {
-        case .success(let mapFence):
-          DispatchQueue.main.async {
-            self?.mapFences[rtls.id] = mapFence
-          }
-        case .failure(let err): error = err
-        }
-        group.leave()
+  func fetchMapFence() -> AnyPublisher<Void, Error> {
+    // Build one publisher per valid floor
+    let publishers: [AnyPublisher<(id: Int64, data: MapFence), Error>] = floors
+      .compactMap { (rtls) in
+        guard let url = rtls.mapFenceUrl?.checkUrl(config: config) else { return nil }
+        return api.getMapFence(url: url).map { (rtls.id, $0) }.eraseToAnyPublisher()
       }
-    }
-
-    group.notify(queue: .main) {
-      self.createConverters()
-      completion(error)
-    }
+    guard !publishers.isEmpty else { return .fail(with: TT2Error.missingData) }
+    return Publishers.MergeMany(publishers)
+      .collect()
+      .receive(on: DispatchQueue.main)
+      .handleEvents(receiveOutput: { [weak self] in
+        $0.forEach { self?.mapFences[$0.id] = $0.data }
+        self?.createConverters()
+      })
+      .map { _ in () } // If requests are succesful return void
+      .eraseToAnyPublisher()
   }
 
-  func fetchMapZones(completion: @escaping (Error?) -> ()) {
-    guard !floors.isEmpty else { completion(TT2Error.missingData); return }
-    let group = DispatchGroup()
-    var error: Error?
-    floors.forEach { (floor) in
-      guard
-        let mapZonesUrl = floor.mapZonesUrl?.checkUrl(config: config).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-        let url = URL(string: mapZonesUrl)
-      else { return }
-      group.enter()
-      api.getMapZones(url: url) { [weak self] (result) in
-        switch result {
-        case .success(let data):
-          DispatchQueue.main.async {
-            self?.mapZonesData[floor.id] = data
-          }
-        case .failure(let err): error = err
-        }
-        group.leave()
+  func fetchMapZones() -> AnyPublisher<Void, Error> {
+    let publishers: [AnyPublisher<(id: Int64, data: ZoneData), Error>] = floors
+      .compactMap { (rtls) in
+        guard
+          let mapZonesUrl = rtls.mapZonesUrl?.checkUrl(config: config).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+          let url = URL(string: mapZonesUrl)
+        else { return nil }
+        return api.getMapZones(url: url).map { (rtls.id, $0) }.eraseToAnyPublisher()
       }
-    }
-
-    group.notify(queue: .main) {
-      completion(error)
-    }
+    guard !publishers.isEmpty else { return .fail(with: TT2Error.missingData) }
+    return Publishers.MergeMany(publishers)
+      .collect()
+      .receive(on: DispatchQueue.main)
+      .handleEvents(receiveOutput: { [weak self] in
+        $0.forEach { self?.mapZonesData[$0.id] = $0.data }
+      })
+      .map { _ in () } // If requests are succesful return void
+      .eraseToAnyPublisher()
   }
 
-  func fetchNavGraph(completion: @escaping (Error?) -> ()) {
-    guard !floors.isEmpty else { completion(TT2Error.missingData); return }
-    let group = DispatchGroup()
-    var error: Error?
-    floors.forEach { (floor) in
-      guard 
-        let navGraphUrl = floor.navGraphUrl?.checkUrl(config: config).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-        let url = URL(string: navGraphUrl)
-      else { return }
-      group.enter()
-      api.getNavGraph(url: url) { [weak self] (result) in
-        switch result {
-        case .success(let data):
-          DispatchQueue.main.async {
-            self?.navgraphs[floor.id] = data
-          }
-        case .failure(let err): error = err
-        }
-        group.leave()
+  func fetchNavGraph() -> AnyPublisher<Void, Error> {
+    let publishers: [AnyPublisher<(id: Int64, data: Data), Error>] = floors
+      .compactMap { (rtls) in
+        guard
+          let navGraphUrl = rtls.navGraphUrl?.checkUrl(config: config).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+          let url = URL(string: navGraphUrl)
+        else { return nil }
+        return api.getNavGraph(url: url).map { (rtls.id, $0) }.eraseToAnyPublisher()
       }
-    }
-
-    group.notify(queue: .main) {
-      completion(error)
-    }
+    guard !publishers.isEmpty else { return .fail(with: TT2Error.missingData) }
+    return Publishers.MergeMany(publishers)
+      .collect()
+      .receive(on: DispatchQueue.main)
+      .handleEvents(receiveOutput: { [weak self] in
+        $0.forEach { self?.navGraphs[$0.id] = $0.data }
+      })
+      .map { _ in () } // If requests are succesful return void
+      .eraseToAnyPublisher()
   }
 
-  func fetchShelfGroups(completion: @escaping (Error?) -> ()) {
-    guard !floors.isEmpty else { completion(TT2Error.missingData); return }
-    let group = DispatchGroup()
-    var error: Error?
-    floors.forEach { (floor) in
-      group.enter()
-      api.getShelfGroups(rtlsOptionsId: floor.id) { [weak self] (result) in
-        switch result {
-        case .success(let shelfGroups):
-          if shelfGroups.count > 0 {
-            DispatchQueue.main.async {
-              self?.shelfGroups[floor.id] = shelfGroups
-              self?.zoneShelves[floor.id] = shelfGroups
-                .map { $0.shelves }
-                .flatMap { $0 }
-                .filter { $0.name?.contains("@zone") ?? false }
-            }
-          }
-        case .failure(let err): error = err
-        }
-        group.leave()
+  func fetchShelfGroups() -> AnyPublisher<Void, Error> {
+    let publishers: [AnyPublisher<(id: Int64, data: [ShelfGroup]), Error>] = floors
+      .map { (rtls) in
+        api.getShelfGroups(rtlsOptionsId: rtls.id).map { (rtls.id, $0) }.eraseToAnyPublisher()
       }
-    }
-
-    group.notify(queue: .main) {
-      completion(error)
-    }
+    guard !publishers.isEmpty else { return .fail(with: TT2Error.missingData) }
+    return Publishers.MergeMany(publishers)
+      .collect()
+      .receive(on: DispatchQueue.main)
+      .handleEvents(receiveOutput: { [weak self] in
+        $0.forEach {
+          self?.shelfGroups[$0.id] = $0.data
+          self?.zoneShelves[$0.id] = $0.data
+            .map { $0.shelves }
+            .flatMap { $0 }
+            .filter { $0.name?.contains("@zone") ?? false }
+        }
+      })
+      .map { _ in () } // If requests are succesful return void
+      .eraseToAnyPublisher()
   }
 
   func getRtlsOptions() -> [RtlsOptions] { floors }

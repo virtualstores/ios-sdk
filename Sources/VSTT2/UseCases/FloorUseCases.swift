@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2024-05-23.
 //
 
+import Combine
 import Foundation
 import VSFoundation
 import VSPositionKit
@@ -23,32 +24,32 @@ class CreateVPSPathfindersUseCase {
 class FetchMapFenceUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke(completion: @escaping (Error?) -> ()) {
-    repository.fetchMapFence(completion: completion)
+  func invoke() -> AnyPublisher<Void, Error> {
+    repository.fetchMapFence()
   }
 }
 
 class FetchMapZonesUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke(completion: @escaping (Error?) -> ()) {
-    repository.fetchMapZones(completion: completion)
+  func invoke() -> AnyPublisher<Void, Error> {
+    repository.fetchMapZones()
   }
 }
 
 class FetchNavGraphUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke(completion: @escaping (Error?) -> ()) {
-    repository.fetchNavGraph(completion: completion)
+  func invoke() -> AnyPublisher<Void, Error> {
+    repository.fetchNavGraph()
   }
 }
 
 class FetchShelfGroupsUseCase {
   @Inject var repository: IFloorRepository
 
-  func invoke(completion: @escaping (Error?) -> ()) {
-    repository.fetchShelfGroups(completion: completion)
+  func invoke() -> AnyPublisher<Void, Error> {
+    repository.fetchShelfGroups()
   }
 }
 

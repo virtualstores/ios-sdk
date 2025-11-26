@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2022-12-15.
 //
 
+import Combine
 import Foundation
 import VSFoundation
 
@@ -12,8 +13,8 @@ protocol IStoreRepository: Disposable {
   var activeStore: Store { get throws }
   var zonesTree: TT2ZonesTree { get throws }
 
-  func fetchStores(clientId: Int64, completion: @escaping (Error?) -> ())
-  func fetchSwapLocations(storeId: Int64, completion: @escaping (Error?) -> ())
+  func fetchStores(clientId: Int64) -> AnyPublisher<Void, Error>
+  func fetchSwapLocations(storeId: Int64) -> AnyPublisher<Void, Error>
   func getCachedStores() -> [Store]
   func getCachedSwapLocations() -> [SwapLocation]
   func set(activeStore store: Store)
@@ -60,27 +61,22 @@ extension StoreRepository: IStoreRepository {
     _zonesTree = nil
   }
 
-  func fetchStores(clientId: Int64, completion: @escaping (Error?) -> ()) {
-    api.fetchStores(clientId: clientId) { [weak self] (result) in
-      switch result {
-      case .success(let stores):
-        self?.cachedStores = stores
-        completion(nil)
-      case .failure(let error): completion(error)
-      }
-    }
+  func fetchStores(clientId: Int64) -> AnyPublisher<Void, Error> {
+    api.fetchStores(clientId: clientId)
+      .handleEvents(receiveOutput: { [weak self] in
+        self?.cachedStores = $0
+      })
+      .map { _ in () }
+      .eraseToAnyPublisher()
   }
 
-  func fetchSwapLocations(storeId: Int64, completion: @escaping (Error?) -> ()) {
-    api.fetchSwapLocations(storeId: storeId) { [weak self] (result) in
-      switch result {
-      case .success(let swapLocations):
-        self?.cachedSwapLocations = swapLocations
-        completion(nil)
-      case .failure(let error):
-        completion(error)
-      }
-    }
+  func fetchSwapLocations(storeId: Int64) -> AnyPublisher<Void, Error> {
+    api.fetchSwapLocations(storeId: storeId)
+      .handleEvents(receiveOutput: { [weak self] in
+        self?.cachedSwapLocations = $0
+      })
+      .map { _ in ()}
+      .eraseToAnyPublisher()
   }
 
   func getCachedStores() -> [Store] {

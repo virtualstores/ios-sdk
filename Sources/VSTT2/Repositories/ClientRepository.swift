@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2024-05-02.
 //
 
+import Combine
 import Foundation
 import VSFoundation
 
@@ -14,7 +15,7 @@ protocol IClientRepository: Disposable {
   func get() -> [Client]
   func set(activeClient: Client)
   func set(cachedClients: [Client])
-  func fetch(completion: @escaping (Result<[Client], Error>) -> ())
+  func fetch() -> AnyPublisher<[Client], Error>
 }
 
 class ClientRepository {
@@ -56,7 +57,7 @@ extension ClientRepository: IClientRepository {
     clients = cachedClients
   }
 
-  func fetch(completion: @escaping (Result<[Client], Error>) -> ()) {
-    api.get(completion: completion)
+  func fetch() -> AnyPublisher<[Client], Error> {
+    api.get()
   }
 }

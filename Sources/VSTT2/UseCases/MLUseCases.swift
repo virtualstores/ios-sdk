@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2024-05-30.
 //
 
+import Combine
 import CoreML
 import Foundation
 import VSFoundation
@@ -15,6 +16,10 @@ class CompileModelUseCase {
   func invoke(type: MLRepository.ModelTypeEnum, completion: @escaping (Error?) -> ()) {
     repository.compileModel(type: type, completion: completion)
   }
+
+  func invoke(type: MLRepository.ModelTypeEnum) -> AnyPublisher<Void, Error> {
+    repository.compileModel(type: type)
+  }
 }
 
 class FetchMLInterfaceVersionsUseCase {
@@ -22,6 +27,10 @@ class FetchMLInterfaceVersionsUseCase {
 
   func invoke(completion: @escaping (Error?) -> ()) {
     repository.fetchMLInterfaceVersions(completion: completion)
+  }
+
+  func invoke() -> AnyPublisher<Void, Error> {
+    repository.fetchMLInterfaceVersions()
   }
 }
 
@@ -89,6 +98,10 @@ class LoadMLVersionUseCase {
   func invoke(version: MLInterfaceVersions.MLCatalog.Device.MLVersion, completion: @escaping (Error?) -> ()) {
     repository.load(mlVersion: version, completion: completion)
   }
+
+  func invoke(version: MLInterfaceVersions.MLCatalog.Device.MLVersion) -> AnyPublisher<Void, Error> {
+    repository.load(mlVersion: version)
+  }
 }
 
 class LoadNLVersionUseCase {
@@ -96,6 +109,10 @@ class LoadNLVersionUseCase {
 
   func invoke(version: MLInterfaceVersions.MLCatalog.Device.NLVersion, completion: @escaping (Error?) -> ()) {
     repository.load(nlVersion: version, completion: completion)
+  }
+
+  func invoke(version: MLInterfaceVersions.MLCatalog.Device.NLVersion) -> AnyPublisher<Void, Error> {
+    repository.load(nlVersion: version)
   }
 }
 
