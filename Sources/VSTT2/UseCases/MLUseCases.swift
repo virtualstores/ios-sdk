@@ -13,10 +13,6 @@ import VSFoundation
 class CompileModelUseCase {
   @Inject var repository: IMLRepository
 
-  func invoke(type: MLRepository.ModelTypeEnum, completion: @escaping (Error?) -> ()) {
-    repository.compileModel(type: type, completion: completion)
-  }
-
   func invoke(type: MLRepository.ModelTypeEnum) -> AnyPublisher<Void, Error> {
     repository.compileModel(type: type)
   }
@@ -24,10 +20,6 @@ class CompileModelUseCase {
 
 class FetchMLInterfaceVersionsUseCase {
   @Inject var repository: IMLRepository
-
-  func invoke(completion: @escaping (Error?) -> ()) {
-    repository.fetchMLInterfaceVersions(completion: completion)
-  }
 
   func invoke() -> AnyPublisher<Void, Error> {
     repository.fetchMLInterfaceVersions()
@@ -95,10 +87,6 @@ class GetVPSNLModelParamsUseCase {
 class LoadMLVersionUseCase {
   @Inject var repository: IMLRepository
 
-  func invoke(version: MLInterfaceVersions.MLCatalog.Device.MLVersion, completion: @escaping (Error?) -> ()) {
-    repository.load(mlVersion: version, completion: completion)
-  }
-
   func invoke(version: MLInterfaceVersions.MLCatalog.Device.MLVersion) -> AnyPublisher<Void, Error> {
     repository.load(mlVersion: version)
   }
@@ -106,10 +94,6 @@ class LoadMLVersionUseCase {
 
 class LoadNLVersionUseCase {
   @Inject var repository: IMLRepository
-
-  func invoke(version: MLInterfaceVersions.MLCatalog.Device.NLVersion, completion: @escaping (Error?) -> ()) {
-    repository.load(nlVersion: version, completion: completion)
-  }
 
   func invoke(version: MLInterfaceVersions.MLCatalog.Device.NLVersion) -> AnyPublisher<Void, Error> {
     repository.load(nlVersion: version)

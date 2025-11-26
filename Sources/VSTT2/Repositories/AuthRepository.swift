@@ -8,7 +8,7 @@
 import Combine
 import VSFoundation
 
-protocol IAuthRepository: Disposable {
+protocol IAuthRepository {
   func getAuthSettings() -> AuthSettings?
   func login(username: String, password: String) -> AnyPublisher<LoginDto, Error>
   func refresh(authToken: String, refreshToken: String) -> AnyPublisher<RefreshDto, Error>
@@ -22,16 +22,10 @@ class AuthRepository {
 
   deinit {
     Logger(verbosity: .info).log(tag: tag, message: "deinit")
-    dispose()
   }
 }
 
 extension AuthRepository: IAuthRepository {
-  func dispose() {
-    Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    api.dispose()
-  }
-  
   func getAuthSettings() -> AuthSettings? {
     authSettings
   }

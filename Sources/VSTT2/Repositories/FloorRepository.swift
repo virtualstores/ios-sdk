@@ -79,7 +79,6 @@ extension FloorRepository: IFloorRepository {
 
   func dispose() {
     Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    api.dispose()
     _activeFloor = nil
     converters = [:]
     floors = []

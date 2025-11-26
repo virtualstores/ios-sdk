@@ -52,11 +52,7 @@ class VSTT2Config: Config {
       return inject
     }
     injector.map(IApiKeyRepository.self) { ApiKeyRepository() }
-    injector.map(IAuthRepository.self) { [weak self] in
-      let inject = AuthRepository()
-      self?.disposables.append(inject)
-      return inject
-    }
+    injector.map(IAuthRepository.self) { AuthRepository()}
     injector.map(IClientRepository.self) { [weak self] in
       let inject = ClientRepository()
       self?.disposables.append(inject)

@@ -33,7 +33,6 @@ class ClientRepository {
 extension ClientRepository: IClientRepository {
   func dispose() {
     Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    api.dispose()
     _activeClient = nil
     clients = []
   }

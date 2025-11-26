@@ -53,7 +53,6 @@ extension StoreRepository: IStoreRepository {
 
   func dispose() {
     Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    api.dispose()
     _activeStore = nil
     cachedStores = []
     cachedSwapLocations = []

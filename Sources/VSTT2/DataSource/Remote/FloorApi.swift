@@ -9,7 +9,7 @@ import Foundation
 import Combine
 import VSFoundation
 
-protocol IFloorApi: Disposable {
+protocol IFloorApi {
   func getMapFence(url: String) -> AnyPublisher<MapFence, Error>
   func getMapZones(url: URL) -> AnyPublisher<ZoneData, Error>
   func getNavGraph(url: URL) -> AnyPublisher<Data, Error>
@@ -24,10 +24,6 @@ class FloorApi {
 }
 
 extension FloorApi: IFloorApi {
-  func dispose() {
-    Logger(verbosity: .info).log(tag: tag, message: "dispose")
-  }
-
   func getMapFence(url: String) -> AnyPublisher<MapFence, Error> {
     mapFenceService.call(with: .init(url: url))
   }

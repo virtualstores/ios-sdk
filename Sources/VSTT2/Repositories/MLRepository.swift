@@ -13,9 +13,7 @@ import ZIPFoundation
 import vps
 
 protocol IMLRepository: Disposable {
-  func compileModel(type: MLRepository.ModelTypeEnum, completion: @escaping (Error?) -> ())
   func compileModel(type: MLRepository.ModelTypeEnum) -> AnyPublisher<Void, Error>
-  func fetchMLInterfaceVersions(completion: @escaping (Error?) -> ())
   func fetchMLInterfaceVersions() -> AnyPublisher<Void, Error>
   func fetchModel(url: URL, id: String, type: MLRepository.ModelTypeEnum) -> AnyPublisher<Void, Error>
   func getMLCatalog() -> MLInterfaceVersions.MLCatalog?
@@ -25,9 +23,7 @@ protocol IMLRepository: Disposable {
   func getNLVersion() -> MLInterfaceVersions.MLCatalog.Device.NLVersion?
   func getVPSMLModelParams() -> VPSMLModelParams?
   func getVPSNLModelParams() -> VPSNLModelParams?
-  func load(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion, completion: @escaping (Error?) -> ())
   func load(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion) -> AnyPublisher<Void, Error>
-  func load(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion, completion: @escaping (Error?) -> ())
   func load(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion) -> AnyPublisher<Void, Error>
   func set(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion)
   func set(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion)
@@ -110,13 +106,6 @@ extension MLRepository: IMLRepository {
     nlModel = nil
     nlParams = nil
   }
-  
-  func compileModel(type: ModelTypeEnum, completion: @escaping (Error?) -> ()) {
-    compileModel(type: type)
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellables)
-  }
 
   func compileModel(type: ModelTypeEnum) -> AnyPublisher<Void, Error> {
     let path: URL?
@@ -136,13 +125,6 @@ extension MLRepository: IMLRepository {
         try? FileManager.default.removeItem(at: $0)
       }
       .eraseToAnyPublisher()
-  }
-
-  func fetchMLInterfaceVersions(completion: @escaping (Error?) -> ()) {
-    fetchMLInterfaceVersions()
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellables)
   }
 
   func fetchMLInterfaceVersions() -> AnyPublisher<Void, Error> {
@@ -185,13 +167,6 @@ extension MLRepository: IMLRepository {
     nlParams
   }
 
-  func load(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion, completion: @escaping (Error?) -> ()) {
-    load(mlVersion: mlVersion)
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellables)
-  }
-
   func load(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion) -> AnyPublisher<Void, Error> {
     if currentMLVersion?.version == mlVersion.version {
       return Result { try handleModel(id: mlVersion.id, type: .ml) }
@@ -203,13 +178,6 @@ extension MLRepository: IMLRepository {
 
     currentMLVersion = nil
     return fetchModel(url: url, id: mlVersion.id, type: .ml)
-  }
-
-  func load(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion, completion: @escaping (Error?) -> ()) {
-    load(nlVersion: nlVersion)
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellables)
   }
 
   func load(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion) -> AnyPublisher<Void, Error> {

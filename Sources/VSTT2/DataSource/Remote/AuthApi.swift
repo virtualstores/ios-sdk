@@ -8,22 +8,17 @@
 import Combine
 import VSFoundation
 
-protocol IAuthApi: Disposable {
+protocol IAuthApi {
   func login(username: String, password: String) -> AnyPublisher<LoginDto, Error>
   func refresh(authToken: String, refreshToken: String) -> AnyPublisher<RefreshDto, Error>
 }
 
 class AuthApi {
-  private let tag = "AuthApi"
   private let loginService = LoginService(with: NetworkManager())
   private let refreshService = RefreshService(with: NetworkManager())
 }
 
 extension AuthApi: IAuthApi {
-  func dispose() {
-    Logger(verbosity: .info).log(tag: tag, message: "dispose")
-  }
-  
   func login(username: String, password: String) -> AnyPublisher<LoginDto, Error> {
     loginService.call(with: .init(username: username, password: password))
   }
