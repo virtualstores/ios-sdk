@@ -63,11 +63,7 @@ class VSTT2Config: Config {
       self?.disposables.append(inject)
       return inject
     }
-    injector.map(IItemsRepository.self) { [weak self] in
-      let inject = ItemsRepository()
-      self?.disposables.append(inject)
-      return inject
-    }
+    injector.map(IItemsRepository.self) { ItemsRepository() }
     injector.map(IJWTTokenRepository.self) { JWTTokenRepository() }
     injector.map(IMLRepository.self) { [weak self] in
       let inject = MLRepository()
@@ -206,7 +202,11 @@ class VSTT2Config: Config {
       return inject
     }
     injector.map(Persistence.self) { Persistence() }
-    injector.map(Position.self) { Position() }
+    injector.map(Position.self) { [weak self] in
+      let inject = Position()
+      self?.disposables.append(inject)
+      return inject
+    }
     injector.map(VPSPositionManager.self) { [weak self] in
       let inject = VPSPositionManager()
       self?.disposables.append(inject)

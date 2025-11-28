@@ -26,7 +26,7 @@ public protocol ITT2: Disposable {
     var floor: VSTT2Floor { get }
     
     /// Position manager
-    var position: Position { get }
+    var position: IPosition { get }
 
     /// Event Manager
     var events: TT2EventManager { get }

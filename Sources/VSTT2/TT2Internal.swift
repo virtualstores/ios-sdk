@@ -208,7 +208,6 @@ internal class TT2Internal: Disposable {
             }.store(in: &cancellable)
 
         navigation.scanEventsPublisher
-          .compactMap { $0 }
           .sink { [weak self] (events) in
             events.forEach { self?.analytics.postScanEvents(scanEvent: $0) }
           }.store(in: &cancellable)

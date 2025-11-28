@@ -311,7 +311,7 @@ public extension TriggerEvent {
         tags[.messageShown] = id
         return TriggerEvent(
             rtlsOptionsId: rtlsOptionsId,
-            name: name,
+            name: "Message",
             description: description,
             eventType: .appTrigger(TriggerEvent.AppTrigger(event: name)),
             tags: tags,

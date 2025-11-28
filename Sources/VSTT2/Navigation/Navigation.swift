@@ -46,7 +46,7 @@ final public class Navigation {
     var onForceSyncPublisher: CurrentValueSubject<Void?, Never> = .init(nil)
 
     var accuracyPublisher: CurrentValueSubject<(event: AccuracySyncEvent.Event, isFloorSwap: Bool)?,Never> = .init(nil)
-    var scanEventsPublisher: CurrentValueSubject<[ScanEvent]?, Never> = .init(nil)
+    var scanEventsPublisher: PassthroughSubject<[ScanEvent], Never> = .init()
 
     var currentAccessPointPosition: CGPoint = .zero
     var inAndOutZone: InAndOutZone?
@@ -55,7 +55,7 @@ final public class Navigation {
     private var startCodes: [PositionedCode] { activeFloor?.scanLocations?.filter({ $0.type == .start }) ?? [] }
     private var hasStartLocationAngle: Bool = false
     private var certainAngle: Bool = false
-    private var cancellable = Set<AnyCancellable>()
+    private var cancellables = Set<AnyCancellable>()
 
     private var heading: TT2Course? {
         guard
@@ -91,6 +91,7 @@ extension Navigation: INavigation {
     public func dispose() {
       Logger(verbosity: .info).log(tag: tag, message: "dispose")
       modelManager = nil
+      cancellables.removeAll()
     }
   
     public var isActive: Bool {
@@ -221,7 +222,7 @@ extension Navigation: INavigation {
             prepareAngle()
         }
         if reportScanEvent {
-            createAnalyticsScanEventForIdentifier(identfier: identifier)
+            createAnalyticsScanEventForIdentifier(identifier: identifier)
         }
         func doSync(position: ItemPosition) throws {
             switch type {
@@ -341,12 +342,12 @@ extension Navigation {
 // MARK: Private
 private extension Navigation {
     func bindPublishers() {
-      cancellable.removeAll()
+      cancellables.removeAll()
       vpsUpdates.invoke()
         .sink { [weak self] (position) in
           guard let position = position else { return }
           self?.inAndOutZone?.onNewPosition(currentPosition: position.point)
-        }.store(in: &cancellable)
+        }.store(in: &cancellables)
     }
 
     func prepareAccuracyUpload(position: ItemPosition? = nil, code: PositionedCode? = nil, startDirection: Double? = nil, identifier: String? = nil, item: Item? = nil, isFloorSwap: Bool = false) {
@@ -369,52 +370,31 @@ private extension Navigation {
         accuracyPublisher.send((event: event, isFloorSwap: isFloorSwap))
     }
 
-    func createAnalyticsScanEventForIdentifier(identfier: String) {
-      guard let id = activeFloor?.id else { return }
-      var events = [ScanEvent]()
+    func createAnalyticsScanEventForIdentifier(identifier: String) {
+      guard let floorId = activeFloor?.id else { return }
+
+      var baseEvents = [ScanEvent]()
       if let zoneIds = inAndOutZone?.activeInside.map({ $0.id }), !zoneIds.isEmpty {
-        events.append(.createZoneScanEvent(identifier: identfier, floorLevelId: id, userPosition: currentPosition, zones: zoneIds))
-      }
-      
-      func addShelfScanEvent(position: ItemPosition) {
-        if position.floorLevelId == id {
-          events.append(.createShelfScanEvent(itemPosition: position, userPosition: currentPosition))
-        }
+        baseEvents.append(.createZoneScanEvent(identifier: identifier, floorLevelId: floorId, userPosition: currentPosition, zones: zoneIds))
       }
 
-      func addUnknownScanEvent() {
-        events.append(.createUnknownScanEvent(identfier: identfier, floorLevelId: id, userPosition: currentPosition))
-      }
-
-      let group = DispatchGroup()
-      group.enter()
-      positionManager.getBy(shelfName: identfier) { (result) in
-        switch result {
-        case .success(let position):
-          addShelfScanEvent(position: position)
-          group.leave()
-        case .failure(let error):
-          self.positionManager.getBy(barcode: identfier) { (result) in
-            switch result {
-            case .success(let item):
-              if let position = item.itemPosition {
-                addShelfScanEvent(position: position)
-              }
-            case .failure(_):
-              addUnknownScanEvent()
-            }
-            group.leave()
+      positionManager.getBy(identifier: identifier)
+        .map { [weak self] item -> [ScanEvent] in
+          guard let self = self else { return baseEvents }
+          var events = baseEvents
+          if let position = item.itemPosition, position.floorLevelId == floorId {
+            events.append(.createShelfScanEvent(itemPosition: position, userPosition: currentPosition))
           }
+          return events
         }
-      }
-
-      group.notify(queue: .main) {
-        if events.isEmpty {
-          addUnknownScanEvent()
+        .catch { _ in Just(baseEvents) }
+        .map { [weak self] in
+          guard let self = self, $0.isEmpty || $0.allSatisfy({ $0.type == .zone }) else { return $0 }
+          return $0 + [.createUnknownScanEvent(identfier: identifier, floorLevelId: floorId, userPosition: currentPosition)]
         }
-
-        self.scanEventsPublisher.send(events)
-      }
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] in self?.scanEventsPublisher.send($0) }
+        .store(in: &cancellables)
     }
 
     func startWithAngle(startPosition: CGPoint) -> Double? {

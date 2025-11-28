@@ -18,7 +18,7 @@ final public class TT2: ITT2 {
     public var navigation: Navigation { tt2Internal.navigation }
     public var analytics: TT2Analytics { tt2Internal.analytics }
     public var floor: VSTT2Floor { tt2Internal.floorManager }
-    public var position: Position { tt2Internal.position }
+    public var position: IPosition { tt2Internal.position }
     public var events: TT2EventManager { tt2Internal.analytics.eventManager }
     public var user: IUserManager { tt2Internal.user }
     public var recording: IRecordingManager { tt2Internal.recording }

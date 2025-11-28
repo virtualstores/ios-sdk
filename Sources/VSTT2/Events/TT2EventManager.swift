@@ -58,10 +58,9 @@ private extension TT2EventManager {
   func bindPublishers() {
     eventDetector.eventPublisher
       .compactMap { $0 }
+      .receive(on: DispatchQueue.main)
       .sink { [weak self] (event) in
-        DispatchQueue.main.async {
-          self?.handle(event: event)
-        }
+        self?.handle(event: event)
       }
       .store(in: &cancellable)
   }
@@ -98,7 +97,7 @@ private extension TT2EventManager {
 
   func loadMessages() {
     triggerEventsService
-      .call(with: TriggerEventsParameters(storeId: activeStoreId))
+      .call(with: .init(storeId: activeStoreId))
       .sink { (result) in
         switch result {
         case .finished: break

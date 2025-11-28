@@ -5,31 +5,20 @@
 //  Created by Théodore Roos on 2022-12-15.
 //
 
-import Foundation
 import Combine
+import Foundation
 import VSFoundation
 
-protocol IItemsApi: Disposable {
-  func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ())
+protocol IItemsApi {
+  func getBy(storeId: Int64, barcode: String) -> AnyPublisher<[BarcodePosition], Error>
 }
 
 class ItemsApi {
-  private let tag = "ItemsApi"
   private let service = ItemPositionService(with: NetworkManager())
-  private var cancellable = Set<AnyCancellable>()
 }
 
 extension ItemsApi: IItemsApi {
-  func dispose() {
-    Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    cancellable.removeAll()
-  }
-  
-  func getBy(storeId: Int64, barcode: String, completion: @escaping (Result<[BarcodePosition], Error>) -> ()) {
-    service
-      .call(with: ItemPositionParameters(storeId: storeId, barcode: barcode))
-      .asResult()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
+  func getBy(storeId: Int64, barcode: String) -> AnyPublisher<[BarcodePosition], Error> {
+    service.call(with: .init(storeId: storeId, barcode: barcode))
   }
 }

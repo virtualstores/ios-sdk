@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2022-12-15.
 //
 
+import Combine
 import Foundation
 import VSFoundation
 
@@ -14,13 +15,17 @@ class GetPositionByBarcodeUseCase {
   @Inject var statusRepository: IStatusRepository
   @Inject var floorRepository: IFloorRepository
 
-  func invoke(barcode: String, completion: @escaping (Result<Item, Error>) -> Void) {
-    guard let id = try? storeRepository.activeStore.id else { return }
-    itemsRepository.getBy(storeId: id, barcode: barcode) { [weak self] (result) in
-      switch result {
-      case .success(let data):
-        self?.itemsRepository.addCachedItem(identfier: barcode, positons: data)
-        let itemPositions = data.map { $0.toItemPosition }.compactMap { $0 }
+  func invoke(barcode: String) -> AnyPublisher<Item, Error> {
+    return .justOrFail { try storeRepository.activeStore.id }
+      .flatMap { [weak self] in
+        self?.itemsRepository.getBy(storeId: $0, barcode: barcode) ?? .fail(with: NSError(domain: "GetPositionByBarcodeUseCase", code: -1))
+      }
+      .handleEvents(receiveOutput: { [weak self] in
+        guard $0.contains(where: { $0.toItemPosition != nil }) else { return }
+        self?.itemsRepository.addCachedItem(identfier: barcode, positons: $0)
+      })
+      .map { $0.map { $0.toItemPosition }.compactMap { $0 } }
+      .map { [weak self] (itemPositions) -> Item in
         var closestItemPosition = itemPositions.first
         if let userPosition = self?.statusRepository.currentPosition {
           closestItemPosition = itemPositions.getNearest(to: userPosition.point)
@@ -31,18 +36,16 @@ class GetPositionByBarcodeUseCase {
           zones: (try? self?.storeRepository.zonesTree.getZonesForCurrentFloorLevel()) ?? []
         )?.asZonePosition
 
-        DispatchQueue.main.async { completion(.success(
-          Item(
-            name: barcode,
-            externalId: barcode,
-            itemPositions: itemPositions,
-            itemPosition: zonePosition == nil ? closestItemPosition : nil,
-            zonePosition: zonePosition
-          )
-        ))}
-      case .failure(let error): DispatchQueue.main.async { completion(.failure(error)) }
+        return Item(
+          name: barcode,
+          externalId: barcode,
+          itemPositions: itemPositions,
+          itemPosition: zonePosition == nil ? closestItemPosition : nil,
+          zonePosition: zonePosition
+        )
       }
-    }
+      .receive(on: DispatchQueue.main)
+      .eraseToAnyPublisher()
   }
 }
 
