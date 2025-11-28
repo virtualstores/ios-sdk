@@ -29,7 +29,7 @@ class GetPositionByBarcodeUseCase {
         let zonePosition = closestItemPosition?.getZonePosition(
           for: (try? self?.floorRepository.activeZoneShelves) ?? [],
           zones: (try? self?.storeRepository.zonesTree.getZonesForCurrentFloorLevel()) ?? []
-        )?.asZonePosition
+        )?.asZonePosition(barcode: barcode)
 
         DispatchQueue.main.async { completion(.success(
           Item(
@@ -46,7 +46,7 @@ class GetPositionByBarcodeUseCase {
   }
 }
 
-private  extension BarcodePosition {
+private extension BarcodePosition {
   var toItemPosition: ItemPosition? {
     guard let point = itemPosition, let offset = itemPositionOffset else { return nil }
     return ItemPosition(point: point, offset: offset, floorLevelId: rtlsOptionsId, shelfId: shelfId, shelfTierId: shelfTierId, shelfTierPosition: shelfTierPosition, identifier: barcode, isDisabled: isDisabled)
@@ -63,9 +63,9 @@ private extension ItemPosition {
 }
 
 private extension Zone {
-  var asZonePosition: ZonePosition? {
+  func asZonePosition(barcode: String) -> ZonePosition? {
     guard let point = navigationPoint else { return nil }
-    return .init(floorLevelId: floorLevelId, id: id, name: name, names: names, point: point)
+    return .init(floorLevelId: floorLevelId, id: barcode, name: name, names: names, point: point)
   }
 }
 
