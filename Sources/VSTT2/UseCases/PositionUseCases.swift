@@ -65,7 +65,7 @@ private extension ItemPosition {
 private extension Zone {
   func asZonePosition(barcode: String) -> ZonePosition? {
     guard let point = navigationPoint else { return nil }
-    return .init(floorLevelId: floorLevelId, id: barcode, name: name, names: names, point: point)
+    return .init(floorLevelId: floorLevelId, id: id, name: name, names: names, point: point, identifier: barcode)
   }
 }
 

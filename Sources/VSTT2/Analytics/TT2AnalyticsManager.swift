@@ -482,7 +482,7 @@ extension TT2AnalyticsManager: TT2Analytics {
     serialDispatch.async { [weak self] in
       guard
         let self = self,
-        let event = wayfindingBusiness.startTracking(item: WayfindingZone(identifier: zonePosition.id, position: zonePosition))
+        let event = wayfindingBusiness.startTracking(item: WayfindingZone(identifier: zonePosition.identifier, position: zonePosition))
       else { return }
       addTriggerEvent(for: event)
     }
@@ -492,7 +492,7 @@ extension TT2AnalyticsManager: TT2Analytics {
     serialDispatch.async { [weak self] in
       guard
         let self = self,
-        let event = wayfindingBusiness.stopTracking(identifier: zonePosition.id)
+        let event = wayfindingBusiness.stopTracking(identifier: zonePosition.identifier)
       else { return }
       addTriggerEvent(for: event)
     }
