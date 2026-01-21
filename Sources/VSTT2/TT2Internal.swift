@@ -51,9 +51,9 @@ internal class TT2Internal: Disposable {
     @Inject var getZonesTree: GetZonesTreeUseCase
     @Inject var setActiveStore: SetActiveStoreUseCase
     /// Usecases - Generic
+    @Inject var resetBuffer: ResetAnalyticsBufferUseCase
     @Inject var stopTT2: StopTT2UseCase
 
-    let deviceOrientationUploader: DeviceOrientationUploader = .init()
     var mapManager: IMapManager?
     var mapController: IMapController?
     var wifiController: IWiFiController?
@@ -200,7 +200,7 @@ internal class TT2Internal: Disposable {
                 let heading = (vpsToMapboxAngle(angle: heading + offset)).remainder(dividingBy: 360.0)
                 mapController?.updateUserDirection(newDirection: heading)
               case .rescueMode: analytics.rescueMode()
-              case .floorChange(difference: let difference, timestamp: let timestamp):
+              case .floorChange(difference: let difference, timestamp: _):
                 floorManager.onNewFloor(floor: difference)
               case .consistencyScoreSignal(let score):
                 analytics.report(visitScore: score)
@@ -221,7 +221,7 @@ internal class TT2Internal: Disposable {
         navigation.scanEventsPublisher
           .compactMap { $0 }
           .sink { [weak self] (events) in
-            events.forEach { self?.analytics.postScanEvents(scanEvent: $0) }
+            events.forEach { self?.analytics.bufferOrPersist.invoke(event: $0) }
           }.store(in: &cancellable)
 
         recording.sendDataPublisher
@@ -313,11 +313,11 @@ internal class TT2Internal: Disposable {
 
     func generateFolderPathForRogueCrashReport(storeId: String) -> String {
       let serverAddress = config.connection.tt2CentralServer.baseUrl.trimServerAddress
-      return "rouge-crash-reports/\(serverAddress)/\(storeId)/\(UIDevice.current.systemName)"
+      return "rogue-crash-reports/\(serverAddress)/\(storeId)/\(UIDevice.current.systemName)"
     }
 
     private func vpsToMapboxAngle(angle: Double) -> Double {
-        90.0 - angle
+        0.0 - angle
     }
 
     func initRealWorldConverter() {

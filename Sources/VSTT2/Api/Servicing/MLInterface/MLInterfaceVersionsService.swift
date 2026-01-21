@@ -1,6 +1,6 @@
 //
 //  MLInterfaceVersionsService.swift
-//  
+//
 //
 //  Created by Théodore Roos on 2023-04-11.
 //
@@ -80,6 +80,10 @@ struct MLInterfaceVersions: Codable {
     let targets: [String: Target]
     let ios: Device
 
+    enum ModelTypeEnum {
+      case ml, nl, np
+    }
+
     struct Target: Codable {
       let ios: Device
 
@@ -87,16 +91,47 @@ struct MLInterfaceVersions: Codable {
         let useML: Bool
         let useNL: Bool
         let useMC: Bool
+        let useNP: Bool
         let latestMLVersion: Int
         let mlVersionFilter: [Int]
         let latestNLVersion: Int
         let nlVersionFilter: [Int]
+        let latestNPVersion: Int
+        let npVersionFilter: [Int]
+
+        private enum CodingKeys: String, CodingKey {
+          case useML,
+          useNL,
+          useMC,
+          useNP,
+          latestMLVersion,
+          mlVersionFilter,
+          latestNLVersion,
+          nlVersionFilter,
+          latestNPVersion,
+          npVersionFilter
+        }
+
+        init(from decoder: Decoder) throws {
+          let container = try decoder.container(keyedBy: CodingKeys.self)
+          useML = try container.decodeIfPresent(Bool.self, forKey: .useML) ?? true
+          useNL = try container.decodeIfPresent(Bool.self, forKey: .useNL) ?? false
+          useMC = try container.decodeIfPresent(Bool.self, forKey: .useMC) ?? false
+          useNP = try container.decodeIfPresent(Bool.self, forKey: .useNP) ?? false
+          latestMLVersion = try container.decodeIfPresent(Int.self, forKey: .latestMLVersion) ?? 1
+          mlVersionFilter = try container.decodeIfPresent([Int].self, forKey: .mlVersionFilter) ?? []
+          latestNLVersion = try container.decodeIfPresent(Int.self, forKey: .latestNLVersion) ?? 1
+          nlVersionFilter = try container.decodeIfPresent([Int].self, forKey: .nlVersionFilter) ?? []
+          latestNPVersion = try container.decodeIfPresent(Int.self, forKey: .latestNPVersion) ?? 1
+          npVersionFilter = try container.decodeIfPresent([Int].self, forKey: .npVersionFilter) ?? []
+        }
       }
     }
 
     struct Device: Codable {
       let mlModels: [String: MLVersion]
       let nlModels: [String: NLVersion]
+      let npModels: [String: NPVersion]
 
       struct MLVersion: Codable {
         let version: Int
@@ -122,44 +157,86 @@ struct MLInterfaceVersions: Codable {
         let name: String
         let resolution: Double
       }
+
+      struct NPVersion: Codable {
+        let version: Int
+        let minimumSupportedVPSVersion: String
+        let minimumSupportedSDKVersion: String
+        let isDeprecated: Bool
+        let id: String
+        let modelUrl: String
+        let name: String
+      }
     }
   }
 }
 
 extension MLInterfaceVersions.MLCatalog {
-  func getLatestSupportedVelocityModel(params: TT2Settings.TT2ModelParams, sdkVersion: String, vpsVersion: String) -> MLInterfaceVersions.MLCatalog.Device.MLVersion? {
-    guard let target = targets[params.target.description]?.ios, target.useML else { return nil }
-    let requestVersion = params.targetMLModelVersion ?? target.latestMLVersion
-    let supportedMLVersions = ios.mlModels
-      .filterAvailableModels(filter: target.mlVersionFilter)
-      .filterSupported(sdkVersion: sdkVersion)
-      .filterSupported(vpsVersion: vpsVersion)
-      .filter { !$0.value.isDeprecated && $0.value.version <= requestVersion }
-      .map { $0.value }
-      .sorted(by: { $0.version > $1.version })
-    return !supportedMLVersions.isEmpty ? supportedMLVersions.first(where: { $0.version == requestVersion }) ?? supportedMLVersions.first : nil
-  }
+  func getLatestSupportedModel(
+    _ type: ModelTypeEnum,
+    params: TT2Settings.TT2ModelParams,
+    sdkVersion: String,
+    vpsVersion: String
+  ) -> (any DeviceVersioning)? {
+    guard let target = targets[params.target.description]?.ios else { return nil }
+    let models: [String: DeviceVersioning]
+    let filter: [Int]
+    switch type {
+    case .ml:
+      guard target.useML else { return nil }
+      models = ios.mlModels
+      filter = target.mlVersionFilter
+    case .nl:
+      guard target.useNL else { return nil }
+      models = ios.nlModels
+      filter = target.nlVersionFilter
+    case .np:
+      guard target.useNP else { return nil }
+      models = ios.npModels
+      filter = target.npVersionFilter
+    }
 
-  func getLatestSupportedNLModel(params: TT2Settings.TT2ModelParams, sdkVersion: String, vpsVersion: String) -> MLInterfaceVersions.MLCatalog.Device.NLVersion? {
-    guard let target = targets[params.target.description]?.ios, target.useNL else { return nil }
-    let requestVersion = params.targetNLModelVersion ?? target.latestNLVersion
-    let supportedNLVersions = ios.nlModels
-      .filterAvailableModels(filter: target.nlVersionFilter)
-      .filterSupported(sdkVersion: sdkVersion)
-      .filterSupported(vpsVersion: vpsVersion)
-      .filter { !$0.value.isDeprecated && $0.value.version <= requestVersion }
-      .map { $0.value }
-      .sorted(by: { $0.version > $1.version })
-    return !supportedNLVersions.isEmpty ? supportedNLVersions.first(where: { $0.version == requestVersion }) ?? supportedNLVersions.first : nil
+    return models.pick(
+      requestedVersion: params.targetMLModelVersion ?? target.latestMLVersion,
+      filter: filter,
+      sdkVersion: sdkVersion,
+      vpsVersion: vpsVersion
+    )
   }
 }
 
-extension Dictionary<String, MLInterfaceVersions.MLCatalog.Device.MLVersion> {
-  func filterAvailableModels(filter: [Int]) -> [String: MLInterfaceVersions.MLCatalog.Device.MLVersion] {
-    self.filter { !filter.isEmpty ? filter.contains($0.value.version) : true }
+protocol DeviceVersioning {
+  var version: Int { get }
+  var minimumSupportedSDKVersion: String { get }
+  var minimumSupportedVPSVersion: String { get }
+  var isDeprecated: Bool { get }
+}
+
+extension MLInterfaceVersions.MLCatalog.Device.MLVersion: DeviceVersioning {}
+extension MLInterfaceVersions.MLCatalog.Device.NLVersion: DeviceVersioning {}
+extension MLInterfaceVersions.MLCatalog.Device.NPVersion: DeviceVersioning {}
+
+extension Dictionary where Key == String, Value == any DeviceVersioning {
+  func pick(
+    requestedVersion: Int,
+    filter: [Int],
+    sdkVersion: String,
+    vpsVersion: String
+  ) -> DeviceVersioning? {
+    let supported = filterAvailableModels(filter: filter)
+      .filterSupported(sdkVersion: sdkVersion)
+      .filterSupported(vpsVersion: vpsVersion)
+      .filter { !$0.value.isDeprecated && $0.value.version <= requestedVersion }
+      .map(\.value)
+      .sorted { $0.version > $1.version }
+    return supported.first(where: { $0.version == requestedVersion }) ?? supported.first
   }
 
-  func filterSupported(sdkVersion: String) -> [String: MLInterfaceVersions.MLCatalog.Device.MLVersion] {
+  func filterAvailableModels(filter: [Int]) -> Self {
+    self.filter { filter.isEmpty ? true : filter.contains($0.value.version) }
+  }
+
+  func filterSupported(sdkVersion: String) -> Self {
     guard let sdkVersion = sdkVersion.asVersion else { return self }
     return filter {
       if let version = $0.value.minimumSupportedSDKVersion.asVersion {
@@ -169,33 +246,7 @@ extension Dictionary<String, MLInterfaceVersions.MLCatalog.Device.MLVersion> {
     }
   }
 
-  func filterSupported(vpsVersion: String) -> [String: MLInterfaceVersions.MLCatalog.Device.MLVersion] {
-    guard let vpsVersion = vpsVersion.asVersion else { return self }
-    return filter {
-      if let version = $0.value.minimumSupportedVPSVersion.asVersion {
-        return vpsVersion >= version
-      }
-      return true
-    }
-  }
-}
-
-extension Dictionary<String, MLInterfaceVersions.MLCatalog.Device.NLVersion> {
-  func filterAvailableModels(filter: [Int]) -> [String: MLInterfaceVersions.MLCatalog.Device.NLVersion] {
-    self.filter { !filter.isEmpty ? filter.contains($0.value.version) : true }
-  }
-
-  func filterSupported(sdkVersion: String) -> [String: MLInterfaceVersions.MLCatalog.Device.NLVersion] {
-    guard let sdkVersion = sdkVersion.asVersion else { return self }
-    return filter {
-      if let version = $0.value.minimumSupportedSDKVersion.asVersion {
-        return sdkVersion >= version
-      }
-      return true
-    }
-  }
-
-  func filterSupported(vpsVersion: String) -> [String: MLInterfaceVersions.MLCatalog.Device.NLVersion] {
+  func filterSupported(vpsVersion: String) -> Self {
     guard let vpsVersion = vpsVersion.asVersion else { return self }
     return filter {
       if let version = $0.value.minimumSupportedVPSVersion.asVersion {

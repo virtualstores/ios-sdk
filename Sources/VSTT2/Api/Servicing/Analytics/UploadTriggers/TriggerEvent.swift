@@ -304,6 +304,35 @@ public class TriggerEvent {
     }
 }
 
+extension TriggerEvent {
+  func asRequest(userPosition: CGPoint) -> PostTriggerEventRequest {
+    .init(
+      rtlsOptionsId: rtlsOptionsId.description,
+      name: name,
+      timestamp: .dateWithStandardFormatter(timestamp),
+      userPosition: self.userPosition ?? userPosition,
+      appTrigger: eventType.getTrigger().appTrigger?.asPostTrigger,
+      coordinateTrigger: eventType.getTrigger().coordinateTrigger?.asPostTrigger,
+      shelfTrigger: eventType.getTrigger().shelfTrigger?.asPostTrigger,
+      zoneTrigger: eventType.getTrigger().zoneTrigger?.asPostTrigger,
+      tags: tags,
+      metaData: metaData
+    )
+  }
+
+  func checkForZoneTrigger() -> TriggerEvent {
+    guard
+      let trigger = eventType.getTrigger().zoneTrigger,
+      let pointId = trigger.entryPoint?.id
+    else { return self }
+    switch trigger.type {
+    case .enter: add(tags: ["entryPointEnterId": pointId])
+    case .exit: add(tags: ["entryPointExitId": pointId])
+    }
+    return self
+  }
+}
+
 public extension TriggerEvent {
     var toMessageShown: TriggerEvent? {
         guard let id = tags[.id] else { return nil }

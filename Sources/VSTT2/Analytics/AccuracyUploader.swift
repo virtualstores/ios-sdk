@@ -14,98 +14,31 @@ import VSPositionKit
 class AccuracyUploader {
   @Inject var analytics: TT2AnalyticsManager
   @Inject var config: EnvironmentConfig
-  @Inject var syncEventsService: UploadSyncEventsService
-  @Inject var persistence: Persistence
 
   @Inject var getActiveClient: GetActiveClientUseCase
   @Inject var getActiveMapFence: GetActiveMapFenceUseCase
   @Inject var getActiveStore: GetActiveStoreUseCase
+  @Inject var getActiveVisitId: GetActiveVisitIDUseCase
   @Inject var activeFloor: GetActiveFloorUseCase
+  @Inject var bufferOrPersist: BufferOrPersistEventForActiveVisitUseCase
 
   @Inject var converter: GetActiveCoordinateConverterUseCase
 
   @Inject var getVPSPosition: GetCurrentVPSPositionUseCase
 
-  var client: Client? { try? getActiveClient.invoke() }
-  var store: Store? { try? getActiveStore.invoke() }
+  @Inject var getEvents: GetSyncEventsUseCase
+
   var stepEventUploader: StepEventUploader? { analytics.stepEventUploader }
 
   var numberOfRescueModes: Int64 = 0
-
-  private var cancellable = Set<AnyCancellable>()
 
   enum Errors: Error {
     case uploadFailure(HTTPURLResponse)
   }
 
-  deinit {
-    cancellable.removeAll()
-  }
-
-  private func upload(id: String, preScanLocation: CGPoint, position: ItemPosition, errorHandler: @escaping (Error) -> Void) {
-    guard
-      let serverAddress = config.connection.tt2DataServer?.baseUrl,
-      let clientName = client?.name,
-      let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
-      let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
-    else { return }
-    var urlComponents = URLComponents()
-
-    // Ternary operator
-    let offset = position.offset
-    let dx = abs(offset.dx) > 0.02 ? offset.dx : 0.0
-    let dy = abs(offset.dy) > 0.02 ? offset.dy : 0.0
-
-    let systemName = UIDevice.current.systemName
-    let systemVersion = UIDevice.current.systemVersion
-    let modelName = UIDevice.current.modelName
-
-    urlComponents.scheme = "https"
-    urlComponents.host = "docs.google.com"
-    #if DEBUG
-    urlComponents.path = "/forms/d/e/1FAIpQLScPK5ecdReEe-1hdMMOWkCgp1H8n54IbSH4CrxjcSaCSV_D-Q/formResponse"
-    #else
-    urlComponents.path = "/forms/d/e/1FAIpQLSe0Db_cq-rGUWGVVYV0b4xXLDI36ou19SbOX4kWucM-Ai6D_A/formResponse"
-    #endif
-
-    urlComponents.queryItems = [
-      URLQueryItem(entry: .sessionId, value: id),
-      URLQueryItem(entry: .articleId, value: position.identifier),
-      URLQueryItem(entry: .preScanLocationX, value: "\(preScanLocation.x)"),
-      URLQueryItem(entry: .preScanLocationY, value: "\(preScanLocation.y)"),
-      URLQueryItem(entry: .offsetX, value: "\(dx)"),
-      URLQueryItem(entry: .offsetY, value: "\(dy)"),
-      URLQueryItem(entry: .scanLocationX, value: "\(position.point.x)"),
-      URLQueryItem(entry: .scanLocationY, value: "\(position.point.y)"),
-      URLQueryItem(entry: .appVersion, value: "\(appVersion) (\(buildNumber)), \(systemName) \(systemVersion), \(modelName)"),
-      URLQueryItem(entry: .positionKitVersion, value: vpsVersion),
-      URLQueryItem(entry: .serverUrl, value: "\(serverAddress)"),
-      URLQueryItem(entry: .clientId, value: "\(client?.clientId), \(clientName)"),
-      URLQueryItem(entry: .storeId, value: "\(store?.id), \(store?.name)"),
-      URLQueryItem(name: "submit", value: "Submit")
-    ]
-
-    guard let url = urlComponents.url else { return }
-
-    //Logger(verbosity: .info).log(message: "AccuracyUploader: \(url)")
-    URLSession.shared.dataTask(with: url) {(data, response, error) in
-      DispatchQueue.main.async {
-        if let response = response as? HTTPURLResponse {
-          switch response.statusCode {
-          case 200...299: break
-          default: errorHandler(Errors.uploadFailure(response))
-          }
-        } else if let error = error {
-          errorHandler(error)
-        }
-      }
-    }.resume()
-  }
-
   func upload(syncEvent: AccuracySyncEvent.Event, isFloorSwap: Bool) {
     guard
       let rtlsOptionsId = try? activeFloor.invoke().id,
-      let visitId = analytics.visitId,
       let mapFence = try? getActiveMapFence.invoke(),
       let converter = try? converter.invoke(),
       let stepEventUploader = stepEventUploader
@@ -117,8 +50,8 @@ class AccuracyUploader {
     var pointWithOffset: CGPoint = .zero
     var preScanLocation: CGPoint? = getVPSPosition.invoke()?.point
     var offset: CGVector?
-
     var tags:[String:String]
+
     switch syncEvent {
     case .syncEvent(let event):
       let position = event.itemPosition
@@ -128,9 +61,6 @@ class AccuracyUploader {
       preScanLocation = event.preSyncScanLocation
       offset = position.offset
       didSync = event.didSync
-      upload(id: String(visitId), preScanLocation: event.preSyncScanLocation, position: position, errorHandler: { (error) in
-        Logger(verbosity: .info).log(message: "AccuracyUploaderError: \(error.localizedDescription)")
-      })
       tags = [
         "identifier": identifier,
         "isStartSync": String(false)
@@ -199,149 +129,15 @@ class AccuracyUploader {
       stepDataDistanceSinceLastSyncInMeters: distance,
       userToSyncPositionDistanceInMeters: (preScanLocation ?? point).distance(to: point),
       errorAngleInDegrees: 0,
-      timestamp: Date(),
+      timestamp: .dateWithStandardFormatter(.init()),
       userPositionInMeters: preScanLocation ?? .zero,
       syncPositionInMeters: point,
       syncPositionOffsetsInMeters: offset ?? .zero,
       tags: tags
     )
-    let parameters = UploadSyncEventsParameters(
-      visitId: visitId,
-      requestId: UUID().uuidString.uppercased(),
-      event: event
-    )
-    do {
-      var persistence = parameters.asPersistence
-      try self.persistence.save(&persistence)
-      upload(parameters: parameters)
-      stepEventUploader.upload()
-      numberOfRescueModes = 0
-    } catch {
-      Logger(verbosity: .error).log(message: "UploadSyncEventsParametersSaveError \(error)")
-    }
-  }
-
-  func upload(parameters: UploadSyncEventsParameters) {
-    syncEventsService
-      .call(with: parameters)
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error):
-          Logger(verbosity: .debug).log(message: "AccuracyUploaderError \(error)")
-        }
-      } receiveValue: { (_) in
-        let persistence = parameters.asPersistence
-        do {
-          try self.persistence.delete(persistence)
-        } catch {
-          Logger(verbosity: .error).log(message: "UploadSyncEventsParametersDeleteError \(error)")
-        }
-      }.store(in: &cancellable)
-  }
-
-  func retryFailed() {
-    let objects = getAllSyncEventObjects()
-    objects.forEach { (object) in
-      guard let parameters = object.asParameters else { return }
-      upload(parameters: parameters)
-    }
-  }
-
-  func getAllSyncEventObjects() -> [UploadSyncEventsPersistence] {
-    persistence.get(arrayOf: UploadSyncEventsPersistence.self)
-  }
-}
-
-extension URLQueryItem {
-  enum EntryIDs: String {
-    case sessionId = "entry.723772527"
-    case articleId = "entry.234712389"
-    case preScanLocationX = "entry.421535035"
-    case preScanLocationY = "entry.1326043207"
-    case offsetX = "entry.1258351828"
-    case offsetY = "entry.708563230"
-    case scanLocationX = "entry.832291956"
-    case scanLocationY = "entry.1411294416"
-    case appVersion = "entry.1892335868"
-    case positionKitVersion = "entry.827959482"
-    case serverUrl = "entry.548783748"
-    case clientId = "entry.1270289197"
-    case storeId = "entry.1258341166"
-    case visitId = "entry.788993633"
-    //    case combinedInfo = "entry.234712389"
-  }
-
-  init(entry: EntryIDs, value: String) {
-    self.init(name: entry.rawValue, value: value)
-  }
-}
-
-extension UploadSyncEventsParameters {
-  var asPersistence: UploadSyncEventsPersistence {
-    let event = UploadSyncEventsPersistence()
-
-    event.visitId = visitId
-    event.requestId = requestId
-
-    event.rtlsOptionsId = self.event.rtlsOptionsId
-    event.identifier = self.event.identifier
-    event.isRightAisle = self.event.isRightAisle
-    event.isFloorSwap = self.event.isFloorSwap
-    event.didSync = self.event.didSync
-    event.rescueModeCountSinceLastSync = self.event.rescueModeCountSinceLastSync
-    event.stepDataDistanceSinceLastSyncInMeters = self.event.stepDataDistanceSinceLastSyncInMeters
-    event.userToSyncPositionDistanceInMeters = self.event.userToSyncPositionDistanceInMeters
-    event.errorAngleInDegrees = self.event.errorAngleInDegrees
-    event.timestamp = self.event.timestamp
-    event.userPositionInMeters = self.event.userPositionInMeters
-    event.syncPositionInMeters = self.event.syncPositionInMeters
-    event.syncPositionOffsetsInMeters = self.event.syncPositionOffsetsInMeters
-    event.tags = self.event.tags
-    return event
-  }
-}
-
-extension UploadSyncEventsPersistence {
-  var asParameters: UploadSyncEventsParameters? {
-    guard
-      let visitId = visitId,
-      let requestId = requestId,
-      let rtlsOptionsId = rtlsOptionsId,
-      let identifier = identifier,
-      let isRightAisle = isRightAisle,
-      let isFloorSwap = isFloorSwap,
-      let didSync = didSync,
-      let rescueModeCountSinceLastSync = rescueModeCountSinceLastSync,
-      let stepDataDistanceSinceLastSyncInMeters = stepDataDistanceSinceLastSyncInMeters,
-      let userToSyncPositionDistanceInMeters = userToSyncPositionDistanceInMeters,
-      let errorAngleInDegrees = errorAngleInDegrees,
-      let timestamp = timestamp,
-      let userPositionInMeters = userPositionInMeters,
-      let syncPositionInMeters = syncPositionInMeters,
-      let syncPositionOffsetsInMeters = syncPositionOffsetsInMeters,
-      let tags = tags
-    else { return nil }
-    return UploadSyncEventsParameters(
-      visitId: visitId,
-      requestId: requestId,
-      event: SyncEvent(
-        rtlsOptionsId: rtlsOptionsId,
-        identifier: identifier,
-        isRightAisle: isRightAisle,
-        isFloorSwap: isFloorSwap,
-        didSync: didSync,
-        rescueModeCountSinceLastSync: rescueModeCountSinceLastSync,
-        stepDataDistanceSinceLastSyncInMeters: stepDataDistanceSinceLastSyncInMeters,
-        userToSyncPositionDistanceInMeters: userToSyncPositionDistanceInMeters,
-        errorAngleInDegrees: errorAngleInDegrees,
-        timestamp: timestamp,
-        userPositionInMeters: userPositionInMeters,
-        syncPositionInMeters: syncPositionInMeters,
-        syncPositionOffsetsInMeters: syncPositionOffsetsInMeters,
-        tags: tags
-      )
-    )
+    numberOfRescueModes = 0
+    bufferOrPersist.invoke(event: event)
+    stepEventUploader.upload()
   }
 }
 
@@ -374,4 +170,3 @@ struct AccuracySyncEvent {
     let didSync: Bool
   }
 }
-

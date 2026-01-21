@@ -5,22 +5,52 @@
 //  Created by Théodore Roos on 2024-06-04.
 //
 
+import Combine
 import Foundation
 import VSFoundation
+
+class BufferOrPersistEventForActiveVisitUseCase {
+  @Inject var repository: IAnalyticsRepository
+  @Inject var buffer: AnalyticsBufferRepository
+  @Inject var persistence: IPersistenceRepository
+
+  func invoke(event: ScanEvent) {
+    guard let id = repository.activeVisitId else { buffer.append(event); return }
+    persistence.save(event, visitId: id)
+  }
+
+  func invoke(event: SyncEvent) {
+    guard let id = repository.activeVisitId else { buffer.append(event); return }
+    persistence.save(event, visitId: id)
+  }
+
+  func invoke(event: PostTriggerEventRequest) {
+    guard let id = repository.activeVisitId else { buffer.append(event); return }
+    persistence.save(event, visitId: id)
+  }
+}
 
 class CreateVisitUseCase {
   @Inject var repository: IAnalyticsRepository
   @Inject var storeRepository: IStoreRepository
+  @Inject var bufferRepository: AnalyticsBufferRepository
+  @Inject var persistence: IPersistenceRepository
 
-  func invoke(deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ()) {
-    guard let storeId = try? storeRepository.activeStore.statServerConnection.storeId else { completion(.failure(TT2Error.missingData)); return }
-    repository.createVisit(
+  func invoke(deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String]) -> AnyPublisher<Int64, Error> {
+    guard let storeId = try? storeRepository.activeStore.statServerConnection.storeId else { return Fail(error: TT2Error.missingData).eraseToAnyPublisher() }
+    return repository.createVisit(
       storeId: storeId,
       deviceInformation: deviceInformation,
       tags: tags,
-      metaData: metaData,
-      completion: completion
+      metaData: metaData
     )
+    .handleEvents(receiveOutput: { [weak self] (visitId) in
+      guard let object = self?.bufferRepository.startVisit() else { return }
+      self?.persistence.save(object.scanEvents, visitId: visitId)
+      self?.persistence.save(object.syncEvents, visitId: visitId)
+      self?.persistence.save(object.triggerEvents, visitId: visitId)
+    })
+    .eraseToAnyPublisher()
   }
 }
 
@@ -29,6 +59,14 @@ class GetActiveVisitIDUseCase {
 
   func invoke() -> Int64? {
     repository.activeVisitId
+  }
+}
+
+class ResetAnalyticsBufferUseCase {
+  @Inject var repository: AnalyticsBufferRepository
+
+  func invoke() {
+    repository.reset()
   }
 }
 
@@ -47,6 +85,41 @@ class UpdateTagsForActiveVisitUseCase {
   func invoke(tags: [String:String], completion: @escaping (Error?) -> ()) {
     guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
     repository.update(visitId: id, tags: tags, completion: completion)
+  }
+}
+
+class AnalyticsUploadUseCase {
+  @Inject var repository: IAnalyticsRepository
+  @Inject var persistence: IPersistenceRepository
+
+  func invoke(_ object: UploadScanEvent) {
+    repository.upload(visitId: object.visitId, requestId: object.requestId, event: object.event) { [weak self] (error) in
+      if let error = error {
+        Logger(verbosity: .debug).log(message: "ScanEvent UploadError \(error)")
+      } else {
+        self?.persistence.delete(object.event)
+      }
+    }
+  }
+
+  func invoke(_ object: UploadSyncEvent) {
+    repository.upload(visitId: object.visitId, requestId: object.requestId, event: object.event) { [weak self] (error) in
+      if let error = error {
+        Logger(verbosity: .debug).log(message: "SyncEvent UploadError \(error)")
+      } else {
+        self?.persistence.delete(object.event)
+      }
+    }
+  }
+
+  func invoke(_ object: UploadTriggerEvent) {
+    repository.upload(visitId: object.visitId, requestId: object.requestId, event: object.event) { [weak self] (error) in
+      if let error = error {
+        Logger(verbosity: .debug).log(message: "TriggerEvent UploadError \(error)")
+      } else {
+        self?.persistence.delete(object.event)
+      }
+    }
   }
 }
 
@@ -72,24 +145,6 @@ class UploadPositionsForVisitUseCase {
 
   func invoke(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ()) {
     repository.upload(parameters: parameters, completion: completion)
-  }
-}
-
-class UploadScanEventForActiveVisitUseCase {
-  @Inject var repository: IAnalyticsRepository
-
-  func invoke(event: ScanEvent, completion: @escaping (Error?) -> ()) {
-    guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
-    repository.upload(visitId: id, scanEvent: event, completion: completion)
-  }
-}
-
-class UploadTriggerEventForActiveVisitUseCase {
-  @Inject var repository: IAnalyticsRepository
-
-  func invoke(request: PostTriggerEventRequest, completion: @escaping (Error?) -> ()) {
-    guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
-    repository.upload(visitId: id, triggerEvent: request, completion: completion)
   }
 }
 

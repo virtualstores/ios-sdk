@@ -70,6 +70,7 @@ extension Array where Element: Equatable {
 
 extension Double {
   var asAnalyticsDuration: String {
+    guard self >= 0 else { return "00:00:00" }
     let days = Int(self) / 86400
     let hours = (Int(self) / 3600 % 24).formatNumber(decimals: 2)
     let minutes = (Int(self) / 60 % 60).formatNumber(decimals: 2)
@@ -83,6 +84,12 @@ extension Double {
 extension Int {
   func formatNumber(decimals: Int) -> String {
     String(format: "%0\(decimals)d", self)
+  }
+}
+
+extension String {
+  static func dateWithStandardFormatter(_ date: Date) -> String {
+    DateFormatter.standardFormatter.string(from: date)
   }
 }
 

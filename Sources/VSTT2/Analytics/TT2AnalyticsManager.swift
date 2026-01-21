@@ -26,15 +26,19 @@ final public class TT2AnalyticsManager: Disposable {
   @Inject var getCurrentPosition: GetCurrentVPSPositionUseCase
   @Inject var getCurrentLeaseExpired: GetCurrentLeaseExpiredUseCase
   @Inject var getCurrentLeasePolicy: GetCurrentLeasePolicyUseCase
+  @Inject var getScanEvents: GetScanEventsUseCase
+  @Inject var getSyncEvents: GetSyncEventsUseCase
+  @Inject var getTriggerEvents: GetTriggerEventsUseCase
   @Inject var getMLVersion: GetMLVersionUseCase
   @Inject var getNLVersion: GetNLVersionUseCase
+  @Inject var getNPVersion: GetNPVersionUseCase
   @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
   @Inject var updateTags: UpdateTagsForActiveVisitUseCase
   @Inject var uploadGeopositions: UploadGeopositionsForActiveVisitUseCase
   @Inject var uploadPositions: UploadPositionsForVisitUseCase
-  @Inject var uploadScanEvent: UploadScanEventForActiveVisitUseCase
-  @Inject var uploadTriggerEvent: UploadTriggerEventForActiveVisitUseCase
+  @Inject var upload: AnalyticsUploadUseCase
   @Inject var uploadZoneSummary: UploadZoneSummaryForActiveVisitUseCase
+  @Inject var bufferOrPersist: BufferOrPersistEventForActiveVisitUseCase
 
   lazy var accuracyUploader: AccuracyUploader? = { .init() }()
   lazy var stepEventUploader: StepEventUploader? = { .init() }()
@@ -48,7 +52,7 @@ final public class TT2AnalyticsManager: Disposable {
   private var store: Store? { try? activeStore.invoke() }
   private var uploadThreshold = 100
   private var rtlsOptionId: Int64? { try? activeFloor.invoke().id }
-  private var cancellable = Set<AnyCancellable>()
+  private var cancellables = Set<AnyCancellable>()
   private var isRecording: Bool = false
   private var latestRecordedPosition = Date()
   /// now we are uploading positions each time when they are 100
@@ -69,7 +73,7 @@ final public class TT2AnalyticsManager: Disposable {
     accuracyUploader = nil
     stepEventUploader = nil
     zoneManager.dispose()
-    cancellable.removeAll()
+    cancellables.removeAll()
   }
 
   public func stopTrackingWayfinding(identifier: String) {
@@ -95,6 +99,7 @@ private extension TT2AnalyticsManager {
       "tt2MLActive" : "false",
       "tt2VelocityModelName": getMLVersion.invoke()?.name ?? "",
       "tt2NLModelName": getNLVersion.invoke()?.name ?? "",
+      "tt2NPModelName": getNPVersion.invoke()?.name ?? "",
       "tt2SdkVpsSettings": getVPSParams(),
       "tt2VpsEngine": getTT2Settings.invoke().engine.rawValue,
       "tt2BatteryLevelAtStart": (UIDevice.current.batteryLevel * 100).description
@@ -124,44 +129,26 @@ private extension TT2AnalyticsManager {
       .sink { [weak self] (data) in
         self?.zoneSummaryBusiness.onEnter(event: data)
       }
-      .store(in: &cancellable)
+      .store(in: &cancellables)
 
     zoneManager.zoneExitedPublisher
       .compactMap { $0 }
       .sink { [weak self] (data) in
         self?.zoneSummaryBusiness.onExit(event: data)
       }
-      .store(in: &cancellable)
+      .store(in: &cancellables)
 
     eventManager.messageShownPublisher
       .compactMap { $0 }
       .sink { [weak self] (event) in
         self?.addTriggerEvent(for: event)
-      }.store(in: &cancellable)
+      }.store(in: &cancellables)
   }
 
   func postTriggerEvent(for event: TriggerEvent) -> PostTriggerEventRequest {
-    let eventType = event.eventType.getTrigger()
-    let timestamp = DateFormatter.standardFormatter.string(from: event.timestamp)
-    if let pointId = eventType.zoneTrigger?.entryPoint?.id {
-      switch eventType.zoneTrigger?.type {
-      case .enter: event.add(tags: ["entryPointEnterId": pointId])
-      case .exit: event.add(tags: ["entryPointExitId": pointId])
-      default: break
-      }
-    }
-    return PostTriggerEventRequest(
-      rtlsOptionsId: String(event.rtlsOptionsId),
-      name: event.name,
-      timeStamp: timestamp,
-      userPosition: event.userPosition ?? currentPosition ?? .zero,
-      appTrigger: eventType.appTrigger?.asPostTrigger,
-      coordinateTrigger: eventType.coordinateTrigger?.asPostTrigger,
-      shelfTrigger: eventType.shelfTrigger?.asPostTrigger,
-      zoneTrigger: eventType.zoneTrigger?.asPostTrigger,
-      tags: event.tags,
-      metaData: event.metaData
-    )
+    event
+      .checkForZoneTrigger()
+      .asRequest(userPosition: currentPosition ?? .zero)
   }
 
   // MARK: Heatmap data
@@ -183,6 +170,7 @@ private extension TT2AnalyticsManager {
       uploadPositionData()
       postMLPositionsAsTriggerEvent()
       uploadZoneSummaryEvents()
+      uploadAllInDatabase()
     }
   }
 
@@ -208,14 +196,10 @@ private extension TT2AnalyticsManager {
   }
 
   // MARK: Trigger Events
-  func uploadTriggerEvents(request: PostTriggerEventRequest) {
-    uploadTriggerEvent.invoke(request: request) { (error) in
-      if let error = error {
-        Logger(verbosity: .debug).log(message: error.localizedDescription)
-      } else {
-        Logger(verbosity: .debug).log(message: "UploadTriggerEvent Success: \(request.name)")
-      }
-    }
+  func uploadAllInDatabase() {
+    getScanEvents.invoke().forEach { upload.invoke($0) }
+    getSyncEvents.invoke().forEach { upload.invoke($0) }
+    getTriggerEvents.invoke().forEach { upload.invoke($0) }
   }
 
   func uploadZoneSummaryEvents() {
@@ -347,14 +331,6 @@ extension TT2AnalyticsManager {
     }
   }
 
-  func postScanEvents(scanEvent: ScanEvent) {
-    uploadScanEvent.invoke(event: scanEvent) { (error) in
-      if let error = error {
-        Logger(verbosity: .warning).log(message: error.localizedDescription)
-      }
-    }
-  }
-
   func updateVisitWithMLTags(mlUser: MlUser) {
     let hasML = !mlUser.speedModifier.isEmpty || !mlUser.directionModifier.isEmpty
     let tags = [
@@ -373,7 +349,7 @@ extension TT2AnalyticsManager {
   func rescueMode() {
     guard let id = rtlsOptionId else { return }
     accuracyUploader?.numberOfRescueModes += 1
-    uploadTriggerEvents(request: postTriggerEvent(for: TriggerEvent(rtlsOptionsId: id, name: "RescueModeTriggerEvent", description: "", eventType: .appTrigger(.init(event: "RescueModeTriggerEvent")), userPosition: currentPosition)))
+    addTriggerEvent(for: .init(rtlsOptionsId: id, name: "RescueModeTriggerEvent", description: "", eventType: .appTrigger(.init(event: "RescueModeTriggerEvent")), userPosition: currentPosition))
   }
 
   func report(visitScore: Int) {
@@ -393,13 +369,15 @@ extension TT2AnalyticsManager: TT2Analytics {
     (tt2VPSSettingsTags ?? tt2VPSSettingsDefaultTags).forEach { editedTags[$0.key] = $0.value }
     tt2Tags = editedTags.filter { $0.key.lowercased().contains("tt2") }
 
-    createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData) { [weak self] (result) in
-      self?.navigationManager.vpsPosition.set(sessionId: self?.visitId?.description)
-      self?.visitScoreManager.startVisit()
-      DispatchQueue.main.async {
-        completion(result)
-      }
-    }
+    createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData)
+      .handleEvents(receiveOutput: { [weak self] (visitId) in
+        self?.navigationManager.vpsPosition.set(sessionId: visitId.description)
+        self?.visitScoreManager.startVisit()
+      })
+      .receive(on: DispatchQueue.main)
+      .asResult()
+      .sink(receiveValue: completion)
+      .store(in: &cancellables)
   }
 
   public func startCollectingHeatMapData() throws {
@@ -423,6 +401,7 @@ extension TT2AnalyticsManager: TT2Analytics {
       }
       zoneSummaryBusiness.exitAllRemainingZones(timestamp: .init())
       uploadZoneSummaryEvents()
+      uploadAllInDatabase()
       if let event = wayfindingBusiness.stopVisit() {
         addTriggerEvent(for: event)
       }
@@ -435,9 +414,8 @@ extension TT2AnalyticsManager: TT2Analytics {
 
   public func addTriggerEvent(for event: TriggerEvent) {
     serialDispatch.async { [weak self] in
-      guard let self = self else { return }
-      let event = postTriggerEvent(for: event)
-      uploadTriggerEvents(request: event)
+      guard let event = self?.postTriggerEvent(for: event) else { return }
+      self?.bufferOrPersist.invoke(event: event)
     }
   }
 
