@@ -53,8 +53,8 @@ class FloorPicker {
     }
 
     private func findNextPortalName(nextPortalId: Int64) -> (rtlsOptionsId: Int64, portalPoint: CGPoint)? {
-        guard let portal = swapLocations.first(where: { $0.id == nextPortalId }) else { return nil }
-        return (portal.rtlsOptionsId, portal.point.coordinate)
+        guard let portal = swapLocations.first(where: { $0.id == nextPortalId }), let point = portal.point?.coordinate else { return nil }
+        return (portal.rtlsOptionsId, point)
     }
 
     func onNewDirection(direction: Double) {

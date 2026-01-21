@@ -13,20 +13,24 @@ import ZIPFoundation
 import vps
 
 protocol IMLRepository: Disposable {
-  func compileModel(type: MLRepository.ModelTypeEnum, completion: @escaping (Error?) -> ())
+  func compileModel(type: MLInterfaceVersions.MLCatalog.ModelTypeEnum, completion: @escaping (Error?) -> ())
   func fetchMLInterfaceVersions(completion: @escaping (Error?) -> ())
-  func fetchModel(url: URL, id: String, type: MLRepository.ModelTypeEnum) -> AnyPublisher<Void, Error>
+  func fetchModel(url: URL, id: String, type: MLInterfaceVersions.MLCatalog.ModelTypeEnum) -> AnyPublisher<Void, Error>
   func getMLCatalog() -> MLInterfaceVersions.MLCatalog?
   func getMLModel() -> MLModel?
   func getMLVersion() -> MLInterfaceVersions.MLCatalog.Device.MLVersion?
   func getNLModel() -> MLModel?
   func getNLVersion() -> MLInterfaceVersions.MLCatalog.Device.NLVersion?
+  func getNPModel() -> MLModel?
+  func getNPVersion() -> MLInterfaceVersions.MLCatalog.Device.NPVersion?
   func getVPSMLModelParams() -> VPSMLModelParams?
   func getVPSNLModelParams() -> VPSNLModelParams?
   func load(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion, completion: @escaping (Error?) -> ())
   func load(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion, completion: @escaping (Error?) -> ())
+  func load(npVersion: MLInterfaceVersions.MLCatalog.Device.NPVersion, completion: @escaping (Error?) -> ())
   func set(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion)
   func set(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion)
+  func set(npVersion: MLInterfaceVersions.MLCatalog.Device.NPVersion)
 }
 
 class MLRepository {
@@ -53,6 +57,16 @@ class MLRepository {
       UserDefaults.standard.setValue(encoded, forKey: "TT2CURRENTMLCATALOGNLVERSION")
     }
   }
+  private var currentNPVersion: MLInterfaceVersions.MLCatalog.Device.NPVersion? {
+    get {
+      guard let data = UserDefaults.standard.value(forKey: "TT2CURRENTMLCATALOGNPVERSION") as? Data else { return nil }
+      return try? JSONDecoder().decode(MLInterfaceVersions.MLCatalog.Device.NPVersion.self, from: data)
+    }
+    set {
+      guard let encoded = try? JSONEncoder().encode(newValue) else { return }
+      UserDefaults.standard.setValue(encoded, forKey: "TT2CURRENTMLCATALOGNPVERSION")
+    }
+  }
   private lazy var mlParams: VPSMLModelParams? = {
     guard let version = currentMLVersion, let sequence = version.featureSequence.convert else { return nil }
     return VPSMLModelParams(frameSize: version.frameSize, useSmooting: version.smoothing, featureSequence: sequence, stepNumberInput: version.stepNumberInput)
@@ -63,8 +77,10 @@ class MLRepository {
   }()
   private var mlModel: MLModel?
   private var nlModel: MLModel?
+  private var npModel: MLModel?
   private var mlModelName = ""
   private var nlModelName = ""
+  private var npModelName = ""
   private var pathDirectory: URL? {
     try? FileManager.default
       .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
@@ -78,12 +94,14 @@ class MLRepository {
     pathDirectory?
       .appendingPathComponent(nlModelName).appendingPathExtension("mlpackage")
   }
+  private var pathNPModel: URL? {
+    pathDirectory?
+      .appendingPathComponent(npModelName).appendingPathExtension("mlpackage")
+  }
   private var pathEncryptedML: URL? { pathDirectory?.appendingPathExtension("ml.encrypted") }
   private var pathEncryptedNL: URL? { pathDirectory?.appendingPathExtension("nl.encrypted") }
+  private var pathEncryptedNP: URL? { pathDirectory?.appendingPathExtension("np.encrypted") }
   private var cancellables = Set<AnyCancellable>()
-  enum ModelTypeEnum {
-    case ml, nl
-  }
 
   init() {
     if let path = pathDirectory {
@@ -107,18 +125,19 @@ extension MLRepository: IMLRepository {
     nlParams = nil
   }
   
-  func compileModel(type: ModelTypeEnum, completion: @escaping (Error?) -> ()) {
+  func compileModel(type: MLInterfaceVersions.MLCatalog.ModelTypeEnum, completion: @escaping (Error?) -> ()) {
     compileModel(type: type)
       .asFailure()
       .sink(receiveValue: completion)
       .store(in: &cancellables)
   }
 
-  func compileModel(type: ModelTypeEnum) -> AnyPublisher<Void, Error> {
+  func compileModel(type: MLInterfaceVersions.MLCatalog.ModelTypeEnum) -> AnyPublisher<Void, Error> {
     let path: URL?
     switch type {
     case .ml: path = pathMLModel
     case .nl: path = pathNLModel
+    case .np: path = pathNPModel
     }
     guard let path = path else {
       return Fail(error: TT2Error.missingData).eraseToAnyPublisher()
@@ -129,6 +148,7 @@ extension MLRepository: IMLRepository {
         switch type {
         case .ml: self?.mlModel = model
         case .nl: self?.nlModel = model
+        case .np: self?.npModel = model
         }
         try? FileManager.default.removeItem(at: path)
         try? FileManager.default.removeItem(at: $0)
@@ -144,7 +164,7 @@ extension MLRepository: IMLRepository {
       .store(in: &cancellables)
   }
 
-  func fetchModel(url: URL, id: String, type: ModelTypeEnum) -> AnyPublisher<Void, Error> {
+  func fetchModel(url: URL, id: String, type: MLInterfaceVersions.MLCatalog.ModelTypeEnum) -> AnyPublisher<Void, Error> {
     api.fetchModel(url: url)
       .tryMap { [weak self] in try self?.handleModel(id: id, type: type, data: $0) }
       .eraseToAnyPublisher()
@@ -168,6 +188,13 @@ extension MLRepository: IMLRepository {
 
   func getNLVersion() -> MLInterfaceVersions.MLCatalog.Device.NLVersion? {
     currentNLVersion
+  }
+
+  func getNPModel() -> MLModel? {
+    npModel
+  }
+  func getNPVersion() -> MLInterfaceVersions.MLCatalog.Device.NPVersion? {
+    currentNPVersion
   }
 
   func getVPSMLModelParams() -> VPSMLModelParams? {
@@ -222,12 +249,38 @@ extension MLRepository: IMLRepository {
     return fetchModel(url: url, id: nlVersion.id, type: .nl)
   }
 
+  func load(npVersion: MLInterfaceVersions.MLCatalog.Device.NPVersion, completion: @escaping (Error?) -> ()) {
+    load(npVersion: npVersion)
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellables)
+  }
+
+  func load(npVersion: MLInterfaceVersions.MLCatalog.Device.NPVersion) -> AnyPublisher<Void, Error> {
+    if currentNPVersion?.version == npVersion.version {
+      return Result { try handleModel(id: npVersion.id, type: .np)}
+        .publisher
+        .eraseToAnyPublisher()
+    }
+
+    guard let url = URL(string: npVersion.modelUrl) else {
+      return Fail(error: TT2Error.missingData).eraseToAnyPublisher()
+    }
+
+    currentNPVersion = nil
+    return fetchModel(url: url, id: npVersion.id, type: .np)
+  }
+
   func set(mlVersion: MLInterfaceVersions.MLCatalog.Device.MLVersion) {
     currentMLVersion = mlVersion
   }
 
   func set(nlVersion: MLInterfaceVersions.MLCatalog.Device.NLVersion) {
     currentNLVersion = nlVersion
+  }
+
+  func set(npVersion: MLInterfaceVersions.MLCatalog.Device.NPVersion) {
+    currentNPVersion = npVersion
   }
 }
 
@@ -249,8 +302,15 @@ private extension MLRepository {
     return try? MLModel(contentsOf: path, configuration: config)
   }
 
-  func handleModel(id: String, type: ModelTypeEnum, data: Data? = nil) throws {
-    guard let path = pathDirectory, let pathEncrypted = type == .ml ? pathEncryptedML : pathEncryptedNL else { return }
+  func handleModel(id: String, type: MLInterfaceVersions.MLCatalog.ModelTypeEnum, data: Data? = nil) throws {
+    let pathEncrypted: URL? = {
+      switch type {
+      case .ml: return pathEncryptedML
+      case .nl: return pathEncryptedNL
+      case .np: return pathEncryptedNP
+      }
+    }()
+    guard let path = pathDirectory, let pathEncrypted = pathEncrypted else { return }
     if let data = data {
       try data.write(to: pathEncrypted, options: .atomic)
     }
@@ -263,7 +323,7 @@ private extension MLRepository {
     return CommonCryptoAES(key: id.gunnis, data: data).decrypt()
   }
 
-  func unzipInMemory(type: ModelTypeEnum, data: Data, to destinationURL: URL) throws {
+  func unzipInMemory(type: MLInterfaceVersions.MLCatalog.ModelTypeEnum, data: Data, to destinationURL: URL) throws {
     guard let archive = Archive(data: data, accessMode: .read) else { throw NSError(domain: "Can't create archive", code: 500) } // TODO: Better error
     try archive.filter({ !$0.path.contains("__MACOSX/") }).forEach { [weak self] (entry) in
       //Logger(verbosity: .debug).log(tag: tag, message: "PATH \(entry.path)")
@@ -274,6 +334,7 @@ private extension MLRepository {
         switch type {
         case .ml: self?.mlModelName = modelName
         case .nl: self?.nlModelName = modelName
+        case .np: self?.npModelName = modelName
         }
       }
       _ = try archive.extract(entry, to: destinationURL.appendingPathComponent(entry.path))

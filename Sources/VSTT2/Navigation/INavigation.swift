@@ -5,38 +5,43 @@
 // Created by Hripsime on 2022-01-11.
 // Copyright Virtual Stores - 2021
 
-import Foundation
 import Combine
-import VSFoundation
 import CoreGraphics
+import CoreLocation
+import Foundation
+import VSFoundation
 
 public protocol INavigation: Disposable {
+    var positionPublisher: AnyPublisher<VPSOutputSignal.Position?, Never> { get }
+
     /// Flag for checking if sdk is active
     var isActive: Bool { get }
     var compassHeading: Double? { get }
+    var currentPosition: CGPoint? { get }
 
-    /// Synchronize the position manager with  startPosition and startAngel
-    func start(startPosition: CGPoint, startAngle: Double) throws
- 
-    /// Synchronize the position manager with a positioned code.
-    func start(code: PositionedCode) throws
+    func syncPosition(identifier: String, syncAngle: Bool, uncertainAngle: Bool, withForce: Bool, reportScanEvent: Bool, returnOn queue: DispatchQueue, completion: @escaping (Result<Item,Error>) -> ())
 
-    /// Synchronize the position manager with a position, syncRotation and forceSync
-    func syncPosition(position: ItemPosition, syncRotation: Bool, forceSync: Bool) throws
-    
-    /// Start the position with compass
-    func start(startPosition: CGPoint, position: ItemPosition?) throws
-        
-    /// Synchronize the position with compass
-    func syncPosition(position: ItemPosition, forceSync: Bool) throws
-
-    func syncPosition(identifier: String, type: SyncTypeEnum, reportScanEvent: Bool, returnOn queue: DispatchQueue, completion: @escaping (Result<Item,Error>) -> ())
+    func syncPosition(location: CLLocation) throws
 
     /// This will stop notifying the location publishers.
     func stop()
     
     /// Provide device start angle
     func prepareAngle()
+}
+
+public extension INavigation {
+  func syncPosition(
+    identifier: String,
+    syncAngle: Bool = false,
+    uncertainAngle: Bool = true,
+    withForce: Bool = false,
+    reportScanEvent: Bool = true,
+    returnOn queue: DispatchQueue = .main,
+    completion: @escaping (Result<Item,Error>) -> () = { (_) in }
+  ) {
+    syncPosition(identifier: identifier, syncAngle: syncAngle, uncertainAngle: uncertainAngle, withForce: withForce, reportScanEvent: reportScanEvent, returnOn: queue, completion: completion)
+  }
 }
 
 public enum SyncTypeEnum {

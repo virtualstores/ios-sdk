@@ -9,14 +9,14 @@ import Foundation
 import CoreGraphics
 import VSFoundation
 
-struct UploadSyncEventsParameters {
+struct UploadSyncEventParameters {
   @Inject var config: EnvironmentConfig
   let visitId: Int64
   let requestId: String
   let event: SyncEvent
 }
 
-extension UploadSyncEventsParameters: Routing {
+extension UploadSyncEventParameters: Routing {
   var environmentConfig: EnvironmentConfig? { config }
   var type: RoutingType? { .analytics }
   var method: RequestType { .POST }
@@ -37,7 +37,7 @@ extension UploadSyncEventsParameters: Routing {
         "stepDataDistanceSinceLastSyncInMeters" : event.stepDataDistanceSinceLastSyncInMeters,
         "userToSyncPositionDistanceInMeters" : event.userToSyncPositionDistanceInMeters,
         "errorAngleInDegrees" : event.errorAngleInDegrees,
-        "timestamp" : DateFormatter.standardFormatter.string(from: event.timestamp),
+        "timestamp" : event.timestamp,
         "userPositionInMeters" : [
           "x" : event.userPositionInMeters.x,
           "y" : event.userPositionInMeters.y
@@ -56,6 +56,7 @@ extension UploadSyncEventsParameters: Routing {
   }
 }
 
+// TODO: Test to make codable and save event as a whole in persistence model like step events
 struct SyncEvent {
   let rtlsOptionsId: Int64
   let identifier: String
@@ -66,7 +67,7 @@ struct SyncEvent {
   let stepDataDistanceSinceLastSyncInMeters: Double
   let userToSyncPositionDistanceInMeters: Double
   let errorAngleInDegrees: Double
-  let timestamp: Date
+  let timestamp: String
   let userPositionInMeters: CGPoint
   let syncPositionInMeters: CGPoint
   let syncPositionOffsetsInMeters: CGVector
@@ -95,7 +96,7 @@ final class UploadSyncEventsPersistence: IPersistenceModel {
   var stepDataDistanceSinceLastSyncInMeters: Double?
   var userToSyncPositionDistanceInMeters: Double?
   var errorAngleInDegrees: Double?
-  var timestamp: Date?
+  var timestamp: String?
   var userPositionInMeters: CGPoint?
   var syncPositionInMeters: CGPoint?
   var syncPositionOffsetsInMeters: CGVector?

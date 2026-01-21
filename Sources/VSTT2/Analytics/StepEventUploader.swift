@@ -17,7 +17,7 @@ class StepEventUploader {
 
   @Inject var activeFloor: GetActiveFloorUseCase
 
-  var events: [StepEventData] = []
+  var events: [StepEvent] = []
 
   private var cancellable = Set<AnyCancellable>()
 
@@ -26,12 +26,7 @@ class StepEventUploader {
   }
 
   func upload() {
-    guard
-      let id = try? activeFloor.invoke().id,
-      let visitId = analytics.visitId,
-      !events.isEmpty
-    else { return }
-    let events: [StepEvent] = events.map { $0.asStepEvent(rtlsOptionsId: id) }
+    guard let visitId = analytics.visitId, !events.isEmpty else { return }
     let parameters = UploadStepEventsParameters(
       visitId: visitId,
       requestId: UUID().uuidString.uppercased(),
@@ -64,6 +59,10 @@ class StepEventUploader {
         }
       }.store(in: &cancellable)
   }
+}
+
+extension StepEvent {
+  var distance: Double { speed ?? 0.0 * (Double(duration) / 1000) }
 }
 
 extension StepEventData {

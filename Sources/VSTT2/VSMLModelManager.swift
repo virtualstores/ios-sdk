@@ -14,17 +14,12 @@ class VSMLModelManager {
   @Inject var compileModel: CompileModelUseCase
   @Inject var fetchMLInterfaceVersions: FetchMLInterfaceVersionsUseCase
   @Inject var getMLCatalog: GetMLCatalogUseCase
-  @OptionalInject var getMLModel: GetMLModelUseCase?
-  @Inject var getMLVersion: GetMLVersionUseCase
-  @OptionalInject var getNLModel: GetNLModelUseCase?
-  @Inject var getNLVersion: GetNLVersionUseCase
+  @Inject var getMLModel: GetMLModelUseCase
   @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
-  @OptionalInject var getVPSMLModelParams: GetVPSMLModelParamsUseCase?
-  @OptionalInject var getVPSNLModelParams: GetVPSNLModelParamsUseCase?
-  @Inject var loadMLVersion: LoadMLVersionUseCase
-  @Inject var loadNLVersion: LoadNLVersionUseCase
-  @Inject var setMLVersion: SetMLVersionUseCase
-  @Inject var setNLVersion: SetNLVersionUseCase
+  @Inject var getVPSMLModelParams: GetVPSMLModelParamsUseCase
+  @Inject var getVPSNLModelParams: GetVPSNLModelParamsUseCase
+  @Inject var loadVersion: LoadModelVersionUseCase
+  @Inject var setVersion: SetModelVersionUseCase
 
   private let tag = "VSMLModelManager"
 
@@ -40,13 +35,13 @@ class VSMLModelManager {
   }
 
   func handle(mlCatalog: MLInterfaceVersions.MLCatalog, params: TT2Settings.TT2ModelParams, completion: @escaping (Error?) -> ()) {
-    if let version = mlCatalog.getLatestSupportedVelocityModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
-      loadMLVersion.invoke(version: version) { [weak self] (error) in
+    if let version = mlCatalog.getLatestSupportedModel(.ml, params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
+      loadVersion.invoke(.ml, version: version) { [weak self] (error) in
         if let error = error {
           Logger(verbosity: .warning).log(message: "Error loading MLVersion: \(error)")
           return
         }
-        self?.setMLVersion.invoke(version: version)
+        self?.setVersion.invoke(.ml, version: version)
         self?.compileModel.invoke(type: .ml) { (error) in
           if let error = error {
             Logger(verbosity: .warning).log(message: "Error compiling MLVersion: \(error)")
@@ -57,16 +52,30 @@ class VSMLModelManager {
     } else {
       completion(TT2Error.missingData)
     }
-    if let version = mlCatalog.getLatestSupportedNLModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
-      loadNLVersion.invoke(version: version) { [weak self] (error) in
+    if let version = mlCatalog.getLatestSupportedModel(.nl, params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
+      loadVersion.invoke(.nl, version: version) { [weak self] (error) in
         if let error = error {
           Logger(verbosity: .warning).log(message: "Error loading NLVersion: \(error)")
           return
         }
-        self?.setNLVersion.invoke(version: version)
+        self?.setVersion.invoke(.nl, version: version)
         self?.compileModel.invoke(type: .nl) { (error) in
           if let error = error {
             Logger(verbosity: .warning).log(message: "Error compiling NLVersion: \(error)")
+          }
+        }
+      }
+    }
+    if let version = mlCatalog.getLatestSupportedModel(.np, params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
+      loadVersion.invoke(.np, version: version) { [weak self] (error) in
+        if let error = error {
+          Logger(verbosity: .warning).log(message: "Error loading NPVersion: \(error)")
+          return
+        }
+        self?.setVersion.invoke(.np, version: version)
+        self?.compileModel.invoke(type: .np) { (error) in
+          if let error = error {
+            Logger(verbosity: .warning).log(message: "Error compiling NPVersion: \(error)")
           }
         }
       }
@@ -82,16 +91,13 @@ class VSMLModelManager {
 extension VSMLModelManager: VPSModelManager {
   func dispose() {
     Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    getMLModel = nil
-    getNLModel = nil
-    getVPSMLModelParams = nil
-    getVPSNLModelParams = nil
   }
   
-  var mlModel: MLModel? { getMLModel?.invoke() }
-  var nlModel: MLModel? { getNLModel?.invoke() }
-  var mlParams: VPSMLModelParams? { getVPSMLModelParams?.invoke() }
-  var nlParams: VPSNLModelParams? { getVPSNLModelParams?.invoke() }
+  var mlModel: MLModel? { getMLModel.invoke(.ml) }
+  var nlModel: MLModel? { getMLModel.invoke(.nl) }
+  var npModel: MLModel? { getMLModel.invoke(.np) }
+  var mlParams: VPSMLModelParams? { getVPSMLModelParams.invoke() }
+  var nlParams: VPSNLModelParams? { getVPSNLModelParams.invoke() }
 }
 
 extension Array {
