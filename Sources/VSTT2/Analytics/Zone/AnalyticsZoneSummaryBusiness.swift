@@ -78,7 +78,7 @@ class AnalyticsZoneSummaryBusiness {
     return convertToDTO(zoneSummary: zoneTriggerCounts)
   }
 
-  func convertToDTO(zoneSummary: [String: ZoneTriggerCounts]) -> [String: ZoneCountsDTO] {
+  private func convertToDTO(zoneSummary: [String: ZoneTriggerCounts]) -> [String: ZoneCountsDTO] {
     zoneSummary.mapValues {
       return ZoneCountsDTO(
         entryCount: $0.totalEntryCount,
@@ -105,9 +105,7 @@ class AnalyticsZoneSummaryBusiness {
       )
     }
     events
-      .compactMap({ $0 })
-      .forEach {
-        onExit(event: $0)
-    }
+      .compactMap { $0 }
+      .forEach { onExit(event: $0) }
   }
 }

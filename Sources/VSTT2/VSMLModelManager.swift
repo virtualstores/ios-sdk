@@ -15,17 +15,12 @@ class VSMLModelManager {
   @Inject var compileModel: CompileModelUseCase
   @Inject var fetchMLInterfaceVersions: FetchMLInterfaceVersionsUseCase
   @Inject var getMLCatalog: GetMLCatalogUseCase
-  @OptionalInject var getMLModel: GetMLModelUseCase?
-  @Inject var getMLVersion: GetMLVersionUseCase
-  @OptionalInject var getNLModel: GetNLModelUseCase?
-  @Inject var getNLVersion: GetNLVersionUseCase
+  @Inject var getMLModel: GetMLModelUseCase
   @Inject var getTT2Settings: GetCurrentTT2SettingsUseCase
-  @OptionalInject var getVPSMLModelParams: GetVPSMLModelParamsUseCase?
-  @OptionalInject var getVPSNLModelParams: GetVPSNLModelParamsUseCase?
-  @Inject var loadMLVersion: LoadMLVersionUseCase
-  @Inject var loadNLVersion: LoadNLVersionUseCase
-  @Inject var setMLVersion: SetMLVersionUseCase
-  @Inject var setNLVersion: SetNLVersionUseCase
+  @Inject var getVPSMLModelParams: GetVPSMLModelParamsUseCase
+  @Inject var getVPSNLModelParams: GetVPSNLModelParamsUseCase
+  @Inject var loadVersion: LoadModelVersionUseCase
+  @Inject var setVersion: SetModelVersionUseCase
 
   private let tag = "VSMLModelManager"
 
@@ -43,31 +38,26 @@ class VSMLModelManager {
 
   func handle(mlCatalog: MLInterfaceVersions.MLCatalog, params: TT2Settings.TT2ModelParams) -> AnyPublisher<Void, Error> {
     var publishers = [AnyPublisher<Void, Error>]()
-    if let version = mlCatalog.getLatestSupportedVelocityModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
-      publishers.append(handle(version: version))
+    if let version = mlCatalog.getLatestSupportedModel(.ml, params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
+      publishers.append(handle(.ml, version: version))
     }
-    if let version = mlCatalog.getLatestSupportedNLModel(params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
-      publishers.append(handle(version: version))
+    guard !publishers.isEmpty else { return .fail(with: TT2Error.missingData) }
+    if let version = mlCatalog.getLatestSupportedModel(.nl, params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
+      publishers.append(handle(.nl, version: version))
     }
+    if let version = mlCatalog.getLatestSupportedModel(.np, params: params, sdkVersion: TT2.version, vpsVersion: vpsVersion) {
+      publishers.append(handle(.np, version: version))
+    }
+
     return Publishers.MergeMany(publishers).eraseToAnyPublisher()
   }
 
-  func handle(version: MLInterfaceVersions.MLCatalog.Device.MLVersion) -> AnyPublisher<Void, Error> {
-    loadMLVersion.invoke(version: version)
+  func handle(_ type: MLInterfaceVersions.MLCatalog.ModelTypeEnum, version: DeviceVersioning) -> AnyPublisher<Void, Error> {
+    loadVersion.invoke(type, version: version)
       .flatMap { [weak self] _ -> AnyPublisher<Void, Error> in
         guard let self = self else { return .fail(with: TT2Error.missingData) }
-        setMLVersion.invoke(version: version)
-        return compileModel.invoke(type: .ml).eraseToAnyPublisher()
-      }
-      .eraseToAnyPublisher()
-  }
-
-  func handle(version: MLInterfaceVersions.MLCatalog.Device.NLVersion) -> AnyPublisher<Void, Error> {
-    loadNLVersion.invoke(version: version)
-      .flatMap { [weak self] _ -> AnyPublisher<Void, Error> in
-        guard let self = self else { return .fail(with: TT2Error.missingData) }
-        setNLVersion.invoke(version: version)
-        return compileModel.invoke(type: .nl).eraseToAnyPublisher()
+        setVersion.invoke(type, version: version)
+        return compileModel.invoke(type: type).eraseToAnyPublisher()
       }
       .eraseToAnyPublisher()
   }
@@ -81,16 +71,13 @@ class VSMLModelManager {
 extension VSMLModelManager: VPSModelManager {
   func dispose() {
     Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    getMLModel = nil
-    getNLModel = nil
-    getVPSMLModelParams = nil
-    getVPSNLModelParams = nil
   }
   
-  var mlModel: MLModel? { getMLModel?.invoke() }
-  var nlModel: MLModel? { getNLModel?.invoke() }
-  var mlParams: VPSMLModelParams? { getVPSMLModelParams?.invoke() }
-  var nlParams: VPSNLModelParams? { getVPSNLModelParams?.invoke() }
+  var mlModel: MLModel? { getMLModel.invoke(.ml) }
+  var nlModel: MLModel? { getMLModel.invoke(.nl) }
+  var npModel: MLModel? { getMLModel.invoke(.np) }
+  var mlParams: VPSMLModelParams? { getVPSMLModelParams.invoke() }
+  var nlParams: VPSNLModelParams? { getVPSNLModelParams.invoke() }
 }
 
 extension Array {

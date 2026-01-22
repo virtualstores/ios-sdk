@@ -13,7 +13,7 @@ struct UploadTriggersParameters {
     @Inject var config: EnvironmentConfig
     let visitId: Int64
     let requestId: String
-    let request: PostTriggerEventRequest
+    let event: PostTriggerEventRequest
 }
 
 extension UploadTriggersParameters: Routing {
@@ -23,21 +23,21 @@ extension UploadTriggersParameters: Routing {
     var queryItems: [String: String]? { ["requestId": requestId, "visitId": String(visitId)] }
     var path: String { "/triggerevents" }
     var parametersDictionary: [String: Any]? {
-        var parameters = ["name": request.name,
-                          "timestamp": request.timeStamp,
+        var parameters = ["name": event.name,
+                          "timestamp": event.timestamp,
                           "userPosition": [
-                            "x": Double(request.userPosition.x),
-                            "y": Double(request.userPosition.y)
+                            "x": Double(event.userPosition.x),
+                            "y": Double(event.userPosition.y)
                           ],
-                          "tags": request.tags.asDictionary(),
-                          "metadata": request.metaData.asDictionary()] as [String: Any]
+                          "tags": event.tags.asDictionary(),
+                          "metadata": event.metaData.asDictionary()] as [String: Any]
         
-        if let appTrigger = request.appTrigger?.event {
+        if let appTrigger = event.appTrigger?.event {
             parameters["appTrigger"] = ["event": appTrigger]
             parameters["triggerType"] = "APP"
         }
         
-        if let coordinateTrigger = request.coordinateTrigger {
+        if let coordinateTrigger = event.coordinateTrigger {
             parameters["coordinateTrigger"] = [
                 "x": Double(coordinateTrigger.point.x),
                 "y": Double(coordinateTrigger.point.y),
@@ -46,7 +46,7 @@ extension UploadTriggersParameters: Routing {
             parameters["triggerType"] = "COORDINATE"
         }
         
-        if let shelfTrigger = request.shelfTrigger {
+        if let shelfTrigger = event.shelfTrigger {
             parameters["shelfTrigger"] = [
                 "shelfGroupId": shelfTrigger.shelfGroupId,
                 "shelfId": shelfTrigger.shelfId,
@@ -54,7 +54,7 @@ extension UploadTriggersParameters: Routing {
             ]
             parameters["triggerType"] = "SHELF"
         }
-        if let zoneTrigger = request.zoneTrigger {
+        if let zoneTrigger = event.zoneTrigger {
             parameters["zoneTrigger"] = [
                 "zoneId": zoneTrigger.zoneId,
                 "groupId": zoneTrigger.groupId,
@@ -63,7 +63,7 @@ extension UploadTriggersParameters: Routing {
             parameters["triggerType"] = "ZONE"
         }
         
-        let dict = ["triggerGrps": [request.rtlsOptionsId: [parameters]]]
+        let dict = ["triggerGrps": [event.rtlsOptionsId: [parameters]]]
         
         return dict
     }

@@ -5,18 +5,20 @@
 //  Created by Théodore Roos on 2024-06-03.
 //
 
+import Combine
 import Foundation
 import VSFoundation
 
 protocol IAnalyticsRepository: Disposable {
   var activeVisitId: Int64? { get }
-  func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ())
+  func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String]) -> AnyPublisher<Int64, Error>
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
   func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ())
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ())
+  func upload(visitId: Int64, requestId: String, event: ScanEvent, completion: @escaping (Error?) -> ())
+  func upload(visitId: Int64, requestId: String, event: SyncEvent, completion: @escaping (Error?) -> ())
+  func upload(visitId: Int64, requestId: String, event: PostTriggerEventRequest, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ())
 }
@@ -41,16 +43,10 @@ extension AnalyticsRepository: IAnalyticsRepository {
     visitId = nil
   }
 
-  func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String], completion: @escaping (Result<Int64, Error>) -> ()) {
-    api.createVisit(storeId: storeId, deviceInformation: deviceInformation, tags: tags, metaData: metaData) { [weak self] (result) in
-      switch result {
-      case .success(let visitId):
-        self?.visitId = visitId
-        completion(.success(visitId))
-      case .failure(let error):
-        completion(.failure(error))
-      }
-    }
+  func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String]) -> AnyPublisher<Int64, Error> {
+    api.createVisit(storeId: storeId, deviceInformation: deviceInformation, tags: tags, metaData: metaData)
+      .handleEvents(receiveOutput: { [weak self] in self?.visitId = $0 })
+      .eraseToAnyPublisher()
   }
 
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ()) {
@@ -74,12 +70,16 @@ extension AnalyticsRepository: IAnalyticsRepository {
     api.upload(parameters: parameters, completion: completion)
   }
 
-  func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ()) {
-    api.upload(visitId: visitId, scanEvent: scanEvent, completion: completion)
+  func upload(visitId: Int64, requestId: String, event: ScanEvent, completion: @escaping (Error?) -> ()) {
+    api.upload(visitId: visitId, event: event, completion: completion)
   }
 
-  func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ()) {
-    api.upload(visitId: visitId, triggerEvent: triggerEvent, completion: completion)
+  func upload(visitId: Int64, requestId: String, event: SyncEvent, completion: @escaping (Error?) -> ()) {
+    api.upload(parameters: .init(visitId: visitId, requestId: requestId, event: event), completion: completion)
+  }
+
+  func upload(visitId: Int64, requestId: String, event: PostTriggerEventRequest, completion: @escaping (Error?) -> ()) {
+    api.upload(parameters: .init(visitId: visitId, requestId: requestId, event: event), completion: completion)
   }
 
   func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ()) {
@@ -88,5 +88,38 @@ extension AnalyticsRepository: IAnalyticsRepository {
 
   func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ()) {
     api.upload(visitId: visitId, summary: summary, completion: completion)
+  }
+}
+
+class AnalyticsBufferRepository: Disposable {
+  var syncEvents: [SyncEvent] = []
+  var triggerEvents: [PostTriggerEventRequest] = []
+  var scanEvents: [ScanEvent] = []
+
+  func dispose() {
+    reset()
+  }
+
+  func append(_ event: SyncEvent) {
+    syncEvents.append(event)
+  }
+
+  func append(_ event: PostTriggerEventRequest) {
+    triggerEvents.append(event)
+  }
+
+  func append(_ event: ScanEvent) {
+    scanEvents.append(event)
+  }
+
+  func startVisit() -> (syncEvents: [SyncEvent], triggerEvents: [PostTriggerEventRequest], scanEvents: [ScanEvent]) {
+    defer { reset() }
+    return (syncEvents, triggerEvents, scanEvents)
+  }
+
+  func reset() {
+    syncEvents.removeAll()
+    triggerEvents.removeAll()
+    scanEvents.removeAll()
   }
 }

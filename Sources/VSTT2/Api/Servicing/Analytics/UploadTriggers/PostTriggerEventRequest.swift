@@ -8,10 +8,10 @@
 import Foundation
 import CoreGraphics
 
-struct PostTriggerEventRequest {
+struct PostTriggerEventRequest: Codable {
     let rtlsOptionsId: String
     let name: String
-    let timeStamp: String
+    let timestamp: String
     let userPosition: CGPoint
     let appTrigger: AppTrigger?
     let coordinateTrigger: CoordinateTrigger?
@@ -20,27 +20,27 @@ struct PostTriggerEventRequest {
     let tags: [String: String]
     let metaData: [String: String]
     
-    struct AppTrigger {
+    struct AppTrigger: Codable {
         let event: String
     }
 
-    struct CoordinateTrigger {
+    struct CoordinateTrigger: Codable {
         let point: CGPoint
         let radius: Double
     }
 
-    struct ShelfTrigger {
+    struct ShelfTrigger: Codable {
         let shelfGroupId: Int?
         let shelfId: Int?
         let shelfTierId: Int?
     }
 
-    struct ZoneTrigger {
+    struct ZoneTrigger: Codable {
         let zoneId: String
         let groupId: String
         let type: ZoneType
 
-        enum ZoneType: String {
+        enum ZoneType: String, Codable {
             case enter = "ENTER"
             case exit = "EXIT"
         }

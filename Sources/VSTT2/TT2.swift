@@ -15,7 +15,7 @@ import UIKit
 final public class TT2: ITT2 {
     public var stores: [TT2Store] { tt2Internal.internalStores.map({ $0.toTT2Store() }) }
     public var activeStores: [TT2Store] { tt2Internal.internalStoresActive.map({ $0.toTT2Store() }) }
-    public var navigation: Navigation { tt2Internal.navigation }
+    public var navigation: INavigation { tt2Internal.navigation }
     public var analytics: TT2Analytics { tt2Internal.analytics }
     public var floor: VSTT2Floor { tt2Internal.floorManager }
     public var position: IPosition { tt2Internal.position }
@@ -35,7 +35,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.14.1"
+    static let version = "2.15.0"
 
     // MARK: Private members
     private let tag: String = "TT2"
@@ -171,7 +171,7 @@ final public class TT2: ITT2 {
         tt2Internal.mapController = map
         setupMap()
     }
-
+  
     public func set(wifi: IWiFiController?) {
         tt2Internal.wifiController = wifi
         bindWiFiPublishers()
@@ -302,7 +302,11 @@ private extension TT2 {
     }
 
     func setupMapfence(with data: MapFence, storeId: Int64, rtlsOptions: RtlsOptions, floorHeightDiff: Double) {
-        guard let converter = coordinateConverter else { return }
+        guard
+          let converter = coordinateConverter,
+          let store = tt2Internal.getCachedStore.invoke().first(where: { $0.id == storeId })
+        else { return }
+
         tt2Internal.navigation.vpsPosition.setupMapFence(
             with: data,
             storeId: storeId,
@@ -313,7 +317,8 @@ private extension TT2 {
             positionServiceSettings: tt2Internal.activeStore?.positionServiceSettings,
             converter: converter,
             modelManger: tt2Internal.mlModelManager,
-            engine: .indoor
+            engine: .indoor,
+            storeCoordinate: .init(latitude: store.latitude, longitude: store.longitude)
         )
     }
     

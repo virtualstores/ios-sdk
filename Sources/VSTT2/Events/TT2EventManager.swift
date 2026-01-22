@@ -98,16 +98,18 @@ private extension TT2EventManager {
   func loadMessages() {
     triggerEventsService
       .call(with: .init(storeId: activeStoreId))
-      .sink { (result) in
+      .asResult()
+      .sink { [weak self] (result) in
         switch result {
-        case .finished: break
-        case .failure(let error): Logger(verbosity: .debug).log(tag: Logger.createTag(fileName: #file, functionName: #function), message: error.localizedDescription)
+        case .success(let events):
+          self?.triggerEvents = events.flatMap { $0.toTriggerEvent(mapZones: self?.zones ?? []) }
+          self?.eventDetector.set(events: self?.triggerEvents ?? [])
+          self?.latestMessageLoad = .init()
+        case .failure(let error):
+          Logger(verbosity: .debug).log(tag: Logger.createTag(fileName: #file, functionName: #function), message: error.localizedDescription)
         }
-      } receiveValue: { [weak self] (events) in
-        self?.triggerEvents = events.map { $0.toTriggerEvent(mapZones: self?.zones ?? []) }.flatMap { $0 }
-        self?.eventDetector.set(events: self?.triggerEvents ?? [])
-        self?.latestMessageLoad = .init()
-      }.store(in: &cancellable)
+      }
+      .store(in: &cancellable)
   }
 }
 

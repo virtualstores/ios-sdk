@@ -13,7 +13,7 @@ import VSFoundation
 class CompileModelUseCase {
   @Inject var repository: IMLRepository
 
-  func invoke(type: MLRepository.ModelTypeEnum) -> AnyPublisher<Void, Error> {
+  func invoke(type: MLInterfaceVersions.MLCatalog.ModelTypeEnum) -> AnyPublisher<Void, Error> {
     repository.compileModel(type: type)
   }
 }
@@ -38,8 +38,12 @@ class GetMLCatalogUseCase {
 class GetMLModelUseCase {
   @Inject var repository: IMLRepository
 
-  func invoke() -> MLModel? {
-    repository.getMLModel()
+  func invoke(_ type: MLInterfaceVersions.MLCatalog.ModelTypeEnum) -> MLModel? {
+    switch type {
+    case .ml: return repository.getMLModel()
+    case .nl: return repository.getNLModel()
+    case .np: return repository.getNPModel()
+    }
   }
 }
 
@@ -51,19 +55,19 @@ class GetMLVersionUseCase {
   }
 }
 
-class GetNLModelUseCase {
-  @Inject var repository: IMLRepository
-
-  func invoke() -> MLModel? {
-    repository.getNLModel()
-  }
-}
-
 class GetNLVersionUseCase {
   @Inject var repository: IMLRepository
 
   func invoke() -> MLInterfaceVersions.MLCatalog.Device.NLVersion? {
     repository.getNLVersion()
+  }
+}
+
+class GetNPVersionUseCase {
+  @Inject var repository: IMLRepository
+
+  func invoke() -> MLInterfaceVersions.MLCatalog.Device.NPVersion? {
+    repository.getNPVersion()
   }
 }
 
@@ -84,35 +88,45 @@ class GetVPSNLModelParamsUseCase {
 }
 
 // MARK: - Loaders
-class LoadMLVersionUseCase {
+class LoadModelVersionUseCase {
   @Inject var repository: IMLRepository
 
-  func invoke(version: MLInterfaceVersions.MLCatalog.Device.MLVersion) -> AnyPublisher<Void, Error> {
-    repository.load(mlVersion: version)
-  }
-}
-
-class LoadNLVersionUseCase {
-  @Inject var repository: IMLRepository
-
-  func invoke(version: MLInterfaceVersions.MLCatalog.Device.NLVersion) -> AnyPublisher<Void, Error> {
-    repository.load(nlVersion: version)
+  func invoke(_ type: MLInterfaceVersions.MLCatalog.ModelTypeEnum, version: DeviceVersioning) -> AnyPublisher<Void, Error> {
+    switch type {
+    case .ml:
+      guard
+        let version = version as? MLInterfaceVersions.MLCatalog.Device.MLVersion
+      else { return .fail(with: NSError(domain: "Failed to load ML version", code: 400)) }
+      return repository.load(mlVersion: version)
+    case .nl:
+      guard
+        let version = version as? MLInterfaceVersions.MLCatalog.Device.NLVersion
+      else { return .fail(with: NSError(domain: "Failed to load ML version", code: 400)) }
+      return repository.load(nlVersion: version)
+    case .np:
+      guard
+        let version = version as? MLInterfaceVersions.MLCatalog.Device.NPVersion
+      else { return .fail(with: NSError(domain: "Failed to load ML version", code: 400)) }
+      return repository.load(npVersion: version)
+    }
   }
 }
 
 // MARK: - Setters
-class SetMLVersionUseCase {
+class SetModelVersionUseCase {
   @Inject var repository: IMLRepository
 
-  func invoke(version: MLInterfaceVersions.MLCatalog.Device.MLVersion) {
-    repository.set(mlVersion: version)
-  }
-}
-
-class SetNLVersionUseCase {
-  @Inject var repository: IMLRepository
-
-  func invoke(version: MLInterfaceVersions.MLCatalog.Device.NLVersion) {
-    repository.set(nlVersion: version)
+  func invoke(_ type: MLInterfaceVersions.MLCatalog.ModelTypeEnum, version: DeviceVersioning) {
+    switch type {
+    case .ml:
+      guard let version = version as? MLInterfaceVersions.MLCatalog.Device.MLVersion else { return }
+      repository.set(mlVersion: version)
+    case .nl:
+      guard let version = version as? MLInterfaceVersions.MLCatalog.Device.NLVersion else { return }
+      repository.set(nlVersion: version)
+    case .np:
+      guard let version = version as? MLInterfaceVersions.MLCatalog.Device.NPVersion else { return }
+      repository.set(npVersion: version)
+    }
   }
 }

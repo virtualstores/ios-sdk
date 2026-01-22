@@ -10,13 +10,14 @@ import Foundation
 import VSFoundation
 
 protocol IAnalyticsApi: Disposable {
-  func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String], completion: @escaping (Result<Int64, Error>) -> ())
+  func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String]) -> AnyPublisher<Int64, Error>
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
   func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ())
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ())
+  func upload(visitId: Int64, event: ScanEvent, completion: @escaping (Error?) -> ())
+  func upload(parameters: UploadSyncEventParameters, completion: @escaping (Error?) -> ())
+  func upload(parameters: UploadTriggersParameters, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ())
 }
@@ -29,6 +30,7 @@ class AnalyticsApi {
   private let uploadGeopositionsService = UploadGeoPositionsService(with: NetworkManager())
   private let uploadPositionsService = UploadPositionsService(with: NetworkManager())
   private let uploadScanEventsService = UploadScanEventsService(with: NetworkManager())
+  private let uploadSyncEventsService = UploadSyncEventsService(with: NetworkManager())
   private let uploadTriggersService = UploadTriggersService(with: NetworkManager())
   private let uploadVisitScoreService = UploadVisitScoreService(with: NetworkManager())
   private let uploadZoneSummmaryService = UploadZoneSummaryService(with: NetworkManager())
@@ -41,9 +43,9 @@ extension AnalyticsApi: IAnalyticsApi {
     cancellable.removeAll()
   }
   
-  func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String], completion: @escaping (Result<Int64, Error>) -> ()) {
+  func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String]) -> AnyPublisher<Int64, Error> {
     let date = DateFormatter.standardFormatter.string(from: Date())
-    createVisitService
+    return createVisitService
       .call(with: CreateVisitParameters(
         requestId: UUID().uuidString.uppercased(),
         storeId: storeId,
@@ -54,9 +56,7 @@ extension AnalyticsApi: IAnalyticsApi {
         metaData: metaData
       ))
       .map { $0.visitId }
-      .asResult()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
+      .eraseToAnyPublisher()
   }
 
   func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ()) {
@@ -103,25 +103,29 @@ extension AnalyticsApi: IAnalyticsApi {
       .store(in: &cancellable)
   }
 
-  func upload(visitId: Int64, scanEvent: ScanEvent, completion: @escaping (Error?) -> ()) {
+  func upload(visitId: Int64, event: ScanEvent, completion: @escaping (Error?) -> ()) {
     uploadScanEventsService
       .call(with: UploadScanEventsParameters(
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
-        scanEvent: scanEvent
+        scanEvent: event
       ))
       .asFailure()
       .sink(receiveValue: completion)
       .store(in: &cancellable)
   }
 
-  func upload(visitId: Int64, triggerEvent: PostTriggerEventRequest, completion: @escaping (Error?) -> ()) {
+  func upload(parameters: UploadSyncEventParameters, completion: @escaping (Error?) -> ()) {
+    uploadSyncEventsService
+      .call(with: parameters)
+      .asFailure()
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
+  }
+
+  func upload(parameters: UploadTriggersParameters, completion: @escaping (Error?) -> ()) {
     uploadTriggersService
-      .call(with: UploadTriggersParameters(
-        visitId: visitId,
-        requestId: UUID().uuidString.uppercased(),
-        request: triggerEvent
-      ))
+      .call(with: parameters)
       .asFailure()
       .sink(receiveValue: completion)
       .store(in: &cancellable)

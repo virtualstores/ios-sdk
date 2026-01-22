@@ -42,12 +42,16 @@ class VSTT2Config: Config {
     injector.map(SwapLocationsService.self) { SwapLocationsService(with: NetworkManager()) }
     injector.map(TriggerEventsService.self) { TriggerEventsService(with: NetworkManager()) }
     injector.map(UploadStepEventsService.self) { UploadStepEventsService(with: NetworkManager()) }
-    injector.map(UploadSyncEventsService.self) { UploadSyncEventsService(with: NetworkManager()) }
   }
 
   private func configureRepositories(_ injector: Injector) {
     injector.map(IAnalyticsRepository.self) { [weak self] in
       let inject = AnalyticsRepository()
+      self?.disposables.append(inject)
+      return inject
+    }
+    injector.map(AnalyticsBufferRepository.self) { [weak self] in
+      let inject = AnalyticsBufferRepository()
       self?.disposables.append(inject)
       return inject
     }
@@ -70,6 +74,7 @@ class VSTT2Config: Config {
       self?.disposables.append(inject)
       return inject
     }
+    injector.map(IPersistenceRepository.self) { PersistenceRepository() }
     injector.map(IStatusRepository.self) { StatusRepository() }
     injector.map(IStoreRepository.self) { [weak self] in
       let inject = StoreRepository()
@@ -81,15 +86,16 @@ class VSTT2Config: Config {
 
   private func configureUseCases(_ injector: Injector) {
     // Analytics use cases
+    injector.map(BufferOrPersistEventForActiveVisitUseCase.self) { .init() }
     injector.map(CreateVisitUseCase.self) { CreateVisitUseCase() }
     injector.map(GetActiveVisitIDUseCase.self) { GetActiveVisitIDUseCase() }
+    injector.map(ResetAnalyticsBufferUseCase.self) { .init() }
     injector.map(StopVisitUseCase.self) { StopVisitUseCase() }
     injector.map(UpdateTagsForActiveVisitUseCase.self) { UpdateTagsForActiveVisitUseCase() }
+    injector.map(AnalyticsUploadUseCase.self) { .init() }
     injector.map(UploadGeopositionsForActiveVisitUseCase.self) { UploadGeopositionsForActiveVisitUseCase() }
     injector.map(UploadGeopositionsForVisitUseCase.self) { UploadGeopositionsForVisitUseCase() }
     injector.map(UploadPositionsForVisitUseCase.self) { UploadPositionsForVisitUseCase() }
-    injector.map(UploadScanEventForActiveVisitUseCase.self) { UploadScanEventForActiveVisitUseCase() }
-    injector.map(UploadTriggerEventForActiveVisitUseCase.self) { UploadTriggerEventForActiveVisitUseCase() }
     injector.map(UploadZoneSummaryForActiveVisitUseCase.self) { .init() }
     injector.map(UploadVisitScoreForActiveVisitUseCase.self) { UploadVisitScoreForActiveVisitUseCase() }
     injector.map(ValidateVisitScoreUseCase.self) { ValidateVisitScoreUseCase() }
@@ -143,14 +149,19 @@ class VSTT2Config: Config {
     injector.map(GetMLCatalogUseCase.self) { GetMLCatalogUseCase() }
     injector.map(GetMLModelUseCase.self) { GetMLModelUseCase() }
     injector.map(GetMLVersionUseCase.self) { GetMLVersionUseCase() }
-    injector.map(GetNLModelUseCase.self) { GetNLModelUseCase() }
     injector.map(GetNLVersionUseCase.self) { GetNLVersionUseCase() }
+    injector.map(GetNPVersionUseCase.self) { .init() }
     injector.map(GetVPSMLModelParamsUseCase.self) { GetVPSMLModelParamsUseCase() }
     injector.map(GetVPSNLModelParamsUseCase.self) { GetVPSNLModelParamsUseCase() }
-    injector.map(LoadMLVersionUseCase.self) { LoadMLVersionUseCase() }
-    injector.map(LoadNLVersionUseCase.self) { LoadNLVersionUseCase() }
-    injector.map(SetMLVersionUseCase.self) { SetMLVersionUseCase() }
-    injector.map(SetNLVersionUseCase.self) { SetNLVersionUseCase() }
+    injector.map(LoadModelVersionUseCase.self) { .init() }
+    injector.map(SetModelVersionUseCase.self) { .init() }
+
+    // Persistence use cases
+    injector.map(GetScanEventsUseCase.self) { .init() }
+    injector.map(GetSyncEventsUseCase.self) { .init() }
+    injector.map(GetTriggerEventsUseCase.self) { .init() }
+    injector.map(DeleteEventUseCase.self) { .init() }
+    injector.map(SaveEventUseCase.self) { .init() }
 
     // Status use cases
     injector.map(GetCurrentCompassHeadingUseCase.self) { GetCurrentCompassHeadingUseCase() }
@@ -251,10 +262,10 @@ class VSTT2Config: Config {
     injector.unmap(SwapLocationsService.self)
     injector.unmap(TriggerEventsService.self)
     injector.unmap(UploadStepEventsService.self)
-    injector.unmap(UploadSyncEventsService.self)
 
     // Repositories
     injector.unmap(IAnalyticsRepository.self)
+    injector.unmap(AnalyticsBufferRepository.self)
     injector.unmap(IApiKeyRepository.self)
     injector.unmap(IAuthRepository.self)
     injector.unmap(IClientRepository.self)
@@ -267,15 +278,16 @@ class VSTT2Config: Config {
     injector.unmap(IUserRepository.self)
 
     // Analytics use cases
+    injector.unmap(BufferOrPersistEventForActiveVisitUseCase.self)
     injector.unmap(CreateVisitUseCase.self)
     injector.unmap(GetActiveVisitIDUseCase.self)
+    injector.unmap(ResetAnalyticsBufferUseCase.self)
     injector.unmap(StopVisitUseCase.self)
     injector.unmap(UpdateTagsForActiveVisitUseCase.self)
+    injector.unmap(AnalyticsUploadUseCase.self)
     injector.unmap(UploadGeopositionsForActiveVisitUseCase.self)
     injector.unmap(UploadGeopositionsForVisitUseCase.self)
     injector.unmap(UploadPositionsForVisitUseCase.self)
-    injector.unmap(UploadScanEventForActiveVisitUseCase.self)
-    injector.unmap(UploadTriggerEventForActiveVisitUseCase.self)
     injector.unmap(UploadZoneSummaryForActiveVisitUseCase.self)
 
     injector.unmap(UploadVisitScoreForActiveVisitUseCase.self)
@@ -330,14 +342,19 @@ class VSTT2Config: Config {
     injector.unmap(GetMLCatalogUseCase.self)
     injector.unmap(GetMLModelUseCase.self)
     injector.unmap(GetMLVersionUseCase.self)
-    injector.unmap(GetNLModelUseCase.self)
     injector.unmap(GetNLVersionUseCase.self)
+    injector.unmap(GetNPVersionUseCase.self)
     injector.unmap(GetVPSMLModelParamsUseCase.self)
     injector.unmap(GetVPSNLModelParamsUseCase.self)
-    injector.unmap(LoadMLVersionUseCase.self)
-    injector.unmap(LoadNLVersionUseCase.self)
-    injector.unmap(SetMLVersionUseCase.self)
-    injector.unmap(SetNLVersionUseCase.self)
+    injector.unmap(LoadModelVersionUseCase.self)
+    injector.unmap(SetModelVersionUseCase.self)
+
+    // Persistence use cases
+    injector.unmap(GetScanEventsUseCase.self)
+    injector.unmap(GetSyncEventsUseCase.self)
+    injector.unmap(GetTriggerEventsUseCase.self)
+    injector.unmap(DeleteEventUseCase.self)
+    injector.unmap(SaveEventUseCase.self)
 
     // Status use cases
     injector.unmap(GetCurrentCompassHeadingUseCase.self)
@@ -347,17 +364,21 @@ class VSTT2Config: Config {
     injector.unmap(GetCurrentVPSPositionUseCase.self)
     injector.unmap(GetCurrentTT2SettingsUseCase.self)
     injector.unmap(GetIsVPSRunningUseCase.self)
+    injector.unmap(GetIsReferenceAngleCertainUseCase.self)
     injector.unmap(SetCompassHeadingUseCase.self)
     injector.unmap(SetGPSPositionUseCase.self)
     injector.unmap(SetLeaseExpiredUseCase.self)
     injector.unmap(SetLeasePolicyUseCase.self)
     injector.unmap(SetVPSPositionUseCase.self)
     injector.unmap(SetIsVPSRunningUseCase.self)
+    injector.unmap(SetIsReferenceAngleCertainUseCase.self)
     injector.unmap(SetTT2SettingsUseCase.self)
     injector.unmap(SubscribeToCompassHeadingUpdatesUseCase.self)
     injector.unmap(SubscribeToGPSUpdatesUseCase.self)
     injector.unmap(SubscribeToVPSUpdatesUseCase.self)
     injector.unmap(SubscribeToIsVPSRunningUseCase.self)
+    injector.unmap(SubscribeToIsReferenceAngleCertainUseCase.self)
+    injector.unmap(ResetStatusRepositoryUseCase.self)
 
     // Store use cases
     injector.unmap(FetchStoreUseCase.self)

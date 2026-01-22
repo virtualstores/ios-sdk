@@ -17,7 +17,7 @@ import CoreLocation
 ///  2- To initialize your store, call initStore
 public protocol ITT2: Disposable {
     /// Navigation manager
-    var navigation: Navigation { get }
+    var navigation: INavigation { get }
     
     /// Analytics manager
     var analytics: TT2Analytics { get }

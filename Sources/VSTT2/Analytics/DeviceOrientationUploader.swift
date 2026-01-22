@@ -78,3 +78,27 @@ class DeviceOrientationUploader {
     }.resume()
   }
 }
+
+extension URLQueryItem {
+  enum EntryIDs: String {
+    case sessionId = "entry.723772527"
+    case articleId = "entry.234712389"
+    case preScanLocationX = "entry.421535035"
+    case preScanLocationY = "entry.1326043207"
+    case offsetX = "entry.1258351828"
+    case offsetY = "entry.708563230"
+    case scanLocationX = "entry.832291956"
+    case scanLocationY = "entry.1411294416"
+    case appVersion = "entry.1892335868"
+    case positionKitVersion = "entry.827959482"
+    case serverUrl = "entry.548783748"
+    case clientId = "entry.1270289197"
+    case storeId = "entry.1258341166"
+    case visitId = "entry.788993633"
+    //    case combinedInfo = "entry.234712389"
+  }
+
+  init(entry: EntryIDs, value: String) {
+    self.init(name: entry.rawValue, value: value)
+  }
+}
