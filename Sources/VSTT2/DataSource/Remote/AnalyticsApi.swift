@@ -11,9 +11,9 @@ import VSFoundation
 
 protocol IAnalyticsApi: Disposable {
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String]) -> AnyPublisher<Int64, Error>
-  func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
-  func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ())
+  func stopVisit(visitId: Int64) -> AnyPublisher<Void, Error>
+  func update(visitId: Int64, tags: [String:String]) -> AnyPublisher<Void, Error>
+  func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]]) -> AnyPublisher<Void, Error>
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, event: ScanEvent, completion: @escaping (Error?) -> ())
   func upload(parameters: UploadSyncEventParameters, completion: @escaping (Error?) -> ())
@@ -59,40 +59,31 @@ extension AnalyticsApi: IAnalyticsApi {
       .eraseToAnyPublisher()
   }
 
-  func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ()) {
+  func stopVisit(visitId: Int64) -> AnyPublisher<Void, Error> {
     stopVisitService
-      .call(with: StopVisitParameters(
+      .call(with: .init(
         requestId: UUID().uuidString.uppercased(),
         visitId: visitId,
         stopTimestamp: DateFormatter.standardFormatter.string(from: Date())
       ))
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
   }
 
-  func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ()) {
+  func update(visitId: Int64, tags: [String:String]) -> AnyPublisher<Void, Error> {
     tagsVisitService
-      .call(with: TagsVisitParameters(
+      .call(with: .init(
         requestId: UUID().uuidString.uppercased(),
         visitId: visitId,
         tags: tags
       ))
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
   }
 
-  func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ()) {
+  func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]]) -> AnyPublisher<Void, Error> {
     uploadGeopositionsService
-      .call(with: UploadGeoPositionsParameters(
+      .call(with: .init(
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
         positions: geopositions
       ))
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
   }
 
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ()) {
@@ -105,7 +96,7 @@ extension AnalyticsApi: IAnalyticsApi {
 
   func upload(visitId: Int64, event: ScanEvent, completion: @escaping (Error?) -> ()) {
     uploadScanEventsService
-      .call(with: UploadScanEventsParameters(
+      .call(with: .init(
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
         scanEvent: event
@@ -133,7 +124,7 @@ extension AnalyticsApi: IAnalyticsApi {
 
   func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ()) {
     uploadVisitScoreService
-      .call(with: UploadVisitScoreParameters(
+      .call(with: .init(
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
         visitScore: visitScore

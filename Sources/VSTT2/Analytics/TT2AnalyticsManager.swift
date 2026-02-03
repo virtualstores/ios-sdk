@@ -256,30 +256,37 @@ private extension TT2AnalyticsManager {
   }
 
   func updateVisitWithStopTags() {
-    let tags = [
+    invokeUpdate(tags: [
       "tt2BatteryLevelAtEnd": (UIDevice.current.batteryLevel * 100).description,
       "tt2LeaseExpired": leaseExpired.description,
       "tt2LeasePolicy": getCurrentLeasePolicy.invoke()?.rawValue ?? "None"
-    ]
-    updateTags.invoke(tags: tags) { (error) in
-      if let error = error {
-        Logger(verbosity: .debug).log(message: "UpdateVisitWithStopTagsError \(error)")
-      }
-    }
+    ])
   }
 
   func invokeEndVisit() {
-    serialDispatch.async { [weak self] in
-      self?.endVisit.invoke { (error) in
-        if let error = error {
-          Logger(verbosity: .debug).log(message: "StopVisitError: \(error.localizedDescription)")
-        } else {
+    endVisit.invoke()
+      .subscribe(on: serialDispatch)
+      .receive(on: serialDispatch)
+      .sink { [weak self] (completion) in
+        switch completion {
+        case .finished:
           self?.positionUploadWorker.removeAllPoints()
           self?.recordedPositionsCount = 0
           self?.navigationManager.vpsPosition.set(sessionId: nil)
+        case .failure(let error):
+          Logger(verbosity: .debug).log(message: "StopVisitError: \(error.localizedDescription)")
         }
-      }
-    }
+      } receiveValue: { (_) in }
+      .store(in: &cancellables)
+  }
+
+  func invokeUpdate(tags: [String:String]) {
+    updateTags.invoke(tags: tags)
+      .sink {
+        guard case .failure(let error) = $0 else { return }
+        Logger(verbosity: .debug).log(message: "\(#function) \(error)")
+      } receiveValue: { (_) in }
+      .store(in: &cancellables)
   }
 }
 
@@ -333,17 +340,12 @@ extension TT2AnalyticsManager {
 
   func updateVisitWithMLTags(mlUser: MlUser) {
     let hasML = !mlUser.speedModifier.isEmpty || !mlUser.directionModifier.isEmpty
-    let tags = [
+    invokeUpdate(tags: [
       "tt2MLActive": hasML ? "true" : "false",
       "tt2MLAlgorithm": mlUser.mlAlgorithm.rawValue,
       "tt2MLSpeedModifier": mlUser.speedModifier.description,
       "tt2MLDirectionModifier": mlUser.directionModifier.description
-    ]
-    updateTags.invoke(tags: tags) { (error) in
-      if let error = error {
-        Logger(verbosity: .debug).log(message: "UpdateVisitWithMLTagsError \(error)")
-      }
-    }
+    ])
   }
 
   func rescueMode() {

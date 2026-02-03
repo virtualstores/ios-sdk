@@ -57,8 +57,8 @@ extension Position: IPosition {
   public func getBy(identifier: String) -> AnyPublisher<Item, Error> {
     getBy(shelfName: identifier)
       .map { $0.asItem }
-      .catch { [weak self] _ in
-        self?.getBy(barcode: identifier) ?? .fail(with: NSError(domain: "No position found", code: -1))
+      .catch { [weak self] (error) in
+        self?.getBy(barcode: identifier) ?? .fail(with: error)//.fail(with: NSError(domain: "No position found", code: -1))
       }
       .eraseToAnyPublisher()
   }

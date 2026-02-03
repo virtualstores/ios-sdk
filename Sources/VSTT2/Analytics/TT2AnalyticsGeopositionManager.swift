@@ -1,16 +1,17 @@
 //
 //  TT2AnalyticsGeopositionManager.swift
-//  
+//
 //
 //  Created by Théodore Roos on 2024-08-23.
 //
 
+import Combine
 import CoreLocation
 import Foundation
 import VSFoundation
 import VSPositionKit
 
-class TT2AnalyticsGeopositionManager {
+class TT2AnalyticsGeopositionManager: Disposable {
   @Inject var positionManager: VPSPositionManager
   @Inject var activeVisitId: GetActiveVisitIDUseCase
   @Inject var uploadGeopositions: UploadGeopositionsForVisitUseCase
@@ -24,6 +25,15 @@ class TT2AnalyticsGeopositionManager {
   private var recordedMLPositionsLngLat: [Int64: [RecordedPositionLngLat]] = [:]
   private var recordedFullMLPositionsLngLat: [Int64: [RecordedPositionLngLat]] = [:]
   private var recordedPositionLngLat: [Int64: [String: [RecordedPositionLngLat]]] = [:]
+  private var cancellables: Set<AnyCancellable> = []
+
+  deinit {
+    dispose()
+  }
+
+  func dispose() {
+    cancellables.removeAll()
+  }
 
   var counter = 0
   func update(location: VPSOutputSignal.LatLngPosition) {
@@ -91,7 +101,7 @@ class TT2AnalyticsGeopositionManager {
     let fullGPSPositions = recordedFullGPSPositionsLngLat
     let mlPositions = recordedMLPositionsLngLat
     let fullMLPositions = recordedFullMLPositionsLngLat
-    postGeopositions(
+    post(
       gpsPositions: gpsPositions,
       fullGPSPositions: fullGPSPositions,
       mlPositions: mlPositions,
@@ -105,11 +115,12 @@ class TT2AnalyticsGeopositionManager {
 
     let positions = recordedPositionLngLat
     positions.forEach { (key, value) in
-      uploadGeopositions.invoke(visitId: key, geopositions: value) { (error) in
-        if let error = error {
+      uploadGeopositions.invoke(visitId: key, geopositions: value)
+        .sink { (completion) in
+          guard case .failure(let error) = completion else { return }
           Logger(verbosity: .error).log(message: "UploadGeopositions - \(key): \(error)")
-        }
-      }
+        } receiveValue: { _ in }
+        .store(in: &cancellables)
     }
     recordedPositionLngLat = [:]
   }
@@ -117,7 +128,7 @@ class TT2AnalyticsGeopositionManager {
   func stopVisit() {
     postGeopositions()
     if let processedPath = processMlManager.processMLPath() {
-      postProcessedPath(processedMLPositions: processedPath)
+      post(processedMLPositions: processedPath)
     }
     processMlManager.reset()
     counter = 0
@@ -136,52 +147,34 @@ class TT2AnalyticsGeopositionManager {
 }
 
 private extension TT2AnalyticsGeopositionManager {
-  func postGeopositions(
+  func upload(
+    type: UploadGeoPositionsParameters.TypeEnum,
+    visitId: Int64,
+    positions: [RecordedPositionLngLat],
+    label: String
+  ) {
+    uploadGeopositions
+      .invoke(visitId: visitId, geopositions: [type.rawValue: positions])
+      .sink { (completion) in
+        guard case .failure(let error) = completion else { return }
+        Logger(verbosity: .error).log(message: "UploadGeopositions - \(label): \(error)")
+      } receiveValue: { _ in }
+      .store(in: &cancellables)
+  }
+
+  func post(
     gpsPositions: [Int64: [RecordedPositionLngLat]],
     fullGPSPositions: [Int64: [RecordedPositionLngLat]],
     mlPositions: [Int64: [RecordedPositionLngLat]],
     fullMLPositions: [Int64: [RecordedPositionLngLat]]
   ) {
-    gpsPositions.forEach { (key, value) in
-      uploadGeopositions.invoke(visitId: key, geopositions: [UploadGeoPositionsParameters.TypeEnum.gps.rawValue : value]) { (error) in
-        if let error = error {
-          Logger(verbosity: .error).log(message: "UploadGeopositions - GPS: \(error)")
-        }
-      }
-    }
-
-    fullGPSPositions.forEach { (key, value) in
-      uploadGeopositions.invoke(visitId: key, geopositions: [UploadGeoPositionsParameters.TypeEnum.fullGPS.rawValue : value]) { (error) in
-        if let error = error {
-          Logger(verbosity: .error).log(message: "UploadGeopositions - Full GPS: \(error)")
-        }
-      }
-    }
-
-    mlPositions.forEach { (key, value) in
-      uploadGeopositions.invoke(visitId: key, geopositions: [UploadGeoPositionsParameters.TypeEnum.vpsMl.rawValue : value]) { (error) in
-        if let error = error {
-          Logger(verbosity: .error).log(message: "UploadGeopositions - VPS ML: \(error)")
-        }
-      }
-    }
-
-    fullMLPositions.forEach { (key, value) in
-      uploadGeopositions.invoke(visitId: key, geopositions: [UploadGeoPositionsParameters.TypeEnum.fullVPSMl.rawValue : value]) { (error) in
-        if let error = error {
-          Logger(verbosity: .error).log(message: "UploadGeopositions - Full VPS ML: \(error)")
-        }
-      }
-    }
+    gpsPositions.forEach { upload(type: .gps, visitId: $0.key, positions: $0.value, label: "GPS") }
+    fullGPSPositions.forEach { upload(type: .fullGPS, visitId: $0.key, positions: $0.value, label: "Full GPS") }
+    mlPositions.forEach { upload(type: .vpsMl, visitId: $0.key, positions: $0.value, label: "VPS ML") }
+    fullMLPositions.forEach { upload(type: .fullVPSMl, visitId: $0.key, positions: $0.value, label: "Full VPS ML") }
   }
 
-  func postProcessedPath(processedMLPositions: [Int64: [RecordedPositionLngLat]]) {
-    processedMLPositions.forEach { (key, value) in
-      uploadGeopositions.invoke(visitId: key, geopositions: [UploadGeoPositionsParameters.TypeEnum.vpsMlProcessed.rawValue : value]) { (error) in
-        if let error = error {
-          Logger(verbosity: .error).log(message: "UploadGeopositions - VPS ML Processed: \(error)")
-        }
-      }
-    }
+  func post(processedMLPositions: [Int64: [RecordedPositionLngLat]]) {
+    processedMLPositions.forEach { upload(type: .vpsMlProcessed, visitId: $0.key, positions: $0.value, label: "VPS ML Processed") }
   }
 }

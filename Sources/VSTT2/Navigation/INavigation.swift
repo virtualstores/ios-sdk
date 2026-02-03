@@ -19,9 +19,9 @@ public protocol INavigation: Disposable {
     var compassHeading: Double? { get }
     var currentPosition: CGPoint? { get }
 
-    func syncPosition(identifier: String, syncAngle: Bool, uncertainAngle: Bool, withForce: Bool, reportScanEvent: Bool, returnOn queue: DispatchQueue, completion: @escaping (Result<Item,Error>) -> ())
+    func syncPosition(identifier: String, syncAngle: Bool, uncertainAngle: Bool, withForce: Bool, reportScanEvent: Bool, returnOn queue: DispatchQueue) -> AnyPublisher<Item,Error>
 
-    func syncPosition(location: CLLocation) throws
+    func syncPosition(identifier: String, syncAngle: Bool, uncertainAngle: Bool, withForce: Bool, reportScanEvent: Bool, returnOn queue: DispatchQueue, completion: @escaping (Result<Item,Error>) -> ())
 
     /// This will stop notifying the location publishers.
     func stop()
@@ -31,6 +31,18 @@ public protocol INavigation: Disposable {
 }
 
 public extension INavigation {
+  func syncPosition(
+    identifier: String,
+    syncAngle: Bool = false,
+    uncertainAngle: Bool = true,
+    withForce: Bool = false,
+    reportScanEvent: Bool = true,
+    returnOn queue: DispatchQueue = .main,
+  ) -> AnyPublisher<Item,Error> {
+    syncPosition(identifier: identifier, syncAngle: syncAngle, uncertainAngle: uncertainAngle, withForce: withForce, reportScanEvent: reportScanEvent, returnOn: queue)
+  }
+
+  @available(*, deprecated, renamed: "syncPosition(identifier:syncAngle:uncertainAngle:withForce:reportScanEvent:returnOn:)", message: "Please use the updated Combine version")
   func syncPosition(
     identifier: String,
     syncAngle: Bool = false,

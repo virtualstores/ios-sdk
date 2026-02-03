@@ -53,7 +53,7 @@ final public class Navigation {
   private var startCodes: [PositionedCode] { activeFloor?.scanLocations?.filter({ $0.type == .start }) ?? [] }
   private var hasStartLocationAngle: Bool = false
   private var certainAngle: Bool = false
-  private var cancellable = Set<AnyCancellable>()
+  private var cancellables = Set<AnyCancellable>()
 
   private var heading: TT2Course? {
     guard
@@ -103,28 +103,34 @@ extension Navigation: INavigation {
 
   public func syncPosition(
     identifier: String,
-    syncAngle: Bool = false,
-    uncertainAngle: Bool = true,
-    withForce: Bool = false,
-    reportScanEvent: Bool = true,
-    returnOn queue: DispatchQueue = .main,
-    completion: @escaping (Result<Item,Error>) -> () = { (_) in }
-  ) {
+    syncAngle: Bool,
+    uncertainAngle: Bool,
+    withForce: Bool,
+    reportScanEvent: Bool,
+    returnOn queue: DispatchQueue,
+  ) -> AnyPublisher<Item,Error> {
     if uncertainAngle {
-      syncPosition(identifier: identifier, type: .compass(forceSync: withForce), reportScanEvent: reportScanEvent, returnOn: queue, completion: completion)
+      return syncPosition(identifier: identifier, type: .compass(forceSync: withForce), reportScanEvent: reportScanEvent, returnOn: queue)
     } else if syncAngle || !uncertainAngle {
-      syncPosition(identifier: identifier, type: .normal(syncRotation: syncAngle), reportScanEvent: reportScanEvent, returnOn: queue, completion: completion)
+      return syncPosition(identifier: identifier, type: .normal(syncRotation: syncAngle), reportScanEvent: reportScanEvent, returnOn: queue)
     } else {
-      syncPosition(identifier: identifier, type: .compass(forceSync: false), reportScanEvent: reportScanEvent, returnOn: queue, completion: completion)
+      return syncPosition(identifier: identifier, type: .compass(forceSync: false), reportScanEvent: reportScanEvent, returnOn: queue)
     }
   }
 
-  public func syncPosition(location: CLLocation) throws {
-    guard isActive else {
-      try start(startPosition: location.coordinate.asPoint, startAngle: location.course)
-      return
-    }
-    vpsPosition.syncPosition(location: location)
+  public func syncPosition(
+    identifier: String,
+    syncAngle: Bool,
+    uncertainAngle: Bool,
+    withForce: Bool,
+    reportScanEvent: Bool,
+    returnOn queue: DispatchQueue,
+    completion: @escaping (Result<Item,Error>) -> ()
+  ) {
+    syncPosition(identifier: identifier, syncAngle: syncAngle, uncertainAngle: uncertainAngle, withForce: withForce, reportScanEvent: reportScanEvent, returnOn: queue)
+      .asResult()
+      .sink(receiveValue: completion)
+      .store(in: &cancellables)
   }
 
   public func stop() {
@@ -236,6 +242,14 @@ public extension Navigation {
       }
     }
   }
+
+  func syncPosition(location: CLLocation) throws {
+    guard isActive else {
+      try start(startPosition: location.coordinate.asPoint, startAngle: location.course)
+      return
+    }
+    vpsPosition.syncPosition(location: location)
+  }
 }
 
 // MARK: Internal
@@ -287,12 +301,12 @@ extension Navigation {
 // MARK: Private
 private extension Navigation {
   func bindPublishers() {
-    cancellable.removeAll()
+    cancellables.removeAll()
     vpsUpdates.invoke()
       .sink { [weak self] (position) in
         guard let position = position else { return }
         self?.inAndOutZone?.onNewPosition(currentPosition: position.point)
-      }.store(in: &cancellable)
+      }.store(in: &cancellables)
   }
 
   func start(code: PositionedCode) throws {
@@ -310,24 +324,8 @@ private extension Navigation {
     }
   }
 
-  func syncPosition(identifier: String, type: SyncTypeEnum, reportScanEvent: Bool, returnOn queue: DispatchQueue, completion: @escaping (Result<Item,Error>) -> ()) {
-    if let code = checkForScanLocation(identifier: identifier) {
-      do {
-        try start(code: code)
-        let item = Item(name: code.code, externalId: "", itemPositions: [ItemPosition(point: code.point, offset: .zero, floorLevelId: activeFloor?.id)])
-        completion(.success(item))
-      } catch {
-        completion(.failure(error))
-      }
-      return
-    }
-    if let syncRotation = type.get().normal, syncRotation {
-      prepareAngle()
-    }
-    if reportScanEvent {
-      createAnalyticsScanEventForIdentifier(identfier: identifier)
-    }
-    func doSync(position: ItemPosition) throws {
+  func syncPosition(identifier: String, type: SyncTypeEnum, reportScanEvent: Bool, returnOn queue: DispatchQueue) -> AnyPublisher<Item, Error> {
+    func performSync(_ position: ItemPosition) throws {
       switch type {
       case .compass(let forceSync):
         try syncPosition(position: position, forceSync: forceSync)
@@ -335,41 +333,51 @@ private extension Navigation {
         try syncPosition(position: position, syncRotation: syncRotation, forceSync: true)
       }
     }
-    positionManager.getBy(shelfName: identifier) { (result) in
-      switch result {
-      case .success(let position):
-        do {
-          try doSync(position: position)
-          let item = Item(name: "", externalId: position.identifier, itemPositions: [position])
-          queue.async { completion(.success(item)) }
-        } catch {
-          queue.async { completion(.failure(error)) }
-        }
-      case .failure(let error):
-        self.positionManager.getBy(barcode: identifier) { (result) in
-          switch result {
-          case .success(let item):
-            do {
-              if item.uniquePositions.isEmpty {
-                self.prepareAccuracyUpload(identifier: identifier)
-                throw NSError(domain: "No unique positions", code: 400)
-              } else if item.uniquePositions.count > 1 {
-                self.prepareAccuracyUpload(item: item)
-                throw NSError(domain: "Unique positions more than 1", code: 400)
-              } else if let position = item.itemPosition {
-                try doSync(position: position)
-                queue.async { completion(.success(item)) }
-              } else {
-                throw NSError(domain: "Case not handled", code: 400)
-              }
-            } catch {
-              queue.async { completion(.failure(error)) }
-            }
-          case .failure(let error): completion(.failure(error))
-          }
+
+    func requireSinglePosition(in item: Item) throws -> ItemPosition {
+      if item.uniquePositions.isEmpty {
+        prepareAccuracyUpload(identifier: identifier)
+        throw NSError(domain: "No unique positions", code: 400)
+      }
+      if item.uniquePositions.count > 1 {
+        prepareAccuracyUpload(item: item)
+        throw NSError(domain: "Unique positions more than 1", code: 400)
+      }
+      if let position = item.itemPosition {
+        return position
+      }
+      throw NSError(domain: "Case not handled", code: 400)
+    }
+
+    return Deferred { [weak self] () -> AnyPublisher<Item, Error> in
+      guard let self else { return .fail(with: TT2Error.missingData) }
+
+      // Nothing happens until subscription now 👌
+      if let code = checkForScanLocation(identifier: identifier) {
+        return .justOrFail {
+          try self.start(code: code)
+          return Item(name: code.code, externalId: "", itemPositions: [.init(point: code.point, offset: .zero, floorLevelId: self.activeFloor?.id)])
         }
       }
+
+      if let syncRotation = type.get().normal, syncRotation {
+        prepareAngle()
+      }
+
+      if reportScanEvent {
+        createAnalyticsScanEventForIdentifier(identifier: identifier)
+      }
+
+      return positionManager.getBy(identifier: identifier)
+        .tryMap { (item) in
+          let position = try requireSinglePosition(in: item)
+          try performSync(position)
+          return item
+        }
+        .eraseToAnyPublisher()
     }
+    .receive(on: queue)
+    .eraseToAnyPublisher()
   }
 
   func prepareAccuracyUpload(position: ItemPosition? = nil, code: PositionedCode? = nil, startDirection: Double? = nil, identifier: String? = nil, item: Item? = nil, isFloorSwap: Bool = false) {
@@ -392,52 +400,31 @@ private extension Navigation {
     accuracyPublisher.send((event: event, isFloorSwap: isFloorSwap))
   }
 
-  func createAnalyticsScanEventForIdentifier(identfier: String) {
-    guard let id = activeFloor?.id else { return }
-    var events = [ScanEvent]()
+  func createAnalyticsScanEventForIdentifier(identifier: String) {
+    guard let floorId = activeFloor?.id else { return }
+
+    var baseEvents = [ScanEvent]()
     if let zoneIds = inAndOutZone?.activeInside.map({ $0.id }), !zoneIds.isEmpty {
-      events.append(.createZoneScanEvent(identifier: identfier, floorLevelId: id, userPosition: currentPosition, zones: zoneIds))
+      baseEvents.append(.createZoneScanEvent(identifier: identifier, floorLevelId: floorId, userPosition: currentPosition, zones: zoneIds))
     }
 
-    func addShelfScanEvent(position: ItemPosition) {
-      if position.floorLevelId == id {
-        events.append(.createShelfScanEvent(itemPosition: position, userPosition: currentPosition))
-      }
-    }
-
-    func addUnknownScanEvent() {
-      events.append(.createUnknownScanEvent(identfier: identfier, floorLevelId: id, userPosition: currentPosition))
-    }
-
-    let group = DispatchGroup()
-    group.enter()
-    positionManager.getBy(shelfName: identfier) { (result) in
-      switch result {
-      case .success(let position):
-        addShelfScanEvent(position: position)
-        group.leave()
-      case .failure(let error):
-        self.positionManager.getBy(barcode: identfier) { (result) in
-          switch result {
-          case .success(let item):
-            if let position = item.itemPosition {
-              addShelfScanEvent(position: position)
-            }
-          case .failure(_):
-            addUnknownScanEvent()
-          }
-          group.leave()
+    positionManager.getBy(identifier: identifier)
+      .map { [weak self] item -> [ScanEvent] in
+        guard let self = self else { return baseEvents }
+        var events = baseEvents
+        if let position = item.itemPosition, position.floorLevelId == floorId {
+          events.append(.createShelfScanEvent(itemPosition: position, userPosition: currentPosition))
         }
+        return events
       }
-    }
-
-    group.notify(queue: .main) {
-      if events.isEmpty {
-        addUnknownScanEvent()
+      .catch { _ in Just(baseEvents) }
+      .map { [weak self] in
+        guard let self = self, $0.isEmpty || $0.allSatisfy({ $0.type == .zone }) else { return $0 }
+        return $0 + [.createUnknownScanEvent(identfier: identifier, floorLevelId: floorId, userPosition: currentPosition)]
       }
-
-      self.scanEventsPublisher.send(events)
-    }
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] in self?.scanEventsPublisher.send($0) }
+      .store(in: &cancellables)
   }
 
   func startWithAngle(startPosition: CGPoint) -> Double? {

@@ -172,7 +172,7 @@ internal class TT2Internal: Disposable {
               case .gps(let location):
                 mapController?.update(location: location)
                 setGPSPosition.invoke(gpsPosition: location)
-              case .ux(position: let position): break
+              case .ux(position: _): break
                 //mapController?.updateUserLocation(newLocation: position.position, std: position.std)
               case .ml(position: let position):
                 if let converter = realConverter {

@@ -73,18 +73,18 @@ class ResetAnalyticsBufferUseCase {
 class StopVisitUseCase {
   @Inject var repository: IAnalyticsRepository
 
-  func invoke(completion: @escaping (Error?) -> ()) {
-    guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
-    repository.stopVisit(visitId: id, completion: completion)
+  func invoke() -> AnyPublisher<Void, Error> {
+    guard let id = repository.activeVisitId else { return .fail(with: TT2AnalyticsError.visitNotStarted) }
+    return repository.stopVisit(visitId: id)
   }
 }
 
 class UpdateTagsForActiveVisitUseCase {
   @Inject var repository: IAnalyticsRepository
 
-  func invoke(tags: [String:String], completion: @escaping (Error?) -> ()) {
-    guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
-    repository.update(visitId: id, tags: tags, completion: completion)
+  func invoke(tags: [String:String]) -> AnyPublisher<Void, Error> {
+    guard let id = repository.activeVisitId else { return .fail(with: TT2AnalyticsError.visitNotStarted) }
+    return repository.update(visitId: id, tags: tags)
   }
 }
 
@@ -126,17 +126,17 @@ class AnalyticsUploadUseCase {
 class UploadGeopositionsForActiveVisitUseCase {
   @Inject var repository: IAnalyticsRepository
 
-  func invoke(geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ()) {
-    guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
-    repository.upload(visitId: id, geopositions: geopositions, completion: completion)
+  func invoke(geopositions: [String:[RecordedPositionLngLat]]) -> AnyPublisher<Void, Error> {
+    guard let id = repository.activeVisitId else { return .fail(with: TT2AnalyticsError.visitNotStarted) }
+    return repository.upload(visitId: id, geopositions: geopositions)
   }
 }
 
 class UploadGeopositionsForVisitUseCase {
   @Inject var repository: IAnalyticsRepository
 
-  func invoke(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ()) {
-    repository.upload(visitId: visitId, geopositions: geopositions, completion: completion)
+  func invoke(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]]) -> AnyPublisher<Void, Error> {
+    repository.upload(visitId: visitId, geopositions: geopositions)
   }
 }
 

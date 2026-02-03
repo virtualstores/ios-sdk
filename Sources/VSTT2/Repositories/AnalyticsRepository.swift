@@ -12,9 +12,9 @@ import VSFoundation
 protocol IAnalyticsRepository: Disposable {
   var activeVisitId: Int64? { get }
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String : String], metaData: [String : String]) -> AnyPublisher<Int64, Error>
-  func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ())
-  func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ())
+  func stopVisit(visitId: Int64) -> AnyPublisher<Void, Error>
+  func update(visitId: Int64, tags: [String:String]) -> AnyPublisher<Void, Error>
+  func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]]) -> AnyPublisher<Void, Error>
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, requestId: String, event: ScanEvent, completion: @escaping (Error?) -> ())
   func upload(visitId: Int64, requestId: String, event: SyncEvent, completion: @escaping (Error?) -> ())
@@ -49,21 +49,21 @@ extension AnalyticsRepository: IAnalyticsRepository {
       .eraseToAnyPublisher()
   }
 
-  func stopVisit(visitId: Int64, completion: @escaping (Error?) -> ()) {
-    api.stopVisit(visitId: visitId) { [weak self] (error) in
-      if error == nil {
+  func stopVisit(visitId: Int64) -> AnyPublisher<Void, Error> {
+    api.stopVisit(visitId: visitId)
+      .handleEvents(receiveCompletion: { [weak self] in
+        guard case .finished = $0 else { return }
         self?.visitId = nil
-      }
-      completion(error)
-    }
+      })
+      .eraseToAnyPublisher()
   }
 
-  func update(visitId: Int64, tags: [String:String], completion: @escaping (Error?) -> ()) {
-    api.update(visitId: visitId, tags: tags, completion: completion)
+  func update(visitId: Int64, tags: [String:String]) -> AnyPublisher<Void, Error> {
+    api.update(visitId: visitId, tags: tags)
   }
 
-  func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]], completion: @escaping (Error?) -> ()) {
-    api.upload(visitId: visitId, geopositions: geopositions, completion: completion)
+  func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]]) -> AnyPublisher<Void, Error> {
+    api.upload(visitId: visitId, geopositions: geopositions)
   }
 
   func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ()) {

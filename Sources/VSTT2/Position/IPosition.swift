@@ -25,6 +25,6 @@ public protocol IPosition: Disposable {
     @available(*, deprecated, renamed: "getBy(barcodes:)", message: "Please use the updated Combine version")
     func getBy(barcodes: [String], completion: @escaping (Result<[Item], Error>) -> ())
 
-    /// Convenience method that calls **getBy(shelfName:)**. If it's nil, it will call **getBy(barcode:)**
+    /// Convenience method that calls **getBy(shelfName:)**. If position is nil, it will call **getBy(barcode:)**
     func getBy(identifier: String) -> AnyPublisher<Item, Error>
 }
