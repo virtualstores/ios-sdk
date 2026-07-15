@@ -139,11 +139,11 @@ internal class TT2Internal: Disposable {
 
         navigation.vpsPosition.recordingInputPublisher
             .compactMap { $0 }
-            .sink(receiveValue: { [weak self] (identifier, data, sessionId, lastFile) in
+            .sink { [weak self] (identifier, data, sessionId, lastFile) in
                 let sessionId = self?.analytics.visitId?.description ?? sessionId
                 self?.awsS3UploadManager.prepareDataToSend(identifier: identifier, data: data, folderPath: self?.generateAWSFolderPath(sessionId: sessionId, additionalData: lastFile), date: Date())
                 self?.awsS3UploadManager.sendCollectedDataToS3()
-            }).store(in: &cancellable)
+            }.store(in: &cancellable)
 
         navigation.vpsPosition.recordingOutputPublisher
             .compactMap { $0 }

@@ -85,14 +85,15 @@ final public class TT2: ITT2 {
 
     // MARK: Initialize
     public func initialize(clientId: Int64, positionKitParams: ParameterPackage = .retail, returnOn queue: DispatchQueue = .main, completion: @escaping (Error?) -> ()) {
-      initialize(clientId: clientId, returnOn: queue)
-        .timeout(120, scheduler: queue)
+      initialize(clientId: clientId)
+        .timeout(120, scheduler: DispatchQueue.global(qos: .background))
+        .receive(on: queue)
         .asFailure()
         .sink(receiveValue: completion)
         .store(in: &cancellable)
     }
 
-    public func initialize(clientId: Int64, returnOn queue: DispatchQueue = .main) -> AnyPublisher<Void, Error> {
+    public func initialize(clientId: Int64) -> AnyPublisher<Void, Error> {
       tt2Internal.login.invoke()
         .flatMap { [weak self] _ -> AnyPublisher<Void, Error> in
           guard let self = self else { return .fail(with: TT2Error.missingData)}
@@ -107,7 +108,6 @@ final public class TT2: ITT2 {
           .map { _ in () }
           .eraseToAnyPublisher()
         }
-        .receive(on: queue)
         .flatMap { [weak self] _ -> AnyPublisher<Void, Error> in
           guard let self = self else { return .fail(with: TT2Error.missingData) }
           return tt2Internal.fetchStore.invoke(clientId: clientId)

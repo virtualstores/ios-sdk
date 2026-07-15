@@ -39,7 +39,7 @@ class TT2AnalyticsGeopositionManager: Disposable {
   func update(location: VPSOutputSignal.LatLngPosition) {
     guard let id = visitId else { return }
     if let processedPath = processMlManager.update(location: location, visitId: id) {
-      postProcessedPath(processedMLPositions: processedPath)
+      post(processedMLPositions: processedPath)
     }
     let gpsCoordinate = location.gpsLocation.coordinate
     let mlCoordinate = location.mlLocation.coordinate
@@ -116,10 +116,10 @@ class TT2AnalyticsGeopositionManager: Disposable {
     let positions = recordedPositionLngLat
     positions.forEach { (key, value) in
       uploadGeopositions.invoke(visitId: key, geopositions: value)
-        .sink { (completion) in
+        .sinkCompletion { (completion) in
           guard case .failure(let error) = completion else { return }
           Logger(verbosity: .error).log(message: "UploadGeopositions - \(key): \(error)")
-        } receiveValue: { _ in }
+        }
         .store(in: &cancellables)
     }
     recordedPositionLngLat = [:]
@@ -155,10 +155,10 @@ private extension TT2AnalyticsGeopositionManager {
   ) {
     uploadGeopositions
       .invoke(visitId: visitId, geopositions: [type.rawValue: positions])
-      .sink { (completion) in
+      .sinkCompletion { (completion) in
         guard case .failure(let error) = completion else { return }
         Logger(verbosity: .error).log(message: "UploadGeopositions - \(label): \(error)")
-      } receiveValue: { _ in }
+      }
       .store(in: &cancellables)
   }
 

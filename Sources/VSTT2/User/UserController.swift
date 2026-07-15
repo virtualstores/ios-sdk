@@ -84,58 +84,63 @@ extension UserController {
     self.positionServiceSettings = positionServiceSettings
   }
 
+  func updateUserML(_ userId: String, mlData: PersonalMLDataDTO) -> AnyPublisher<Void, Error> {
+    guard let clientId = clientId else { return .fail(with: TT2Error.missingData) }
+    return putUserService
+      .call(with: .init(clientId: clientId, userId: userId, mlData: [mlData]))
+      .eraseToAnyPublisher()
+  }
+
+  func getUser(userId: String) -> AnyPublisher<Void, Error> {
+    guard let clientId = clientId else { return .fail(with: TT2Error.missingData) }
+    return getUserService
+      .call(with: .init(clientId: clientId, userid: userId))
+      .handleEvents(receiveOutput: { [weak self] (profiles) in
+        self?.mlData = profiles
+      })
+      .map { (_) in () }
+      .eraseToAnyPublisher()
+  }
+
+  func deleteUser(_ userId: String) -> AnyPublisher<Void, Error> {
+    guard let clientId = clientId else { return .fail(with: TT2Error.missingData) }
+    return deleteUserService
+      .call(with: .init(clientId: clientId, userId: userId))
+      .handleEvents(receiveOutput: { [weak self] () in
+        self?.vpsProfile = nil
+        self?.userId = nil
+      })
+      .eraseToAnyPublisher()
+  }
+}
+
+private extension UserController {
   func updateUserML(_ userId: String, mlData: PersonalMLDataDTO, completion: @escaping (Error?) -> Void) {
-    guard let clientId = clientId else { return }
-    let parameters = PutUserParameters(clientId: clientId, userId: userId, mlData: [mlData])
-    putUserService
-      .call(with: parameters)
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error):
-          Logger(verbosity: .debug).log(message: error.localizedDescription)
-          DispatchQueue.main.async { completion(error) }
-        }
-      } receiveValue: { (_) in
-        DispatchQueue.main.async { completion(nil) }
-      }.store(in: &cancellable)
+    updateUserML(userId, mlData: mlData)
+      .asFailure()
+      .receive(on: DispatchQueue.main)
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 
   func getUser(userId: String, completion: @escaping (Error?) -> Void) {
-    guard let clientId = clientId else { return }
-    let parameters = GetUserParameters(clientId: clientId, userid: userId)
-    getUserService
-      .call(with: parameters)
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error):
-          Logger(verbosity: .debug).log(message: error.localizedDescription)
-          DispatchQueue.main.async { completion(error) }
-        }
-      } receiveValue: { [weak self] (profile) in
-        self?.mlData = profile
-        DispatchQueue.main.async { completion(nil) }
-      }.store(in: &cancellable)
+    getUser(userId: userId)
+      .asFailure()
+      .receive(on: DispatchQueue.main)
+      .sink(receiveValue: completion)
+      .store(in: &cancellable)
   }
 
   func deleteUser(_ userId: String, completion: @escaping (Error?) -> Void) {
-    guard let clientId = clientId else { return }
-    let parameters = DeleteUserParameters(clientId: clientId, userId: userId)
-    deleteUserService
-      .call(with: parameters)
-      .sink { (result) in
-        switch result {
-        case .finished: break
-        case .failure(let error):
+    deleteUser(userId)
+      .asFailure()
+      .receive(on: DispatchQueue.main)
+      .sink(receiveValue: { (error) in
+        if let error = error {
           Logger(verbosity: .debug).log(message: error.localizedDescription)
-          DispatchQueue.main.async { completion(error) }
         }
-      } receiveValue: { [weak self] (_) in
-        self?.vpsProfile = nil
-        self?.userId = nil
-        self?.clientId = nil
-        completion(nil)
-      }.store(in: &cancellable)
+        completion(error)
+      })
+      .store(in: &cancellable)
   }
 }

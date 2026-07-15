@@ -124,13 +124,6 @@ extension MLRepository: IMLRepository {
     nlModel = nil
     nlParams = nil
   }
-  
-  func compileModel(type: MLInterfaceVersions.MLCatalog.ModelTypeEnum, completion: @escaping (Error?) -> ()) {
-    compileModel(type: type)
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellables)
-  }
 
   func compileModel(type: MLInterfaceVersions.MLCatalog.ModelTypeEnum) -> AnyPublisher<Void, Error> {
     let path: URL?

@@ -137,3 +137,9 @@ extension Publisher {
     .eraseToAnyPublisher()
   }
 }
+
+extension Publisher where Output == Void {
+  func sinkCompletion(_ handler: @escaping (Subscribers.Completion<Failure>) -> Void) -> AnyCancellable {
+    sink(receiveCompletion: handler, receiveValue: { _ in })
+  }
+}

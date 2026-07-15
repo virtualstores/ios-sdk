@@ -9,17 +9,17 @@ import Combine
 import Foundation
 import VSFoundation
 
-protocol IAnalyticsApi: Disposable {
+protocol IAnalyticsApi {
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String]) -> AnyPublisher<Int64, Error>
   func stopVisit(visitId: Int64) -> AnyPublisher<Void, Error>
   func update(visitId: Int64, tags: [String:String]) -> AnyPublisher<Void, Error>
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]]) -> AnyPublisher<Void, Error>
-  func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, event: ScanEvent, completion: @escaping (Error?) -> ())
-  func upload(parameters: UploadSyncEventParameters, completion: @escaping (Error?) -> ())
-  func upload(parameters: UploadTriggersParameters, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ())
+  func upload(parameters: UploadPositionsParameters) -> AnyPublisher<Void, Error>
+  func upload(visitId: Int64, event: ScanEvent) -> AnyPublisher<Void, Error>
+  func upload(parameters: UploadSyncEventParameters) -> AnyPublisher<Void, Error>
+  func upload(parameters: UploadTriggersParameters) -> AnyPublisher<Void, Error>
+  func upload(visitId: Int64, visitScore: VisitScore) -> AnyPublisher<Void, Error>
+  func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO]) -> AnyPublisher<Void, Error>
 }
 
 class AnalyticsApi {
@@ -34,15 +34,9 @@ class AnalyticsApi {
   private let uploadTriggersService = UploadTriggersService(with: NetworkManager())
   private let uploadVisitScoreService = UploadVisitScoreService(with: NetworkManager())
   private let uploadZoneSummmaryService = UploadZoneSummaryService(with: NetworkManager())
-  private var cancellable = Set<AnyCancellable>()
 }
 
 extension AnalyticsApi: IAnalyticsApi {
-  func dispose() {
-    Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    cancellable.removeAll()
-  }
-  
   func createVisit(storeId: Int64, deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String]) -> AnyPublisher<Int64, Error> {
     let date = DateFormatter.standardFormatter.string(from: Date())
     return createVisitService
@@ -86,63 +80,45 @@ extension AnalyticsApi: IAnalyticsApi {
       ))
   }
 
-  func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ()) {
+  func upload(parameters: UploadPositionsParameters) -> AnyPublisher<Void, Error> {
     uploadPositionsService
       .call(with: parameters)
-      .asFailure()
-      .sink { completion($0) }
-      .store(in: &cancellable)
   }
 
-  func upload(visitId: Int64, event: ScanEvent, completion: @escaping (Error?) -> ()) {
+  func upload(visitId: Int64, event: ScanEvent) -> AnyPublisher<Void, Error> {
     uploadScanEventsService
       .call(with: .init(
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
         scanEvent: event
       ))
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
   }
 
-  func upload(parameters: UploadSyncEventParameters, completion: @escaping (Error?) -> ()) {
+  func upload(parameters: UploadSyncEventParameters) -> AnyPublisher<Void, Error> {
     uploadSyncEventsService
       .call(with: parameters)
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
   }
 
-  func upload(parameters: UploadTriggersParameters, completion: @escaping (Error?) -> ()) {
+  func upload(parameters: UploadTriggersParameters) -> AnyPublisher<Void, Error> {
     uploadTriggersService
       .call(with: parameters)
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
   }
 
-  func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ()) {
+  func upload(visitId: Int64, visitScore: VisitScore) -> AnyPublisher<Void, Error> {
     uploadVisitScoreService
       .call(with: .init(
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
         visitScore: visitScore
       ))
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
   }
 
-  func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ()) {
+  func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO]) -> AnyPublisher<Void, Error> {
     uploadZoneSummmaryService
       .call(with: .init(
         visitId: visitId,
         requestId: UUID().uuidString.uppercased(),
         summary: summary
       ))
-      .asFailure()
-      .sink(receiveValue: completion)
-      .store(in: &cancellable)
   }
 }

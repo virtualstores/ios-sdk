@@ -5,6 +5,7 @@
 //  Created by Théodore Roos on 2025-02-26.
 //
 
+import Combine
 import Foundation
 import VSFoundation
 
@@ -27,6 +28,7 @@ class TT2AnalyticsScoreManager {
   var latestUploadedVisitScore: VisitScore?
   private var lastUploadTimestamp: Date = .init()
   private var uploadIntervalThreshold: Double = 15
+  private var cancellables: Set<AnyCancellable> = []
 
   func report(score: Int) {
     guard let visitScore = validateVisitScore.invoke(score: score, timestamp: .init()) else { return }
@@ -38,14 +40,17 @@ class TT2AnalyticsScoreManager {
   }
 
   func upload(visitScore: VisitScore) {
-    uploadVisitScore.invoke(visitScore: visitScore) { [weak self] (error) in
-      if let error = error {
-        Logger(verbosity: .debug).log(message: error.localizedDescription)
-      } else {
-        Logger(verbosity: .debug).log(message: "UploadVisitScore Success: \(visitScore.score)")
-        self?.latestUploadedVisitScore = visitScore
+    uploadVisitScore.invoke(visitScore: visitScore)
+      .sinkCompletion { [weak self] (completion) in
+        switch completion {
+        case .failure(let error):
+          Logger(verbosity: .debug).log(message: error.localizedDescription)
+        case .finished:
+          Logger(verbosity: .debug).log(message: "UploadVisitScore Success: \(visitScore.score)")
+          self?.latestUploadedVisitScore = visitScore
+        }
       }
-    }
+      .store(in: &cancellables)
   }
 
   func startVisit() {

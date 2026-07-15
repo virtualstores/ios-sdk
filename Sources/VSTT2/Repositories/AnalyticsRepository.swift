@@ -15,12 +15,12 @@ protocol IAnalyticsRepository: Disposable {
   func stopVisit(visitId: Int64) -> AnyPublisher<Void, Error>
   func update(visitId: Int64, tags: [String:String]) -> AnyPublisher<Void, Error>
   func upload(visitId: Int64, geopositions: [String:[RecordedPositionLngLat]]) -> AnyPublisher<Void, Error>
-  func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, requestId: String, event: ScanEvent, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, requestId: String, event: SyncEvent, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, requestId: String, event: PostTriggerEventRequest, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ())
-  func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ())
+  func upload(parameters: UploadPositionsParameters) -> AnyPublisher<Void, Error>
+  func upload(visitId: Int64, requestId: String, event: ScanEvent) -> AnyPublisher<Void, Error>
+  func upload(visitId: Int64, requestId: String, event: SyncEvent) -> AnyPublisher<Void, Error>
+  func upload(visitId: Int64, requestId: String, event: PostTriggerEventRequest) -> AnyPublisher<Void, Error>
+  func upload(visitId: Int64, visitScore: VisitScore) -> AnyPublisher<Void, Error>
+  func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO]) -> AnyPublisher<Void, Error>
 }
 
 class AnalyticsRepository {
@@ -39,7 +39,6 @@ extension AnalyticsRepository: IAnalyticsRepository {
 
   func dispose() {
     Logger(verbosity: .info).log(tag: tag, message: "dispose")
-    api.dispose()
     visitId = nil
   }
 
@@ -66,28 +65,28 @@ extension AnalyticsRepository: IAnalyticsRepository {
     api.upload(visitId: visitId, geopositions: geopositions)
   }
 
-  func upload(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ()) {
-    api.upload(parameters: parameters, completion: completion)
+  func upload(parameters: UploadPositionsParameters) -> AnyPublisher<Void, Error> {
+    api.upload(parameters: parameters)
   }
 
-  func upload(visitId: Int64, requestId: String, event: ScanEvent, completion: @escaping (Error?) -> ()) {
-    api.upload(visitId: visitId, event: event, completion: completion)
+  func upload(visitId: Int64, requestId: String, event: ScanEvent) -> AnyPublisher<Void, Error> {
+    api.upload(visitId: visitId, event: event)
   }
 
-  func upload(visitId: Int64, requestId: String, event: SyncEvent, completion: @escaping (Error?) -> ()) {
-    api.upload(parameters: .init(visitId: visitId, requestId: requestId, event: event), completion: completion)
+  func upload(visitId: Int64, requestId: String, event: SyncEvent) -> AnyPublisher<Void, Error> {
+    api.upload(parameters: .init(visitId: visitId, requestId: requestId, event: event))
   }
 
-  func upload(visitId: Int64, requestId: String, event: PostTriggerEventRequest, completion: @escaping (Error?) -> ()) {
-    api.upload(parameters: .init(visitId: visitId, requestId: requestId, event: event), completion: completion)
+  func upload(visitId: Int64, requestId: String, event: PostTriggerEventRequest) -> AnyPublisher<Void, Error> {
+    api.upload(parameters: .init(visitId: visitId, requestId: requestId, event: event))
   }
 
-  func upload(visitId: Int64, visitScore: VisitScore, completion: @escaping (Error?) -> ()) {
-    api.upload(visitId: visitId, visitScore: visitScore, completion: completion)
+  func upload(visitId: Int64, visitScore: VisitScore) -> AnyPublisher<Void, Error> {
+    api.upload(visitId: visitId, visitScore: visitScore)
   }
 
-  func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ()) {
-    api.upload(visitId: visitId, summary: summary, completion: completion)
+  func upload(visitId: Int64, summary: [String : AnalyticsZoneSummaryBusiness.ZoneCountsDTO]) -> AnyPublisher<Void, Error> {
+    api.upload(visitId: visitId, summary: summary)
   }
 }
 

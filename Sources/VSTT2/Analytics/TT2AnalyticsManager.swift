@@ -180,37 +180,54 @@ private extension TT2AnalyticsManager {
 
   ///Uploading Heatmap data
   func uploadPositionData() {
-    positionUploadWorker.getParameters().forEach { (parameters) in
-      uploadPositions.invoke(parameters: parameters) { [weak self] (error) in
-        if let error = error {
-          self?.positionUploadWorker.updateObjectsAfterUpload(didFail: true)
-          Logger(verbosity: .debug).log(message: error.localizedDescription)
-        } else {
-          self?.positionUploadWorker.updateObjectsAfterUpload(didFail: false)
-          self?.positionUploadWorker.removeAllPoints()
-          self?.positionUploadWorker.removeCompletedObjects()
-          Logger(verbosity: .debug).log(message: "Recorded Positions Uploaded")
-        }
+    Publishers.MergeMany(positionUploadWorker
+      .getParameters()
+      .map { uploadPositions.invoke(parameters: $0) }
+    )
+    .sinkCompletion { [weak self] completion in
+      switch completion {
+      case .failure(let error):
+        self?.positionUploadWorker.updateObjectsAfterUpload(didFail: true)
+        Logger(verbosity: .debug).log(message: error.localizedDescription)
+      case .finished:
+        self?.positionUploadWorker.updateObjectsAfterUpload(didFail: false)
+        self?.positionUploadWorker.removeAllPoints()
+        self?.positionUploadWorker.removeCompletedObjects()
+        Logger(verbosity: .debug).log(message: "Recorded Positions Uploaded")
       }
     }
+    .store(in: &cancellables)
   }
 
   // MARK: Trigger Events
   func uploadAllInDatabase() {
-    getScanEvents.invoke().forEach { upload.invoke($0) }
-    getSyncEvents.invoke().forEach { upload.invoke($0) }
-    getTriggerEvents.invoke().forEach { upload.invoke($0) }
+    let allUploads =
+    getScanEvents.invoke().map(upload.invoke) +
+    getSyncEvents.invoke().map(upload.invoke) +
+    getTriggerEvents.invoke().map(upload.invoke)
+
+    Publishers.MergeMany(allUploads)
+      .sinkCompletion { completion in
+        if case .failure(let error) = completion {
+          Logger(verbosity: .debug)
+            .log(message: "UploadEvent Error: \(error.localizedDescription)")
+        }
+      }
+      .store(in: &cancellables)
   }
 
   func uploadZoneSummaryEvents() {
     guard let summary = zoneSummaryBusiness.popCurrentZoneSummary() else { return }
-    uploadZoneSummary.invoke(summary: summary) { (error) in
-      if let error = error {
-        Logger(verbosity: .debug).log(message: "UploadZoneSummary Error: \(error.localizedDescription)")
-      } else {
-        Logger(verbosity: .debug).log(message: "UploadZoneSummary Success")
+    uploadZoneSummary.invoke(summary: summary)
+      .sinkCompletion { (completion) in
+        switch completion {
+        case .failure(let error):
+          Logger(verbosity: .debug).log(message: "UploadZoneSummary Error: \(error.localizedDescription)")
+        case .finished:
+          Logger(verbosity: .debug).log(message: "UploadZoneSummary Success")
+        }
       }
-    }
+      .store(in: &cancellables)
   }
 
   func getVPSParams() -> String {
@@ -267,7 +284,7 @@ private extension TT2AnalyticsManager {
     endVisit.invoke()
       .subscribe(on: serialDispatch)
       .receive(on: serialDispatch)
-      .sink { [weak self] (completion) in
+      .sinkCompletion { [weak self] (completion) in
         switch completion {
         case .finished:
           self?.positionUploadWorker.removeAllPoints()
@@ -276,16 +293,16 @@ private extension TT2AnalyticsManager {
         case .failure(let error):
           Logger(verbosity: .debug).log(message: "StopVisitError: \(error.localizedDescription)")
         }
-      } receiveValue: { (_) in }
+      }
       .store(in: &cancellables)
   }
 
   func invokeUpdate(tags: [String:String]) {
     updateTags.invoke(tags: tags)
-      .sink {
+      .sinkCompletion {
         guard case .failure(let error) = $0 else { return }
         Logger(verbosity: .debug).log(message: "\(#function) \(error)")
-      } receiveValue: { (_) in }
+      }
       .store(in: &cancellables)
   }
 }
@@ -362,21 +379,26 @@ extension TT2AnalyticsManager {
 extension TT2AnalyticsManager: TT2Analytics {
   public var hasVisit: Bool { visitId != nil }
 
-  public func startVisit(deviceInformation: DeviceInformation, tags: [String:String] = [:], metaData: [String:String] = [:], completion: @escaping (Result<Int64, Error>) -> Void) {
-    guard getMLVersion.invoke() != nil else { completion(.failure(TT2Error.missingData)); return }
-    guard visitId == nil else { completion(.failure(TT2AnalyticsError.visitAlreadyStarted)); return }
+  public func startVisit(deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String]) -> AnyPublisher<Int64, Error> {
+    guard getMLVersion.invoke() != nil else { return .fail(with: TT2Error.missingData) }
+    guard visitId == nil else { return .fail(with: TT2AnalyticsError.visitAlreadyStarted) }
 
     var editedTags = tags
     tt2VisitStartTags.forEach { editedTags[$0.key] = $0.value }
     (tt2VPSSettingsTags ?? tt2VPSSettingsDefaultTags).forEach { editedTags[$0.key] = $0.value }
     tt2Tags = editedTags.filter { $0.key.lowercased().contains("tt2") }
 
-    createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData)
+    return createVisit.invoke(deviceInformation: deviceInformation, tags: editedTags, metaData: metaData)
       .handleEvents(receiveOutput: { [weak self] (visitId) in
         self?.navigationManager.vpsPosition.set(sessionId: visitId.description)
         self?.visitScoreManager.startVisit()
       })
       .receive(on: DispatchQueue.main)
+      .eraseToAnyPublisher()
+  }
+
+  public func startVisit(deviceInformation: DeviceInformation, tags: [String:String], metaData: [String:String], completion: @escaping (Result<Int64, Error>) -> Void) {
+    startVisit(deviceInformation: deviceInformation, tags: tags, metaData: metaData)
       .asResult()
       .sink(receiveValue: completion)
       .store(in: &cancellables)

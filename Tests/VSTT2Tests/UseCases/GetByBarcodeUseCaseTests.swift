@@ -5,35 +5,44 @@
 //  Created by Théodore Roos on 2022-12-16.
 //
 
+import Combine
 import Foundation
 import VSFoundation
 import XCTest
 @testable import VSTT2
 
 final class GetByBarcodeUseCaseTests: XCTestCase {
+  var cancellables = Set<AnyCancellable>()
+
   func test_that_given_activeStore_and_items_where_all_positions_has_the_same_shelfId_does_not_return_nil() {
     let storeRepository = FakeStoreRepository(jsonData: .storeFixture)
     var itemsRepository = FakeItemsRepository(jsonData: .mockBarcodePositionsCase1)
 
     let barcode = "7313130215910"
     let usecase = GetPositionByBarcodeUseCase()
-    usecase.invoke(barcode: barcode) { (result) in
-      switch result {
-      case .failure(let error): break
-      case .success(let item):
-        XCTAssertNotNil(item.itemPosition, "ItemPosition is nil")
+    usecase.invoke(barcode: barcode)
+      .asResult()
+      .sink { (result) in
+        switch result {
+        case .failure(let error): break
+        case .success(let item):
+          XCTAssertNotNil(item.itemPosition, "ItemPosition is nil")
+        }
       }
-    }
+      .store(in: &cancellables)
 
     itemsRepository = FakeItemsRepository(jsonData: .mockBarcodePositionsCase2)
 
-    usecase.invoke(barcode: barcode) { (result) in
-      switch result {
-      case .failure(let error): break
-      case .success(let item):
-        XCTAssertNotNil(item.itemPosition, "ItemPosition is nil")
+    usecase.invoke(barcode: barcode)
+      .asResult()
+      .sink { (result) in
+        switch result {
+        case .failure(let error): break
+        case .success(let item):
+          XCTAssertNotNil(item.itemPosition, "ItemPosition is nil")
+        }
       }
-    }
+      .store(in: &cancellables)
   }
 
   func test_that_given_activeStore_and_items_where_all_positions_does_not_have_the_same_shelfId_does_return_nil() {
@@ -41,13 +50,16 @@ final class GetByBarcodeUseCaseTests: XCTestCase {
     let itemsRepository = FakeItemsRepository(jsonData: .mockBarcodePositionsCase3)
 
     let barcode = "7313130215910"
-    GetPositionByBarcodeUseCase().invoke(barcode: barcode) { (result) in
-      switch result {
-      case .failure(let error): break
-      case .success(let item):
-        XCTAssertNil(item.itemPosition, "ItemPosition is nil")
+    GetPositionByBarcodeUseCase().invoke(barcode: barcode)
+      .asResult()
+      .sink { (result) in
+        switch result {
+        case .failure(let error): break
+        case .success(let item):
+          XCTAssertNil(item.itemPosition, "ItemPosition is nil")
+        }
       }
-    }
+      .store(in: &cancellables)
   }
 }
 
@@ -81,6 +93,13 @@ class FakeStoreRepository: IStoreRepository {
   func getCachedStores() -> [VSTT2.Store] { [activeStore] }
   func setCachedStores(stores: [VSTT2.Store]) {}
   func setActiveStore(store: VSTT2.Store) {}
+  func fetchStores(clientId: Int64) -> AnyPublisher<Void, any Error> {
+    return .fail(with: TT2Error.missingData)
+  }
+
+  func fetchSwapLocations(storeId: Int64) -> AnyPublisher<Void, any Error> {
+    return .fail(with: TT2Error.missingData)
+  }
 }
 
 class FakeItemsRepository: IItemsRepository {
@@ -105,6 +124,17 @@ class FakeItemsRepository: IItemsRepository {
   func getCachedItems(by barcode: String) -> VSTT2.Item? { cachedItems[barcode] }
   func addCachedItem(item: VSTT2.Item) { cachedItems[item.externalId] = item }
   func reset() { cachedItems.removeAll() }
+  func getBy(storeId: Int64, barcode: String) -> AnyPublisher<[VSTT2.BarcodePosition], any Error> {
+    return .fail(with: TT2Error.missingData)
+  }
+
+  func getCachedItems(by identfier: String) -> [VSTT2.BarcodePosition]? {
+    nil
+  }
+
+  func addCachedItem(identfier: String, positons: [VSTT2.BarcodePosition]) {
+
+  }
 }
 
 fileprivate extension String {

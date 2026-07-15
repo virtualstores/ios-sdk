@@ -92,34 +92,31 @@ class AnalyticsUploadUseCase {
   @Inject var repository: IAnalyticsRepository
   @Inject var persistence: IPersistenceRepository
 
-  func invoke(_ object: UploadScanEvent) {
-    repository.upload(visitId: object.visitId, requestId: object.requestId, event: object.event) { [weak self] (error) in
-      if let error = error {
-        Logger(verbosity: .debug).log(message: "ScanEvent UploadError \(error)")
-      } else {
+  func invoke(_ object: UploadScanEvent) -> AnyPublisher<Void, Error> {
+    //Logger(verbosity: .debug).log(message: "ScanEvent UploadError \(error)")
+    repository.upload(visitId: object.visitId, requestId: object.requestId, event: object.event)
+      .handleEvents(receiveOutput: { [weak self] (_) in
         self?.persistence.delete(object.event)
-      }
-    }
+      })
+      .eraseToAnyPublisher()
   }
 
-  func invoke(_ object: UploadSyncEvent) {
-    repository.upload(visitId: object.visitId, requestId: object.requestId, event: object.event) { [weak self] (error) in
-      if let error = error {
-        Logger(verbosity: .debug).log(message: "SyncEvent UploadError \(error)")
-      } else {
+  func invoke(_ object: UploadSyncEvent) -> AnyPublisher<Void, Error> {
+    //Logger(verbosity: .debug).log(message: "SyncEvent UploadError \(error)")
+    repository.upload(visitId: object.visitId, requestId: object.requestId, event: object.event)
+      .handleEvents(receiveOutput: { [weak self] (_) in
         self?.persistence.delete(object.event)
-      }
-    }
+      })
+      .eraseToAnyPublisher()
   }
 
-  func invoke(_ object: UploadTriggerEvent) {
-    repository.upload(visitId: object.visitId, requestId: object.requestId, event: object.event) { [weak self] (error) in
-      if let error = error {
-        Logger(verbosity: .debug).log(message: "TriggerEvent UploadError \(error)")
-      } else {
+  func invoke(_ object: UploadTriggerEvent) -> AnyPublisher<Void, Error> {
+    //Logger(verbosity: .debug).log(message: "TriggerEvent UploadError \(error)")
+    repository.upload(visitId: object.visitId, requestId: object.requestId, event: object.event)
+      .handleEvents(receiveOutput: { [weak self] (_) in
         self?.persistence.delete(object.event)
-      }
-    }
+      })
+      .eraseToAnyPublisher()
   }
 }
 
@@ -143,25 +140,25 @@ class UploadGeopositionsForVisitUseCase {
 class UploadPositionsForVisitUseCase {
   @Inject var repository: IAnalyticsRepository
 
-  func invoke(parameters: UploadPositionsParameters, completion: @escaping (Error?) -> ()) {
-    repository.upload(parameters: parameters, completion: completion)
+  func invoke(parameters: UploadPositionsParameters) -> AnyPublisher<Void, Error> {
+    repository.upload(parameters: parameters)
   }
 }
 
 class UploadVisitScoreForActiveVisitUseCase {
   @Inject var repository: IAnalyticsRepository
 
-  func invoke(visitScore: VisitScore, completion: @escaping (Error?) -> ()) {
-    guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
-    repository.upload(visitId: id, visitScore: visitScore, completion: completion)
+  func invoke(visitScore: VisitScore) -> AnyPublisher<Void, Error> {
+    guard let id = repository.activeVisitId else { return .fail(with: TT2AnalyticsError.visitNotStarted) }
+    return repository.upload(visitId: id, visitScore: visitScore)
   }
 }
 
 class UploadZoneSummaryForActiveVisitUseCase {
   @Inject var repository: IAnalyticsRepository
 
-  func invoke(summary: [String:AnalyticsZoneSummaryBusiness.ZoneCountsDTO], completion: @escaping (Error?) -> ()) {
-    guard let id = repository.activeVisitId else { completion(TT2AnalyticsError.visitNotStarted); return }
-    repository.upload(visitId: id, summary: summary, completion: completion)
+  func invoke(summary: [String:AnalyticsZoneSummaryBusiness.ZoneCountsDTO]) -> AnyPublisher<Void, Error> {
+    guard let id = repository.activeVisitId else { return .fail(with: TT2AnalyticsError.visitNotStarted) }
+    return repository.upload(visitId: id, summary: summary)
   }
 }

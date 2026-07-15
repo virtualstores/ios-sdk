@@ -45,19 +45,19 @@ class StepEventUploader {
   private func upload(parameters: UploadStepEventsParameters) {
     stepEventService
       .call(with: parameters)
-      .sink { (result) in
+      .sinkCompletion { (result) in
         switch result {
-        case .finished: break
         case .failure(let error): Logger(verbosity: .debug).log(message: "UploadStepEventsParametersError \(error)")
+        case .finished:
+          let persistence = parameters.asPersistence
+          do {
+            try self.persistence.delete(persistence)
+          } catch {
+            Logger(verbosity: .error).log(message: "UploadStepEventsPersistenceDeleteError \(error)")
+          }
         }
-      } receiveValue: { (_) in
-        let persistence = parameters.asPersistence
-        do {
-          try self.persistence.delete(persistence)
-        } catch {
-          Logger(verbosity: .error).log(message: "UploadStepEventsPersistenceDeleteError \(error)")
-        }
-      }.store(in: &cancellable)
+      }
+      .store(in: &cancellable)
   }
 }
 

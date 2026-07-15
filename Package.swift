@@ -11,9 +11,7 @@ let package = Package(
         .watchOS(.v6)
     ],
     products: [
-        .library(
-            name: "VSTT2",
-            targets: ["VSTT2"]),
+        .library(name: "VSTT2", targets: ["VSTT2"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
