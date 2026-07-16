@@ -114,10 +114,20 @@ class AnalyticsUploadUseCase {
 
   func invoke(_ object: UploadTriggerEvent) {
     repository.upload(visitId: object.visitId, requestId: object.requestId, event: object.event) { [weak self] (error) in
-      if let error = error {
-        Logger(verbosity: .debug).log(message: "TriggerEvent UploadError \(error)")
-      } else {
+      guard let error = error else {
         self?.persistence.delete(object.event)
+        return
+      }
+
+      Logger(verbosity: .debug).log(message: "TriggerEvent UploadError \(error) event \(object.event.name)")
+
+      switch error {
+      case NetworkError.unprocessable, NetworkError.http(statusCode: 422, data: _):
+        // bad/invalid payload — retrying won't fix it, stop trying
+        self?.persistence.delete(object.event)
+      default:
+        // transport error or other server error — keep it, retry later
+        break
       }
     }
   }

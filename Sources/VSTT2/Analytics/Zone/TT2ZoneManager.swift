@@ -21,7 +21,7 @@ public class TT2ZoneManager: TT2Zone {
 
     private let tag = "TT2ZoneManager"
     private var rtlsOptionsId: Int64 { (try? activeFloor.invoke().id) ?? -1 }
-    private var zones: [Zone] { (try? getZonesTree.invoke())?.getZonesFor(floorLevelId: rtlsOptionsId) ?? [] }
+    private var zones: [Zone] { (try? getZonesTree.invoke())?.getZonesForCurrentFloorLevel() ?? [] }
     private var zonesPoint: [[CGPoint]] = []
     private var entryPoints: [String: [TriggerEvent.ZoneTrigger.EntryPoint]] = [:]
     private var insideZones: [String: [CGPoint]] = [:]

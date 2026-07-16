@@ -16,10 +16,12 @@ protocol DataHandler {
   func fetchEmptyBody<R: Routing>(_ routing: R) -> AnyPublisher<Void, Error>
 }
 
-enum NetworkError: Error {
+enum NetworkError: Error, Equatable {
   case invalidURL
   case decodingFailed
   case sessionExpired, invalidTokens
+  case unprocessable(Data)          // 422 specifically, if you want to branch UI on it
+  case http(statusCode: Int, data: Data) // catch-all for other non-2xx
 }
 
 final class NetworkManager: DataHandler {
@@ -43,8 +45,12 @@ final class NetworkManager: DataHandler {
         guard let response = result.response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         let timeInterval = Date().timeIntervalSince(date)
         Logger(verbosity: .network).log(message: "--> \(response.statusCode) \(response.url?.absoluteString ?? "") [\(result.data.count) b] \(String(format: "[%.03f s]", timeInterval))")
-        guard response.statusCode == 401 else { return result.data }
-        throw NetworkError.sessionExpired
+        switch response.statusCode {
+        case 200..<300: return result.data
+        case 401: throw NetworkError.sessionExpired
+        case 422: throw NetworkError.unprocessable(result.data)
+        default: throw NetworkError.http(statusCode: response.statusCode, data: result.data)
+        }
       }
       .catch { (error) -> AnyPublisher<Data, Error> in
         if (error as? NetworkError) == .sessionExpired {
@@ -71,14 +77,15 @@ final class NetworkManager: DataHandler {
     let date = Date()
     Logger(verbosity: .network).log(message: "<-- \(routing.method) \(url)")
     return urlSession.dataTaskPublisher(for: url)
-      .tryMap { element -> Void in
-        guard let response = element.response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+      .tryMap { (result) in
+        guard let response = result.response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         let timeInterval = Date().timeIntervalSince(date)
-        Logger(verbosity: .network).log(message: "--> \(response.statusCode) \(response.url?.absoluteString ?? "") [\(0) b] \(String(format: "[%.03f s]", timeInterval))")
+        Logger(verbosity: .network).log(message: "--> \(response.statusCode) \(response.url?.absoluteString ?? "") [\(result.data.count) b] \(String(format: "[%.03f s]", timeInterval))")
         switch response.statusCode {
         case 200..<300: return ()
         case 401: throw NetworkError.sessionExpired
-        default: throw URLError(.badServerResponse)
+        case 422: throw NetworkError.unprocessable(result.data)
+        default: throw NetworkError.http(statusCode: response.statusCode, data: result.data)
         }
       }
       .catch { (error) -> AnyPublisher<Void, Error> in

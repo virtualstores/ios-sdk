@@ -29,7 +29,7 @@ public class TT2EventManager {
   public var triggerEvents: [TriggerEvent] = []
   private var latestMessageLoad: Date?
   private let reloadMessageInterval: TimeInterval = 3600.0
-  private var zones: [Zone] { (try? getZonesTree.invoke())?.getZonesFor(floorLevelId: rtlsOptionsId) ?? [] }
+  private var zones: [Zone] { (try? getZonesTree.invoke())?.getZonesForCurrentFloorLevel() ?? [] }
   private var view: UIView?
   private var inAndOut: InAndOut?
 

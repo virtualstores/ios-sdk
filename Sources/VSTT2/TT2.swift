@@ -35,7 +35,7 @@ final public class TT2: ITT2 {
     // Only for testing purpose of floorchange. Will be removed once green lighted
     public var floorChangePublisher: CurrentValueSubject<String?, Never> = .init(nil)
 
-    static let version = "2.15.0"
+    static let version = "2.16.0"
 
     // MARK: Private members
     private let tag: String = "TT2"
@@ -278,7 +278,7 @@ private extension TT2 {
       guard
         let id = try? activeFloor.id,
         let mapData = mapData,
-        let zones = try? zonesTree.getZonesFor(floorLevelId: id)?.filter({ $0.properties.zoneType != "EXPOSURE_POINT" })
+        let zones = try? zonesTree.getZonesForCurrentFloorLevel()?.filter({ $0.properties.zoneType != "EXPOSURE_POINT" })
       else { return }
 
       tt2Internal.mapController?.loadMap(with: mapData)

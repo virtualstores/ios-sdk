@@ -37,18 +37,18 @@ extension Position: IPosition {
     }
   }
 
-  public func getBy(barcode: String, completion: @escaping (Result<Item, Error>) -> ()) {
-    getPositionByBarcodeUseCase.invoke(barcode: barcode, completion: completion)
+  public func getBy(barcode: String, itemSettings: ItemSettings, completion: @escaping (Result<Item, Error>) -> ()) {
+    getPositionByBarcodeUseCase.invoke(barcode: barcode, itemSettings: itemSettings, completion: completion)
   }
 
-  public func getBy(barcodes: [String], completion: @escaping (Result<[Item], Error>) -> ()) {
+  public func getBy(barcodes: [String], itemSettings: ItemSettings, completion: @escaping (Result<[Item], Error>) -> ()) {
     let group = DispatchGroup()
     var items: [Item] = []
     var savedError: Error?
 
     group.enter()
     barcodes.forEach { (barcode) in
-      getBy(barcode: barcode) { (result) in
+      getBy(barcode: barcode, itemSettings: itemSettings) { (result) in
         switch result {
         case .success(let item): items.append(item)
         case .failure(let error): savedError = error
