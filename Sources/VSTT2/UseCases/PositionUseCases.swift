@@ -14,7 +14,7 @@ class GetPositionByBarcodeUseCase {
   @Inject var statusRepository: IStatusRepository
   @Inject var floorRepository: IFloorRepository
 
-  func invoke(barcode: String, completion: @escaping (Result<Item, Error>) -> Void) {
+  func invoke(barcode: String, itemSettings: ItemSettings, completion: @escaping (Result<Item, Error>) -> Void) {
     guard let id = try? storeRepository.activeStore.id else { return }
     itemsRepository.getBy(storeId: id, barcode: barcode) { [weak self] (result) in
       switch result {
@@ -28,13 +28,14 @@ class GetPositionByBarcodeUseCase {
 
         let zonePosition = closestItemPosition?.getZonePosition(
           for: (try? self?.floorRepository.activeZoneShelves) ?? [],
-          zones: (try? self?.storeRepository.zonesTree.getZonesForCurrentFloorLevel()) ?? []
+          zones: (try? self?.storeRepository.zonesTree.getZonesForCurrentFloorLevel()) ?? [],
+          zoneLookupScope: itemSettings.zoneLookupScope,
         )?.asZonePosition(barcode: barcode)
 
         DispatchQueue.main.async { completion(.success(
           Item(
-            name: barcode,
-            externalId: barcode,
+            name: itemSettings.obfuscateBarcode ? "_" : barcode,
+            externalId: itemSettings.obfuscateBarcode ? "_" : barcode,
             itemPositions: itemPositions,
             itemPosition: zonePosition == nil ? closestItemPosition : nil,
             zonePosition: zonePosition
@@ -54,11 +55,15 @@ private extension BarcodePosition {
 }
 
 private extension ItemPosition {
-  func getZonePosition(for zoneShelves: [Shelf], zones: [Zone]) -> Zone? {
-    guard let shelf = zoneShelves.first(where: { $0.id == shelfId }) else { return nil }
-    return zones
-      .filter({ $0.properties.zoneType != "EXPOSURE_POINT" })
-      .first(where: { $0.contains(point: shelf.itemPosition.pointWithOffset) })
+  func getZonePosition(for zoneShelves: [Shelf], zones: [Zone], zoneLookupScope: ItemSettings.ZoneLookupScope) -> Zone? {
+    guard zoneShelves.first(where: { $0.id == shelfId }) != nil else { return nil }
+    let zones: [Zone] = zones.filter({ $0.properties.zoneType != "EXPOSURE_POINT" })
+
+    let childMatch = zoneLookupScope != .parentOnly ? zones.filter { $0.parent != nil }.findContaining(point) : nil
+
+    guard zoneLookupScope != .childOnly else { return childMatch }
+
+    return childMatch ?? zones.filter { $0.parent == nil }.findContaining(point)
   }
 }
 
@@ -82,5 +87,11 @@ private extension Array where Element == ItemPosition {
       }
     }
     return closestPosition
+  }
+}
+
+private extension Array where Element == Zone {
+  func findContaining(_ point: CGPoint) -> Zone? {
+    first(where: { $0.contains(point: point) })
   }
 }

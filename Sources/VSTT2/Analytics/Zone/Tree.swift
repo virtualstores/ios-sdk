@@ -83,7 +83,10 @@ public class TT2ZonesTree: Disposable {
         } else if parentId != nil {
             zonesToAdd.append(Zone(id: mapZone.id, floorLevelId: floorLevelId, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, converter: converter))
         } else {
-            (getZoneWith(id: floorLevelName) ?? root).addChild(child: Zone(id: mapZone.id, floorLevelId: floorLevelId, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, converter: converter))
+            (getZoneWith(id: floorLevelName) ?? root).addChild(
+              child: Zone(id: mapZone.id, floorLevelId: floorLevelId, properties: mapZone.properties, polygon: mapZone.zone, navigationPoints: navigationPoints, converter: converter),
+              linkParent: false
+            )
         }
         zonesToAdd.forEach { (zone) in
             if let id = parentId, let parentZone = getZoneWith(id: id) {
